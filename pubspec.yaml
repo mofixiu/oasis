@@ -1,0 +1,48 @@
+name: landa_app
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.5+1
+  google_fonts: ^8.1.0
+  intl: ^0.19.0
+  http: ^1.3.0
+  http_parser: ^4.1.2
+  shared_preferences: ^2.5.2
+  flutter_secure_storage: ^9.2.4
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  geolocator: ^13.0.2
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/iconlogo.png
+    - assets/images/newlogo.png
+    - assets/images/newlogonobackground.png
+    - assets/images/profile_avatar.png
+    - assets/images/artisan_bisi.png
+    - assets/images/artisan_emeka.png
+    - assets/images/artisan_segun.png
+    - assets/images/artisan_tunde.png
+    - assets/images/quality_hero.png
+    - assets/images/room_interior.png
