@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../models/consent_model.dart';
 import '../models/user_model.dart';
 
 abstract class IAuthService {
@@ -25,6 +26,13 @@ abstract class IAuthService {
 
   /// Fetches current authenticated user profile
   Future<UserModel> getProfile();
+
+  /// Records acceptance of a consent record. The backend requires this to
+  /// succeed at least once before it will accept `verifyIdentity`.
+  Future<ConsentModel> acceptConsent({
+    required String consentType,
+    required String version,
+  });
 
   /// Uploads selfie image and NIN for identity verification.
   ///

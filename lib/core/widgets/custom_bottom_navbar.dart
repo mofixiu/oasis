@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:provider/provider.dart';
+import '../../features/marketplace/controllers/marketplace_controller.dart';
 import '../theme/app_theme.dart';
 
 /// Custom bottom navigation bar for Landa OS MVP.
@@ -69,15 +71,35 @@ class CustomBottomNavbar extends StatelessWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
-                items: const [
-                  BottomNavigationBarItem(
+                items: [
+                  const BottomNavigationBarItem(
                     icon: Padding(
                       padding: EdgeInsets.only(bottom: 4),
                       child: Icon(Icons.grid_view_outlined),
                     ),
                     label: 'DASHBOARD',
                   ),
-                  BottomNavigationBarItem(
+
+                  // Same slot, role-specific: tenants browse the marketplace,
+                  // landlords review the applications it produces.
+                  if (isLandlord)
+                    const BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 4),
+                        child: _PendingApplicationsIcon(),
+                      ),
+                      label: 'APPLICATIONS',
+                    )
+                  else
+                    const BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 4),
+                        child: Icon(Icons.explore_outlined),
+                      ),
+                      label: 'DISCOVER',
+                    ),
+
+                  const BottomNavigationBarItem(
                     icon: Padding(
                       padding: EdgeInsets.only(bottom: 4),
                       child: Icon(Icons.payments_outlined),
@@ -89,10 +111,6 @@ class CustomBottomNavbar extends StatelessWidget {
                   // ==========================================================
                   // NON-MVP NAVIGATION TABS (Commented Out for MVP Phase)
                   // ==========================================================
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.explore_outlined),
-                    label: 'DISCOVER',
-                  ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.build_outlined),
                     label: 'FIX',
@@ -108,6 +126,47 @@ class CustomBottomNavbar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Applications inbox icon carrying a red dot while any application is still
+/// awaiting the landlord's decision.
+class _PendingApplicationsIcon extends StatelessWidget {
+  const _PendingApplicationsIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPending = context.select<MarketplaceController, bool>(
+      (controller) => controller.pendingLandlordApplicationCount > 0,
+    );
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        const Icon(Icons.inbox_outlined),
+        if (hasPending)
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: AppTheme.alertDotColor,
+                shape: BoxShape.circle,
+                // Ring it against the bar so the dot stays legible on both
+                // the light and dark navbar fills.
+                border: Border.all(
+                  color: AppTheme.isDarkMode(context)
+                      ? AppTheme.darkCardColor
+                      : Colors.white,
+                  width: 1.5,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

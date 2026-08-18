@@ -31,9 +31,9 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
   void initState() {
     super.initState();
     _secondsRemaining = _payment.escrowSecondsRemaining;
-    // List payloads may omit escrow fields, so always pull the authoritative
-    // escrow state when the receipt opens.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshEscrow());
+    // List payloads omit escrow, property, and unit details, so always pull
+    // the full receipt when this opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshReceipt());
     _startTicker();
   }
 
@@ -52,14 +52,16 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
       setState(() => _secondsRemaining = remaining - 1);
       // Window just elapsed — re-sync so can_dispute/is_ready_for_release
       // reflect the backend rather than our local guess.
-      if (remaining - 1 <= 0) _refreshEscrow();
+      if (remaining - 1 <= 0) _refreshReceipt();
     });
   }
 
-  Future<void> _refreshEscrow() async {
+  /// Re-reads the full receipt. Deliberately not the escrow endpoint: that
+  /// payload omits property/unit, so swapping it in would blank those rows.
+  Future<void> _refreshReceipt() async {
     final updated = await context
         .read<PaymentController>()
-        .refreshEscrowStatus(_payment.id);
+        .loadReceipt(_payment.id);
     if (!mounted || updated == null) return;
     setState(() {
       _payment = updated;
@@ -90,6 +92,9 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
         context,
         'Dispute submitted. Your landlord has been notified and this payment is on hold.',
       );
+      // The dispute response is not documented to carry property/unit, so
+      // re-read the full receipt to keep those rows populated.
+      await _refreshReceipt();
     } else if (controller.errorMessage != null) {
       LandaToast.error(context, controller.errorMessage!);
     }
@@ -120,7 +125,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
     final isFailed = status == PaymentStatus.failed;
 
     final statusColor = isDisputed
-        ? Colors.orange.shade800
+        ? AppTheme.disputeColor
         : isReleased || isEscrow
         ? AppTheme.successColor
         : isFailed
@@ -128,7 +133,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
         : AppTheme.primaryColor;
 
     final statusSurface = isDisputed
-        ? Colors.orange.shade50
+        ? AppTheme.disputeSurfaceColor
         : isReleased || isEscrow
         ? AppTheme.successSurfaceColor
         : isFailed
@@ -228,7 +233,38 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
             _receiptRow(context, 'Rent amount:', '₦${_payment.amount}'),
             _receiptRow(context, 'Platform fee:', '₦${_payment.platformFee}'),
             _receiptRow(context, 'Total paid:', '₦${_payment.totalAmount}'),
+
+            // Property/unit context, returned by GET /payments/{id}/.
+            if (_payment.property != null) ...[
+              _receiptDivider(context),
+              _receiptRow(context, 'Property:', _payment.property!.name),
+              _receiptRow(
+                context,
+                'Address:',
+                [
+                  _payment.property!.address,
+                  _payment.property!.city,
+                  _payment.property!.state,
+                ].where((part) => part.isNotEmpty).join(', '),
+              ),
+            ],
+            if (_payment.unit != null) ...[
+              _receiptRow(context, 'Unit:', _payment.unit!.unitNumber),
+              _receiptRow(
+                context,
+                'Layout:',
+                '${_payment.unit!.bedrooms} bed · ${_payment.unit!.bathrooms} bath',
+              ),
+            ],
+            if (_payment.property != null || _payment.unit != null)
+              _receiptDivider(context),
+
             _receiptRow(context, 'Tenant Email:', _payment.tenantEmail),
+            if (_payment.landlordEmail != null &&
+                _payment.landlordEmail!.isNotEmpty)
+              _receiptRow(context, 'Landlord Email:', _payment.landlordEmail!),
+            if (_payment.agreementStatus.isNotEmpty)
+              _receiptRow(context, 'Agreement:', _payment.agreementStatus),
             if (_payment.paidAt.isNotEmpty)
               _receiptRow(context, 'Paid At:', _formatDate(_payment.paidAt)),
             if (_payment.escrowReleaseAt.isNotEmpty)
@@ -256,8 +292,10 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
                     icon: const Icon(Icons.gavel_outlined),
                     label: const Text('Raise a dispute'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.orange.shade900,
-                      side: BorderSide(color: Colors.orange.shade300),
+                      foregroundColor: AppTheme.disputeColor,
+                      side: BorderSide(
+                        color: AppTheme.disputeColor.withValues(alpha: 0.45),
+                      ),
                     ),
                   ),
                 ),
@@ -267,7 +305,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
             if (isLandlord && isDisputed)
               _NoticeBanner(
                 icon: Icons.lock_outline,
-                color: Colors.orange.shade800,
+                color: AppTheme.disputeColor,
                 message:
                     'This payment is disputed. Escrow cannot be released until the dispute is resolved.',
               ),
@@ -304,6 +342,11 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
       ),
     );
   }
+
+  Widget _receiptDivider(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Divider(color: AppTheme.borderColor(context), height: 1),
+  );
 
   Widget _receiptRow(BuildContext context, String label, String value) {
     final secondaryTextColor = AppTheme.secondaryTextColor(context);
@@ -413,40 +456,46 @@ class _DisputeNoticeCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.orange.shade50,
+        color: AppTheme.disputeSurfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.shade200),
+        border: Border.all(
+          color: AppTheme.disputeColor.withValues(alpha: 0.25),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              Icon(Icons.gavel_outlined, size: 18, color: Colors.orange.shade800),
-              const SizedBox(width: 6),
+              Icon(
+                Icons.gavel_outlined,
+                size: 18,
+                color: AppTheme.disputeColor,
+              ),
+              SizedBox(width: 6),
               Text(
                 'Dispute raised',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade900,
+                  color: AppTheme.disputeColor,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(
+          const Text(
             'These funds are on hold and cannot be released while the dispute is open.',
-            style: TextStyle(fontSize: 12, color: Colors.orange.shade900),
+            style: TextStyle(fontSize: 12, color: AppTheme.disputeColor),
           ),
           if (payment.disputeReason.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               'Reason: ${payment.disputeReason}',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
-                color: Colors.orange.shade900,
+                color: AppTheme.disputeColor,
               ),
             ),
           ],
@@ -509,42 +558,106 @@ class _DisputeReasonDialogState extends State<_DisputeReasonDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Raise a dispute'),
+      backgroundColor: AppTheme.surfaceColor(context),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: AppTheme.disputeSurfaceColor,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.gavel_outlined,
+              size: 20,
+              color: AppTheme.disputeColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Raise a dispute',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primaryColor,
+            ),
+          ),
+        ],
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Your landlord will be notified and these funds stay on hold until the dispute is resolved.',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: AppTheme.secondaryTextColor(context),
+            ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _reasonController,
             maxLines: 3,
             maxLength: 300,
-            decoration: const InputDecoration(
-              labelText: 'What went wrong?',
+            style: const TextStyle(fontSize: 14),
+            decoration: InputDecoration(
+              labelText: 'WHAT WENT WRONG?',
+              labelStyle: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.1,
+                color: AppTheme.mutedTextColor(context),
+              ),
               hintText: 'e.g. The unit was not handed over as agreed.',
-              border: OutlineInputBorder(),
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: AppTheme.mutedTextColor(context),
+              ),
+              filled: true,
+              fillColor: AppTheme.inputFillColor(context),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppTheme.borderColor(context)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: AppTheme.disputeColor,
+                  width: 1.5,
+                ),
+              ),
             ),
           ),
         ],
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(
+            foregroundColor: AppTheme.secondaryTextColor(context),
+          ),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
           onPressed: () =>
               Navigator.pop(context, _reasonController.text.trim()),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange.shade800,
+            backgroundColor: AppTheme.disputeColor,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
           child: const Text(
             'Submit dispute',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],

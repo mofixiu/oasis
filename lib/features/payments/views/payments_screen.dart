@@ -107,12 +107,12 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     // A disputed payment must never read as a normal escrow
                     // hold, so it gets its own colour and icon.
                     final statusSurface = isDisputed
-                        ? Colors.orange.shade50
+                        ? AppTheme.disputeSurfaceColor
                         : isReleased
                         ? AppTheme.successSurfaceColor
                         : AppTheme.vacantSurfaceColor;
                     final statusColor = isDisputed
-                        ? Colors.orange.shade800
+                        ? AppTheme.disputeColor
                         : isReleased
                         ? AppTheme.successColor
                         : AppTheme.primaryColor;

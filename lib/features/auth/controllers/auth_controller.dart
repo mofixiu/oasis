@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/auth_token_storage.dart';
+import '../../../core/session/session_scope.dart';
+import '../models/consent_model.dart';
 import '../models/user_model.dart';
 import '../services/i_auth_service.dart';
 
@@ -24,6 +26,12 @@ class AuthController extends ChangeNotifier {
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
+
+  /// True right after `verifyIdentity` fails because the backend requires
+  /// privacy/verification consent first. The verification screen watches
+  /// this to show a consent step, then retries automatically.
+  bool _consentRequired = false;
+  bool get consentRequired => _consentRequired;
 
   /// Check initial auth state on app launch
   Future<void> checkAuthStatus() async {
@@ -57,6 +65,11 @@ class AuthController extends ChangeNotifier {
   Future<bool> login(String email, String password) async {
     _setLoading(true);
     _errorMessage = null;
+    // A session can end without `logout()` running — an expired refresh token
+    // clears storage from inside ApiClient and drops the user here. Clearing
+    // on the way in guarantees a signed-in user never inherits cached data,
+    // however the previous session ended.
+    SessionScope.resetAll();
 
     try {
       _currentUser = await _authService.login(email: email, password: password);
@@ -118,6 +131,7 @@ class AuthController extends ChangeNotifier {
   }) async {
     _setLoading(true);
     _errorMessage = null;
+    SessionScope.resetAll();
 
     try {
       _currentUser = await _authService.register(
@@ -153,6 +167,7 @@ class AuthController extends ChangeNotifier {
   }) async {
     _setLoading(true);
     _errorMessage = null;
+    _consentRequired = false;
 
     try {
       final response = await _authService.verifyIdentity(
@@ -165,12 +180,35 @@ class AuthController extends ChangeNotifier {
       final status = _applyVerificationResponse(response);
       notifyListeners();
       return status;
+    } on ConsentRequiredException {
+      // Not a generic failure: the caller should show the consent step and
+      // retry this same call, not display an error toast.
+      _consentRequired = true;
+      notifyListeners();
+      return null;
     } catch (e) {
       _errorMessage = friendlyErrorMessage(e);
       notifyListeners();
       return null;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Records the current verification/privacy consent. Must succeed before
+  /// retrying `verifyIdentity` after a [ConsentRequiredException].
+  Future<bool> acceptVerificationConsent() async {
+    try {
+      await _authService.acceptConsent(
+        consentType: VerificationConsent.type,
+        version: VerificationConsent.version,
+      );
+      _consentRequired = false;
+      return true;
+    } catch (e) {
+      _errorMessage = friendlyErrorMessage(e);
+      notifyListeners();
+      return false;
     }
   }
 
@@ -238,6 +276,12 @@ class AuthController extends ChangeNotifier {
     await _authService.logout();
     _currentUser = null;
     _isAuthenticated = false;
+    _consentRequired = false;
+    _errorMessage = null;
+    // Feature controllers are process-lifetime singletons, so without this
+    // the previous user's properties, agreements, payments, and notification
+    // badge stay in memory and are rendered to whoever signs in next.
+    SessionScope.resetAll();
     _setLoading(false);
   }
 

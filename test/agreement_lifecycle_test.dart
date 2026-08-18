@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:landa_app/features/agreements/models/agreement_model.dart';
 import 'package:landa_app/features/auth/controllers/auth_controller.dart';
+import 'package:landa_app/features/auth/models/consent_model.dart';
 import 'package:landa_app/features/auth/models/user_model.dart';
 import 'package:landa_app/features/auth/services/i_auth_service.dart';
 
@@ -132,6 +133,19 @@ class _VerificationFakeAuthService implements IAuthService {
     required String token,
     required String newPassword,
   }) async {}
+
+  @override
+  Future<ConsentModel> acceptConsent({
+    required String consentType,
+    required String version,
+  }) async {
+    return ConsentModel(
+      id: 'consent-id',
+      consentType: consentType,
+      version: version,
+      acceptedAt: '2026-08-15T10:30:00Z',
+    );
+  }
 
   @override
   Future<Map<String, dynamic>> verifyIdentity({

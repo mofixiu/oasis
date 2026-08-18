@@ -17,6 +17,13 @@ class ApiException implements Exception {
   String toString() => 'ApiException($statusCode): $message';
 }
 
+/// Thrown when the backend rejects a request with `403 {"code":
+/// "CONSENT_REQUIRED"}`. A distinct type lets callers route straight to the
+/// consent flow instead of pattern-matching the raw error body.
+class ConsentRequiredException extends ApiException {
+  ConsentRequiredException(super.message, {super.statusCode, super.errors});
+}
+
 /// Extracts a clean, user-presentable message from a caught error.
 ///
 /// [ApiException.message] is already the backend's human-readable detail
@@ -67,9 +74,23 @@ class ApiClient {
     return headers;
   }
 
-  /// Perform GET request
-  Future<dynamic> get(String path, {bool requiresAuth = true}) async {
-    final url = Uri.parse('${ApiConstants.baseUrl}$path');
+  /// Perform GET request.
+  ///
+  /// [queryParameters] entries with a null value are dropped, so callers can
+  /// pass optional filters without building the query string themselves.
+  Future<dynamic> get(
+    String path, {
+    bool requiresAuth = true,
+    Map<String, String?>? queryParameters,
+  }) async {
+    var url = Uri.parse('${ApiConstants.baseUrl}$path');
+    final filters = <String, String>{
+      for (final entry in (queryParameters ?? const <String, String?>{}).entries)
+        if (entry.value != null) entry.key: entry.value!,
+    };
+    if (filters.isNotEmpty) {
+      url = url.replace(queryParameters: {...url.queryParameters, ...filters});
+    }
     final headers = await _getHeaders(
       isJson: false,
       requiresAuth: requiresAuth,
@@ -244,7 +265,11 @@ class ApiClient {
     request.files.add(multipartFile);
 
     final stopwatch = Stopwatch()..start();
-    final streamedResponse = await request.send();
+    // Send via `_client`, not `request.send()` — BaseRequest.send() spins up
+    // its own throwaway http.Client() and would silently ignore any client
+    // injected into this ApiClient (e.g. a MockClient in tests), always
+    // hitting the real network instead.
+    final streamedResponse = await _client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
     stopwatch.stop();
 
@@ -272,7 +297,7 @@ class ApiClient {
             contentType: mediaType,
           ),
         );
-        final retryStreamed = await retryRequest.send();
+        final retryStreamed = await _client.send(retryRequest);
         final retryResponse = await http.Response.fromStream(retryStreamed);
         debugPrint(
           '📩 [API MULTIPART RETRY RESPONSE] <- Status: ${retryResponse.statusCode}',
@@ -319,13 +344,13 @@ class ApiClient {
       '🌐 [API MULTIPART POST REQUEST] -> URL: $url | Files: ${files.length}',
     );
     var response = await http.Response.fromStream(
-      await (await buildRequest()).send(),
+      await _client.send(await buildRequest()),
     );
     if (response.statusCode == 401 &&
         requiresAuth &&
         await _attemptRefreshToken()) {
       response = await http.Response.fromStream(
-        await (await buildRequest()).send(),
+        await _client.send(await buildRequest()),
       );
     }
     return _processResponse(response, path: path);
@@ -435,6 +460,16 @@ class ApiClient {
         'status. Notifying app to re-check verification.',
       );
       onVerificationRequired?.call();
+    }
+
+    if (statusCode == 403 &&
+        body is Map<String, dynamic> &&
+        body['code'] == 'CONSENT_REQUIRED') {
+      throw ConsentRequiredException(
+        errorMessage,
+        statusCode: statusCode,
+        errors: body,
+      );
     }
 
     throw ApiException(errorMessage, statusCode: statusCode, errors: body);

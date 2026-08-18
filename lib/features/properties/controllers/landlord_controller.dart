@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_scope.dart';
 import '../models/property_model.dart';
 import '../services/property_service.dart';
 
-class LandlordController extends ChangeNotifier {
+class LandlordController extends ChangeNotifier
+    implements SessionScopedController {
   final PropertyService _propertyService;
 
   LandlordController({PropertyService? propertyService})
@@ -43,6 +45,16 @@ class LandlordController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void resetSessionState() {
+    _properties = [];
+    _propertyUnits.clear();
+    _tenantAssignedUnit = null;
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// Refresh a single property's detail (fields + units) from the backend.

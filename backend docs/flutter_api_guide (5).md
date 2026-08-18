@@ -90,7 +90,7 @@ Staging checks on 2026-08-15:
 - The stale agreement `7057c951-503c-4b51-b16e-2495ce905697` and its linked payment were cleared from staging through Supabase SQL Editor.
 - New escrow routes are available in the backend code and are covered locally by tests.
 - A full remote smoke test from this workspace was attempted twice, but both attempts were interrupted by SSL/network transport errors before completion. These were connection-level failures, not API validation failures.
-- Local backend verification passed after the escrow/dispute work: 72 tests passed.
+- Local backend verification passed after the compliance foundation work: 79 tests passed.
 
 The latest staging verification confirms that dashboard/product APIs are blocked until a user reaches `VERIFIED` status.
 
@@ -108,6 +108,7 @@ This means the backend integration path is prepared, but the Smile ID account st
 
 This means Flutter should still build the real verification flow:
 
+- Call `POST /consents/` before first verification.
 - Call `POST /verify/` with selfie and NIN.
 - Treat the response as `PENDING`.
 - Poll `GET /verify/status/`.
@@ -169,7 +170,7 @@ Please do not call the Smile ID webhook directly from Flutter. Just call /verify
 | Tenancy agreement `status` | `DRAFT`, `PENDING`, `EXECUTED`, `EXPIRED`, `VOIDED` |
 | Legacy tenancy agreement `status` | `SENT`, `TENANT_SIGNED`, `ACTIVATED` may still appear for older staging records |
 | Payment `status` | `PENDING`, `ESCROW`, `DISPUTED`, `FAILED`, `RELEASED`, `REFUNDED` |
-| Notification `notification_type` | `AGREEMENT_RECEIVED`, `AGREEMENT_SIGNED`, `PAYMENT_RECORDED`, `ESCROW_DISPUTED`, `ESCROW_RELEASED` |
+| Notification `notification_type` | `AGREEMENT_RECEIVED`, `AGREEMENT_SIGNED`, `AGREEMENT_EXECUTED`, `PAYMENT_INITIATED`, `PAYMENT_RECORDED`, `ESCROW_DISPUTED`, `ESCROW_RELEASED` |
 
 ### Tenant Lookup Inputs
 
@@ -463,6 +464,41 @@ No response body.
 
 ### 5.7 Identity Verification
 
+#### `POST /consents/`
+Records verification/privacy consent for the authenticated user. Flutter must call this before `POST /verify/`.
+
+- **Authentication:** Required
+- **HTTP Method:** `POST`
+- **Path:** `/api/users/consents/`
+- **Content-Type:** `application/json`
+
+##### Request Body
+
+```json
+{
+  "consent_type": "VERIFICATION_PRIVACY",
+  "version": "2026-08-15"
+}
+```
+
+##### Response `201 Created`
+
+```json
+{
+  "id": "0aa2a026-f5b3-4328-b962-f8f28170076f",
+  "consent_type": "VERIFICATION_PRIVACY",
+  "version": "2026-08-15",
+  "accepted_at": "2026-08-15T10:30:00Z"
+}
+```
+
+#### `GET /consents/`
+Lists the authenticated user's consent records.
+
+- **Authentication:** Required
+- **HTTP Method:** `GET`
+- **Path:** `/api/users/consents/`
+
 #### `POST /verify/`
 Starts identity verification by uploading a selfie and NIN. The backend does not store raw NIN. It stores a tokenized NIN fingerprint and a provider reference for the verification attempt.
 
@@ -550,6 +586,19 @@ If the user has failed verification too many times:
   "cooldown_until": "2026-08-11T10:00:00Z"
 }
 ```
+
+##### Response `403 Forbidden`
+
+If verification/privacy consent has not been accepted yet:
+
+```json
+{
+  "code": "CONSENT_REQUIRED",
+  "detail": "Accept verification and privacy consent before starting verification."
+}
+```
+
+Flutter should route this response to the consent screen, then retry verification after `POST /consents/` succeeds.
 
 ##### Response `400 Bad Request`
 
@@ -1666,6 +1715,13 @@ Returns notifications for the authenticated user.
 - **HTTP Method:** `GET`
 - **Path:** `/api/users/notifications/`
 
+Optional query parameters:
+
+| Parameter | Example | Description |
+| :--- | :--- | :--- |
+| `type` | `PAYMENT_RECORDED` | Returns only notifications with this type |
+| `is_read` | `false` | Returns only read or unread notifications |
+
 ##### Response `200 OK`
 
 ```json
@@ -1682,7 +1738,7 @@ Returns notifications for the authenticated user.
 
 ---
 
-### 5.27 Mark Notification As Read
+### 5.30 Mark Notification As Read
 
 #### `PATCH /notifications/{notification_id}/read/`
 Marks a notification as read for the authenticated user.
@@ -1703,6 +1759,58 @@ Marks a notification as read for the authenticated user.
   "created_at": "2026-08-06T09:30:00Z"
 }
 ```
+
+---
+
+### 5.31 Export User Data
+
+#### `GET /data-export/`
+Returns a basic export of the authenticated user's profile, consent records, verification attempts, agreements, payments, notifications, and deletion requests.
+
+- **Authentication:** Required
+- **Roles:** `OWNER`, `TENANT`
+- **HTTP Method:** `GET`
+- **Path:** `/api/users/data-export/`
+
+Flutter does not need this in the core rental flow. It is available for account/privacy screens or admin-assisted support.
+
+---
+
+### 5.32 Request Account Deletion
+
+#### `POST /deletion-requests/`
+Creates a deletion request for review. This does not immediately delete financial, agreement, payment, or audit records.
+
+- **Authentication:** Required
+- **Roles:** `OWNER`, `TENANT`
+- **HTTP Method:** `POST`
+- **Path:** `/api/users/deletion-requests/`
+
+##### Request Body
+
+```json
+{
+  "reason": "I want to close my account."
+}
+```
+
+##### Response `201 Created`
+
+```json
+{
+  "id": "1fdaeb11-e3bd-4590-9172-88e68f66116f",
+  "reason": "I want to close my account.",
+  "status": "PENDING",
+  "requested_at": "2026-08-15T10:45:00Z",
+  "reviewed_at": null
+}
+```
+
+#### `GET /deletion-requests/`
+Lists the authenticated user's deletion requests.
+
+- **Authentication:** Required
+- **Path:** `/api/users/deletion-requests/`
 
 ---
 
@@ -1751,6 +1859,80 @@ Before telling Flutter that staging is ready, the backend team should run:
 
 This verifies the main mobile API flow and catches staging-only issues such as database connectivity, missing migrations, or HTML `500` pages.
 
+Latest staging result: passed on 2026-08-17.
+
+Current Block 8/9 smoke coverage includes:
+- Register/login
+- Consent before verification
+- Mock verification and verification status polling
+- Dashboard gate before verification
+- Property, unit, batch unit, and tenant assignment
+- Tenant marketplace browse/apply and landlord application list
+- Agreement creation, tenant signing, and landlord signing
+- Payment initialization/list/receipt
+- Escrow status fields
+- Notification list, filters, and mark-read
+- Data export
+- Deletion request creation/list
+
+Note for Paystack staging: when `PAYMENT_PROVIDER=paystack`, payment initialization creates a Paystack checkout and the payment can remain `PENDING` until Paystack confirms it through verification/webhook. Flutter should show the checkout/status screen and poll or refresh payment status instead of assuming payment is immediately final.
+
+---
+
+### Tenant Marketplace And Applications
+
+The tenant marketplace lets verified tenants browse available units grouped by property.
+
+A unit is available when `is_occupied=false` and no active agreement has started for that unit. Active agreement statuses are treated as unavailable: `DRAFT`, `PENDING`, `SENT`, `TENANT_SIGNED`, `EXECUTED`, and `ACTIVATED`.
+
+#### `GET /tenant/marketplace/`
+
+Lists properties with available units for tenants.
+
+Optional filters: `city`, `state`, `min_rent`, `max_rent`, `bedrooms`, `bathrooms`.
+
+```text
+GET /api/users/tenant/marketplace/?city=Lagos&max_rent=300000&bedrooms=2
+```
+
+#### `POST /tenant/applications/`
+
+Tenant applies for an available unit with one button.
+
+```json
+{
+  "unit": "UNIT_UUID"
+}
+```
+
+If the same tenant applies again for the same unit while the first application is still pending, backend returns the existing application instead of creating a duplicate.
+
+#### `GET /tenant/applications/`
+
+Lists the tenant's own applications.
+
+#### `GET /landlord/applications/`
+
+Lists applications received by the landlord. Optional filter: `?status=PENDING`.
+
+#### `POST /landlord/applications/{application_id}/approve/`
+
+Landlord approves an application and backend creates a pending tenancy agreement.
+
+```json
+{
+  "start_date": "2026-09-01",
+  "end_date": "2027-08-31",
+  "rules": "Standard tenancy rules apply."
+}
+```
+
+After approval, the application becomes `APPROVED`, the agreement becomes `PENDING`, the unit becomes occupied, other pending applications for that unit are rejected, and the tenant receives approval/agreement notifications.
+
+#### `POST /landlord/applications/{application_id}/reject/`
+
+Landlord rejects a pending application.
+
 ---
 
 ## 7. Suggested Flutter Models
@@ -1764,6 +1946,9 @@ Recommended model names:
 - `TenancyAgreement`
 - `Payment`
 - `NotificationItem`
+- `MarketplaceProperty`
+- `AvailableUnit`
+- `RentalApplication`
 
 Each model should support nullable timestamps and unknown enum values gracefully.
 
@@ -1779,6 +1964,8 @@ Each model should support nullable timestamps and unknown enum values gracefully
 | Confirm password reset | `POST` | `/api/users/password/reset/confirm/` | No | Public |
 | Refresh token | `POST` | `/api/users/token/refresh/` | No | Public |
 | Profile | `GET` | `/api/users/profile/` | Yes | `OWNER`, `TENANT` |
+| Accept consent | `POST` | `/api/users/consents/` | Yes | `OWNER`, `TENANT` |
+| List consents | `GET` | `/api/users/consents/` | Yes | `OWNER`, `TENANT` |
 | Verify identity | `POST` | `/api/users/verify/` | Yes | `OWNER`, `TENANT` |
 | Check verification status | `GET` | `/api/users/verify/status/` | Yes | `OWNER`, `TENANT` |
 | Smile ID webhook | `POST` | `/api/users/webhooks/smile-id/` | No | Provider callback |
@@ -1790,6 +1977,12 @@ Each model should support nullable timestamps and unknown enum values gracefully
 | Create units in batch | `POST` | `/api/users/properties/{property_id}/units/batch/` | Yes + verified | `OWNER` |
 | Assign tenant | `PATCH` | `/api/users/units/{unit_id}/assign/` | Yes + verified | `OWNER` |
 | Tenant assigned unit | `GET` | `/api/users/tenant/assigned-unit/` | Yes + verified | `TENANT` |
+| Tenant marketplace | `GET` | `/api/users/tenant/marketplace/` | Yes + verified | `TENANT` |
+| Tenant applications | `GET` | `/api/users/tenant/applications/` | Yes + verified | `TENANT` |
+| Apply for unit | `POST` | `/api/users/tenant/applications/` | Yes + verified | `TENANT` |
+| Landlord applications | `GET` | `/api/users/landlord/applications/` | Yes + verified | `OWNER` |
+| Approve application | `POST` | `/api/users/landlord/applications/{application_id}/approve/` | Yes + verified | `OWNER` |
+| Reject application | `POST` | `/api/users/landlord/applications/{application_id}/reject/` | Yes + verified | `OWNER` |
 | List agreements | `GET` | `/api/users/agreements/` | Yes + verified | `OWNER`, `TENANT` |
 | Create agreement | `POST` | `/api/users/agreements/` | Yes + verified | `OWNER` |
 | Sign agreement | `POST` | `/api/users/agreements/{agreement_id}/sign/` | Yes + verified | `OWNER`, `TENANT` |
@@ -1803,5 +1996,8 @@ Each model should support nullable timestamps and unknown enum values gracefully
 | Paystack webhook | `POST` | `/api/users/webhooks/paystack/` | No | Provider callback |
 | List notifications | `GET` | `/api/users/notifications/` | Yes + verified | `OWNER`, `TENANT` |
 | Mark notification read | `PATCH` | `/api/users/notifications/{notification_id}/read/` | Yes + verified | `OWNER`, `TENANT` |
+| Export user data | `GET` | `/api/users/data-export/` | Yes | `OWNER`, `TENANT` |
+| Create deletion request | `POST` | `/api/users/deletion-requests/` | Yes | `OWNER`, `TENANT` |
+| List deletion requests | `GET` | `/api/users/deletion-requests/` | Yes | `OWNER`, `TENANT` |
 
 

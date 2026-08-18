@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/network/auth_token_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/landa_app_bar.dart';
 import '../../../core/widgets/landa_shimmer.dart';
@@ -10,6 +9,7 @@ import '../../agreements/views/tenancy_agreement_modal.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/views/identity_verification_screen.dart';
+import '../../notifications/controllers/notification_controller.dart';
 import '../../payments/controllers/payment_controller.dart';
 import '../../payments/models/payment_model.dart';
 import '../../payments/views/payment_receipt_modal.dart';
@@ -107,22 +107,10 @@ class _TenantAgreementCard extends StatelessWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  bool _isVerifiedBannerDismissed = false;
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadTenantData();
-      _checkBannerState();
-    });
-  }
-
-  void _checkBannerState() async {
-    final dismissed = await AuthTokenStorage.isVerifiedBannerDismissed();
-    if (mounted) {
-      setState(() => _isVerifiedBannerDismissed = dismissed);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadTenantData());
   }
 
   void _loadTenantData() {
@@ -130,6 +118,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     context.read<AgreementController>().loadAgreements();
     context.read<PaymentController>().loadPayments();
     context.read<AuthController>().refreshProfile();
+    context.read<NotificationController>().loadNotifications();
   }
 
   @override
@@ -162,8 +151,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Dismissable Verification Status Banner
-              if (!isVerified || !_isVerifiedBannerDismissed) ...[
+              // Verification prompt. Only shown while unverified — once the
+              // user is verified there is nothing to act on, so we don't
+              // occupy the top of the dashboard with a status badge.
+              if (!isVerified) ...[
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.symmetric(
@@ -171,84 +162,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: isVerified
-                        ? AppTheme.successSurfaceColor
-                        : AppTheme.vacantSurfaceColor,
+                    color: AppTheme.vacantSurfaceColor,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isVerified
-                          ? AppTheme.successColor.withOpacity(0.45)
-                          : AppTheme.vacantColor.withOpacity(0.8),
+                      color: AppTheme.vacantColor.withValues(alpha: 0.8),
                     ),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        isVerified ? Icons.verified_user : Icons.gpp_maybe,
-                        color: isVerified
-                            ? AppTheme.successColor
-                            : AppTheme.primaryColor,
-                      ),
+                      const Icon(Icons.gpp_maybe, color: AppTheme.primaryColor),
                       const SizedBox(width: 12),
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {
-                            if (!isVerified) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const IdentityVerificationScreen(),
-                                ),
-                              );
-                            }
-                          },
-                          child: Column(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const IdentityVerificationScreen(),
+                            ),
+                          ),
+                          child: const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                isVerified
-                                    ? 'IDENTITY VERIFIED'
-                                    : 'IDENTITY UNVERIFIED',
+                                'IDENTITY UNVERIFIED',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: isVerified
-                                      ? AppTheme.successColor
-                                      : AppTheme.primaryColor,
+                                  color: AppTheme.primaryColor,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              SizedBox(height: 2),
                               Text(
-                                isVerified
-                                    ? 'Your NIN & selfie verification is active.'
-                                    : 'Tap to verify your identity with a selfie and NIN.',
+                                'Tap to verify your identity with a selfie and NIN.',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: isVerified
-                                      ? AppTheme.successColor
-                                      : AppTheme.primaryColor,
+                                  color: AppTheme.primaryColor,
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                      if (isVerified)
-                        IconButton(
-                          icon: Icon(
-                            Icons.close,
-                            size: 18,
-                            color: AppTheme.successColor,
-                          ),
-                          onPressed: () async {
-                            await AuthTokenStorage.dismissVerifiedBanner();
-                            setState(() => _isVerifiedBannerDismissed = true);
-                          },
-                          tooltip: 'Dismiss',
-                        )
-                      else
-                        const Icon(Icons.chevron_right, color: Colors.grey),
+                      const Icon(Icons.chevron_right, color: Colors.grey),
                     ],
                   ),
                 ),
@@ -484,7 +439,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       leading: CircleAvatar(
                         backgroundColor: isDisputed
-                            ? Colors.orange.shade50
+                            ? AppTheme.disputeSurfaceColor
                             : isReleased
                             ? AppTheme.successSurfaceColor
                             : AppTheme.vacantSurfaceColor,
@@ -495,7 +450,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ? Icons.verified
                               : Icons.lock_clock,
                           color: isDisputed
-                              ? Colors.orange.shade800
+                              ? AppTheme.disputeColor
                               : isReleased
                               ? AppTheme.successColor
                               : AppTheme.primaryColor,

@@ -17,6 +17,7 @@ class ApiConstants {
   static const String verificationStatusEndpoint = '/verify/status/';
   static const String passwordResetRequestEndpoint = '/password/reset/request/';
   static const String passwordResetConfirmEndpoint = '/password/reset/confirm/';
+  static const String consentsEndpoint = '/consents/';
 
   static const String propertiesEndpoint = '/properties/';
   static String propertyDetailEndpoint(String propertyId) =>
@@ -27,6 +28,15 @@ class ApiConstants {
       '/properties/$propertyId/units/batch/';
   static String assignTenantEndpoint(String unitId) => '/units/$unitId/assign/';
   static const String tenantAssignedUnitEndpoint = '/tenant/assigned-unit/';
+
+  // Tenant marketplace & rental applications
+  static const String tenantMarketplaceEndpoint = '/tenant/marketplace/';
+  static const String tenantApplicationsEndpoint = '/tenant/applications/';
+  static const String landlordApplicationsEndpoint = '/landlord/applications/';
+  static String approveApplicationEndpoint(String applicationId) =>
+      '/landlord/applications/$applicationId/approve/';
+  static String rejectApplicationEndpoint(String applicationId) =>
+      '/landlord/applications/$applicationId/reject/';
 
   static const String agreementsEndpoint = '/agreements/';
   static String signAgreementEndpoint(String agreementId) =>

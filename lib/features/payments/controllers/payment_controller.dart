@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_scope.dart';
 import '../../agreements/models/agreement_model.dart';
 import '../models/payment_model.dart';
 import '../services/payment_service.dart';
 
-class PaymentController extends ChangeNotifier {
+class PaymentController extends ChangeNotifier
+    implements SessionScopedController {
   final PaymentService _paymentService;
 
   PaymentController({PaymentService? paymentService})
@@ -21,6 +23,15 @@ class PaymentController extends ChangeNotifier {
 
   PaymentModel? _selectedReceipt;
   PaymentModel? get selectedReceipt => _selectedReceipt;
+
+  @override
+  void resetSessionState() {
+    _payments = [];
+    _selectedReceipt = null;
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
+  }
 
   /// Load payments
   Future<void> loadPayments() async {
@@ -156,16 +167,25 @@ class PaymentController extends ChangeNotifier {
     }
   }
 
-  /// Get Payment Receipt
-  Future<void> loadReceipt(String paymentId) async {
+  /// Get Payment Receipt.
+  ///
+  /// The receipt payload is a superset of the escrow one — it carries the
+  /// escrow/dispute fields *plus* property, unit, and landlord email — so
+  /// screens needing the full picture should prefer this over
+  /// [refreshEscrowStatus].
+  Future<PaymentModel?> loadReceipt(String paymentId) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _selectedReceipt = await _paymentService.getPaymentReceipt(paymentId);
+      final receipt = await _paymentService.getPaymentReceipt(paymentId);
+      _upsertPayment(receipt);
+      _selectedReceipt = receipt;
+      return receipt;
     } catch (e) {
       _errorMessage = friendlyErrorMessage(e);
+      return null;
     } finally {
       _isLoading = false;
       notifyListeners();

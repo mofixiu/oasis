@@ -9,7 +9,10 @@ class AuthTokenStorage {
   static const String _keyUserRole = 'landa_user_role';
   static const String _keyOnboardingDone = 'landa_onboarding_done';
   static const String _keyUserProfile = 'landa_user_profile';
-  static const String _keyVerifiedBannerDismissed = 'landa_verified_banner_dismissed';
+  /// Legacy key from the dismissible "identity verified" banner, which no
+  /// longer exists. Retained only so `clear()` cleans it off older installs.
+  static const String _keyVerifiedBannerDismissed =
+      'landa_verified_banner_dismissed';
 
   // In-memory fallback cache
   static String? _memAccessToken;
@@ -17,7 +20,6 @@ class AuthTokenStorage {
   static String? _memUserRole;
   static String? _memUserProfileJson;
   static bool _memOnboardingDone = false;
-  static bool _memVerifiedBannerDismissed = false;
 
   /// Saves access and refresh tokens
   static Future<void> saveTokens({required String access, required String refresh}) async {
@@ -146,34 +148,12 @@ class AuthTokenStorage {
     } catch (_) {}
   }
 
-  /// Check if identity verified banner was dismissed
-  static Future<bool> isVerifiedBannerDismissed() async {
-    if (_memVerifiedBannerDismissed) return true;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _memVerifiedBannerDismissed = prefs.getBool(_keyVerifiedBannerDismissed) ?? false;
-      return _memVerifiedBannerDismissed;
-    } catch (_) {
-      return _memVerifiedBannerDismissed;
-    }
-  }
-
-  /// Dismiss identity verified banner permanently
-  static Future<void> dismissVerifiedBanner() async {
-    _memVerifiedBannerDismissed = true;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_keyVerifiedBannerDismissed, true);
-    } catch (_) {}
-  }
-
   /// Clears stored tokens and auth state
   static Future<void> clear() async {
     _memAccessToken = null;
     _memRefreshToken = null;
     _memUserRole = null;
     _memUserProfileJson = null;
-    _memVerifiedBannerDismissed = false;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyAccessToken);

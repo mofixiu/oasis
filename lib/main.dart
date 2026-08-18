@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/network/api_client.dart';
+import 'core/session/session_scope.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/agreements/controllers/agreement_controller.dart';
 import 'features/auth/controllers/auth_controller.dart';
 import 'features/auth/services/api_auth_service.dart';
 import 'features/auth/views/splash_screen.dart';
+import 'features/marketplace/controllers/marketplace_controller.dart';
 import 'features/notifications/controllers/notification_controller.dart';
 import 'features/payments/controllers/payment_controller.dart';
 import 'features/properties/controllers/landlord_controller.dart';
@@ -18,6 +20,23 @@ Future<void> main() async {
   final apiAuthService = ApiAuthService();
   final themeController = ThemeController();
   await themeController.loadThemeMode();
+
+  // These providers live for the whole process, so each one caches data
+  // belonging to the signed-in user. They are built here (rather than inline
+  // below) so they can be registered with SessionScope and wiped on sign-out.
+  final landlordController = LandlordController();
+  final agreementController = AgreementController();
+  final paymentController = PaymentController();
+  final notificationController = NotificationController();
+  final marketplaceController = MarketplaceController();
+
+  SessionScope.register([
+    landlordController,
+    agreementController,
+    paymentController,
+    notificationController,
+    marketplaceController,
+  ]);
 
   runApp(
     MultiProvider(
@@ -36,10 +55,11 @@ Future<void> main() async {
           },
         ),
         ChangeNotifierProvider(create: (_) => themeController),
-        ChangeNotifierProvider(create: (_) => LandlordController()),
-        ChangeNotifierProvider(create: (_) => AgreementController()),
-        ChangeNotifierProvider(create: (_) => PaymentController()),
-        ChangeNotifierProvider(create: (_) => NotificationController()),
+        ChangeNotifierProvider.value(value: landlordController),
+        ChangeNotifierProvider.value(value: agreementController),
+        ChangeNotifierProvider.value(value: paymentController),
+        ChangeNotifierProvider.value(value: notificationController),
+        ChangeNotifierProvider.value(value: marketplaceController),
       ],
       child: const LandaApp(),
     ),

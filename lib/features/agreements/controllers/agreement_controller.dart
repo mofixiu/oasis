@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_scope.dart';
 import '../models/agreement_model.dart';
 import '../services/agreement_service.dart';
 
-class AgreementController extends ChangeNotifier {
+class AgreementController extends ChangeNotifier
+    implements SessionScopedController {
   final AgreementService _agreementService;
 
   AgreementController({AgreementService? agreementService})
@@ -20,6 +22,14 @@ class AgreementController extends ChangeNotifier {
 
   TenancyAgreementModel? get primaryAgreement =>
       _agreements.isNotEmpty ? _agreements.first : null;
+
+  @override
+  void resetSessionState() {
+    _agreements = [];
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
+  }
 
   /// Load agreements for user
   Future<void> loadAgreements() async {

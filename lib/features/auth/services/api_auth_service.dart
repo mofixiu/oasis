@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/auth_token_storage.dart';
+import '../models/consent_model.dart';
 import '../models/user_model.dart';
 import 'i_auth_service.dart';
 
@@ -120,6 +121,26 @@ class ApiAuthService implements IAuthService {
       body: {'token': token, 'new_password': newPassword},
       requiresAuth: false,
     );
+  }
+
+  @override
+  Future<ConsentModel> acceptConsent({
+    required String consentType,
+    required String version,
+  }) async {
+    debugPrint(
+      '📜 [AUTH SERVICE] Accepting consent: $consentType v$version',
+    );
+    final response = await _apiClient.post(
+      ApiConstants.consentsEndpoint,
+      body: {'consent_type': consentType, 'version': version},
+      requiresAuth: true,
+    );
+    final consent = ConsentModel.fromJson(response);
+    debugPrint(
+      '📜 [AUTH SERVICE] Consent recorded: ID=${consent.id}, Accepted=${consent.acceptedAt}',
+    );
+    return consent;
   }
 
   @override

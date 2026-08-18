@@ -5,10 +5,11 @@ import '../../features/auth/models/user_model.dart';
 import '../../features/auth/views/identity_verification_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
 import '../../features/dashboard/views/landlord_dashboard_screen.dart';
+import '../../features/marketplace/views/landlord_applications_screen.dart';
+import '../../features/marketplace/views/marketplace_screen.dart';
 import '../../features/payments/views/payments_screen.dart';
 
 // NON-MVP FEATURES (Commented out for 30-day MVP phase):
-// import '../../features/discover/views/discover_screen.dart';
 // import '../../features/maintenance/views/fixes_screen.dart';
 // import '../../features/vault/views/vault_screen.dart';
 
@@ -40,13 +41,16 @@ class _MainScaffoldState extends State<MainScaffold> {
 
     final isLandlord = authController.currentRole == UserRole.owner;
 
-    // MVP Active Navigation Screens:
+    // MVP Active Navigation Screens. Order must stay in step with the items
+    // in CustomBottomNavbar.
     final List<Widget> screens = [
       isLandlord ? const LandlordDashboardScreen() : const DashboardScreen(),
+      isLandlord
+          ? const LandlordApplicationsScreen()
+          : const MarketplaceScreen(),
       const PaymentsScreen(),
 
       // NON-MVP SCREENS (Commented out):
-      // const DiscoverScreen(),
       // const FixesScreen(),
       // const VaultScreen(),
     ];

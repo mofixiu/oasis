@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -8,6 +9,13 @@ import 'package:landa_app/core/network/api_constants.dart';
 import 'package:landa_app/core/network/auth_token_storage.dart';
 import 'package:landa_app/features/agreements/models/agreement_model.dart';
 import 'package:landa_app/features/agreements/services/agreement_service.dart';
+import 'package:landa_app/features/auth/controllers/auth_controller.dart';
+import 'package:landa_app/features/auth/models/user_model.dart';
+import 'package:landa_app/features/auth/services/api_auth_service.dart';
+import 'package:landa_app/features/marketplace/models/marketplace_models.dart';
+import 'package:landa_app/features/marketplace/services/marketplace_service.dart';
+import 'package:landa_app/features/notifications/models/notification_model.dart';
+import 'package:landa_app/features/notifications/services/notification_service.dart';
 import 'package:landa_app/features/payments/controllers/payment_controller.dart';
 import 'package:landa_app/features/payments/models/payment_model.dart';
 import 'package:landa_app/features/payments/services/payment_service.dart';
@@ -219,6 +227,320 @@ void main() {
     );
   });
 
+  test(
+    'verifyIdentity retries automatically after accepting required consent',
+    () async {
+      // MultipartFile.fromPath reads the file from disk, so this needs to
+      // actually exist — content is irrelevant since the backend is mocked.
+      final selfieFile = File(
+        '${Directory.systemTemp.path}/landa_consent_test_selfie.jpg',
+      )..writeAsBytesSync(const [0xFF, 0xD8, 0xFF, 0xE0]);
+      addTearDown(() {
+        if (selfieFile.existsSync()) selfieFile.deleteSync();
+      });
+
+      var verifyCalls = 0;
+      var consentCalls = 0;
+
+      final apiClient = ApiClient(
+        client: MockClient((request) async {
+          expect(request.headers['authorization'], 'Bearer test-access-token');
+
+          if (request.method == 'POST' &&
+              request.url.path == '/api/users/consents/') {
+            consentCalls++;
+            // Consent must only ever be requested after the backend has
+            // actually rejected a verification attempt for missing it.
+            expect(verifyCalls, 1);
+            expect(jsonDecode(request.body), {
+              'consent_type': 'VERIFICATION_PRIVACY',
+              'version': '2026-08-15',
+            });
+            return _jsonResponse({
+              'id': 'consent-id',
+              'consent_type': 'VERIFICATION_PRIVACY',
+              'version': '2026-08-15',
+              'accepted_at': '2026-08-15T10:30:00Z',
+            }, 201);
+          }
+
+          if (request.method == 'POST' &&
+              request.url.path == '/api/users/verify/') {
+            verifyCalls++;
+            if (verifyCalls == 1) {
+              expect(consentCalls, 0);
+              return _jsonResponse({
+                'code': 'CONSENT_REQUIRED',
+                'detail':
+                    'Accept verification and privacy consent before starting verification.',
+              }, 403);
+            }
+            // The retry must not fire until consent actually succeeded.
+            expect(consentCalls, 1);
+            return _jsonResponse({
+              'status': 'PENDING',
+              'badge': 'PENDING',
+              'user': {
+                'id': 'tenant-id',
+                'email': 'tenant@example.com',
+                'phone': '+2348012345678',
+                'role': 'TENANT',
+                'verification_status': 'PENDING',
+              },
+            }, 202);
+          }
+
+          fail('Unexpected API request: ${request.method} ${request.url}');
+        }),
+      );
+
+      final controller = AuthController(
+        authService: ApiAuthService(apiClient: apiClient),
+      );
+
+      final rejected = await controller.verifyIdentity(
+        selfie: selfieFile,
+        nin: '12345678901',
+      );
+      expect(rejected, isNull);
+      expect(controller.consentRequired, isTrue);
+      expect(verifyCalls, 1);
+      expect(consentCalls, 0);
+
+      final consentAccepted = await controller.acceptVerificationConsent();
+      expect(consentAccepted, isTrue);
+      expect(controller.consentRequired, isFalse);
+      expect(consentCalls, 1);
+
+      final retried = await controller.verifyIdentity(
+        selfie: selfieFile,
+        nin: '12345678901',
+      );
+      expect(retried, VerificationStatus.pending);
+      expect(verifyCalls, 2);
+    },
+  );
+
+  test('marketplace filters map to backend query parameters', () async {
+    final captured = <String, String>{};
+    final service = MarketplaceService(
+      apiClient: ApiClient(
+        client: MockClient((request) async {
+          expect(request.method, 'GET');
+          expect(request.url.path, '/api/users/tenant/marketplace/');
+          captured
+            ..clear()
+            ..addAll(request.url.queryParameters);
+          return _jsonResponse2([
+            {
+              'id': 'property-id',
+              'name': 'Sunset House',
+              'address': '123 Main Street',
+              'city': 'Lagos',
+              'state': 'Lagos',
+              'verification_status': 'VERIFIED',
+              'created_at': '2026-08-06T09:30:00Z',
+              'available_units': [
+                {
+                  'id': 'unit-id',
+                  'unit_number': 'A1',
+                  'bedrooms': 2,
+                  'bathrooms': 2,
+                  'rent_amount': '450000.00',
+                  'is_occupied': false,
+                  'tenant': null,
+                  'created_at': '2026-08-06T09:30:00Z',
+                },
+              ],
+            },
+          ]);
+        }),
+      ),
+    );
+
+    final listings = await service.getMarketplace(
+      filters: const MarketplaceFilters(
+        city: 'Lagos',
+        maxRent: '300000',
+        bedrooms: 2,
+      ),
+    );
+    expect(captured, {
+      'city': 'Lagos',
+      'max_rent': '300000',
+      'bedrooms': '2',
+    });
+    expect(listings.single.property.name, 'Sunset House');
+    expect(listings.single.availableUnits.single.unitNumber, 'A1');
+    expect(listings.single.lowestRent, 450000.00);
+
+    // Blank filter fields must be omitted, not sent as empty strings.
+    await service.getMarketplace(
+      filters: const MarketplaceFilters(city: '', minRent: ''),
+    );
+    expect(captured, isEmpty);
+  });
+
+  test('applying for a unit posts the unit id', () async {
+    final service = MarketplaceService(
+      apiClient: ApiClient(
+        client: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.path, '/api/users/tenant/applications/');
+          expect(jsonDecode(request.body), {'unit': 'unit-id'});
+          return _jsonResponse({
+            'id': 'application-id',
+            'unit': 'unit-id',
+            'unit_number': 'A1',
+            'status': 'PENDING',
+            'created_at': '2026-08-17T09:00:00Z',
+          }, 201);
+        }),
+      ),
+    );
+
+    final application = await service.applyForUnit('unit-id');
+    expect(application.id, 'application-id');
+    expect(application.status, ApplicationStatus.pending);
+    expect(application.unitId, 'unit-id');
+  });
+
+  test('approving an application sends the agreement terms', () async {
+    final service = MarketplaceService(
+      apiClient: ApiClient(
+        client: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(
+            request.url.path,
+            '/api/users/landlord/applications/application-id/approve/',
+          );
+          expect(jsonDecode(request.body), {
+            'start_date': '2026-09-01',
+            'end_date': '2027-08-31',
+            'rules': 'Standard tenancy rules apply.',
+          });
+          return _jsonResponse({
+            'id': 'application-id',
+            'unit': 'unit-id',
+            'unit_number': 'A1',
+            'status': 'APPROVED',
+            'created_at': '2026-08-17T09:00:00Z',
+          });
+        }),
+      ),
+    );
+
+    final approved = await service.approveApplication(
+      applicationId: 'application-id',
+      startDate: '2026-09-01',
+      endDate: '2027-08-31',
+      rules: 'Standard tenancy rules apply.',
+    );
+    expect(approved.status, ApplicationStatus.approved);
+  });
+
+  test('applicant details parse from flattened or nested payloads', () {
+    final flattened = RentalApplication.fromJson({
+      'id': 'a1',
+      'unit': 'unit-id',
+      'unit_number': 'B22',
+      'status': 'PENDING',
+      'tenant_name': 'Ada Okafor',
+      'tenant_email': 'ada@example.com',
+      'tenant_phone': '+2348012345678',
+    });
+    expect(flattened.tenantName, 'Ada Okafor');
+    expect(flattened.tenantEmail, 'ada@example.com');
+    expect(flattened.tenantPhone, '+2348012345678');
+    expect(flattened.hasApplicantDetails, isTrue);
+
+    final nested = RentalApplication.fromJson({
+      'id': 'a2',
+      'unit': {'id': 'unit-id', 'unit_number': 'B22'},
+      'status': 'PENDING',
+      'tenant': {
+        'full_name': 'Ada Okafor',
+        'email': 'ada@example.com',
+        'phone_number': '+2348012345678',
+      },
+    });
+    expect(nested.tenantName, 'Ada Okafor');
+    expect(nested.tenantEmail, 'ada@example.com');
+    expect(nested.unitId, 'unit-id');
+
+    // A bare tenant UUID identifies the row but is not contact information,
+    // and must never be surfaced as if it were the applicant's name/email.
+    final uuidOnly = RentalApplication.fromJson({
+      'id': 'a3',
+      'unit': 'unit-id',
+      'status': 'PENDING',
+      'tenant': 'f8c88b5d-3d87-4f86-b402-39d8e68bff88',
+    });
+    expect(uuidOnly.tenantEmail, isNull);
+    expect(uuidOnly.tenantName, isNull);
+    expect(uuidOnly.hasApplicantDetails, isFalse);
+  });
+
+  test('an unrecognised application status is never treated as pending', () {
+    expect(ApplicationStatus.fromString('APPROVED'), ApplicationStatus.approved);
+    expect(ApplicationStatus.fromString('REJECTED'), ApplicationStatus.rejected);
+    expect(ApplicationStatus.fromString('ESCALATED'), ApplicationStatus.unknown);
+    expect(ApplicationStatus.unknown.isPending, isFalse);
+  });
+
+  test('notification filters are sent as backend query parameters', () async {
+    final captured = <String, String>{};
+    final service = NotificationService(
+      apiClient: ApiClient(
+        client: MockClient((request) async {
+          expect(request.url.path, '/api/users/notifications/');
+          captured.addAll(request.url.queryParameters);
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 'notification-id',
+                'notification_type': 'PAYMENT_RECORDED',
+                'message': 'Rent payment recorded.',
+                'is_read': false,
+                'created_at': '2026-08-15T10:00:00Z',
+              },
+            ]),
+            200,
+            headers: const {'content-type': 'application/json'},
+          );
+        }),
+      ),
+    );
+
+    final filtered = await service.getNotifications(
+      type: NotificationType.paymentRecorded,
+      isRead: false,
+    );
+    expect(captured, {'type': 'PAYMENT_RECORDED', 'is_read': 'false'});
+    expect(filtered.single.type, NotificationType.paymentRecorded);
+
+    // Unset filters must not be sent at all, rather than as empty strings.
+    captured.clear();
+    await service.getNotifications();
+    expect(captured, isEmpty);
+  });
+
+  test('unknown notification types degrade gracefully', () {
+    expect(
+      NotificationType.fromString('AGREEMENT_EXECUTED'),
+      NotificationType.agreementExecuted,
+    );
+    expect(
+      NotificationType.fromString('PAYMENT_INITIATED'),
+      NotificationType.paymentInitiated,
+    );
+    expect(
+      NotificationType.fromString('SOMETHING_NEW'),
+      NotificationType.unknown,
+    );
+    expect(NotificationType.unknown.queryValue, isNull);
+  });
+
   test('an unrecognised payment status never masquerades as ESCROW', () {
     // Regression guard: the old fromString() fell through to `escrow`, which
     // would have shown a DISPUTED/REFUNDED payment as safely held funds.
@@ -230,6 +552,15 @@ void main() {
 }
 
 http.Response _jsonResponse(Map<String, dynamic> body, [int statusCode = 200]) {
+  return http.Response(
+    jsonEncode(body),
+    statusCode,
+    headers: const {'content-type': 'application/json'},
+  );
+}
+
+/// List-shaped variant, for endpoints that return a raw array.
+http.Response _jsonResponse2(List<dynamic> body, [int statusCode = 200]) {
   return http.Response(
     jsonEncode(body),
     statusCode,

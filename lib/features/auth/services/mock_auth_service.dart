@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../models/consent_model.dart';
 import '../models/user_model.dart';
 import 'i_auth_service.dart';
 
@@ -47,6 +48,20 @@ class MockAuthService implements IAuthService {
     required String newPassword,
   }) async {
     await Future.delayed(const Duration(seconds: 1));
+  }
+
+  @override
+  Future<ConsentModel> acceptConsent({
+    required String consentType,
+    required String version,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return ConsentModel(
+      id: 'mock-consent-id',
+      consentType: consentType,
+      version: version,
+      acceptedAt: DateTime.now().toIso8601String(),
+    );
   }
 
   @override

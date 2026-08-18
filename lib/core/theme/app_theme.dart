@@ -29,6 +29,14 @@ class AppTheme {
   static const Color profileColor = slateGreyColor;
   static const Color logoutColor = brickRedColor;
   static const Color warningColor = sandColor;
+  // Escrow disputes: deeper brick red so they read as an alert while staying
+  // inside the terracotta palette rather than dropping to a generic orange.
+  static const Color disputeColor = brickRedColor;
+  static const Color disputeSurfaceColor = logoutSurfaceColor;
+  // Unread/pending indicator dots. Deliberately a brighter red than the
+  // terracotta palette: a dot in brand colour would disappear against the
+  // terracotta-tinted selected nav icon it sits on.
+  static const Color alertDotColor = Color(0xFFE5484D);
   static const Color backgroundColor = slateSurfaceColor;
   static const Color darkBackgroundColor = blackColor;
   static const Color darkCardColor = darkSurfaceColor;

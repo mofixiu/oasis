@@ -96,6 +96,14 @@ class _IdentityVerificationScreenState
     }
 
     if (!mounted) return;
+    await _attemptVerification(nin);
+  }
+
+  /// Runs the actual verify call and handles every outcome, including the
+  /// consent gate: if the backend says consent is required, this shows the
+  /// consent sheet, records acceptance, then retries itself with the same
+  /// [nin] and the currently-selected selfie/name fields.
+  Future<void> _attemptVerification(String nin) async {
     final auth = context.read<AuthController>();
     final status = await auth.verifyIdentity(
       selfie: _selfieFile!,
@@ -123,9 +131,35 @@ class _IdentityVerificationScreenState
         context,
         'Verification could not be completed. Please review your details and try again.',
       );
+    } else if (auth.consentRequired) {
+      final agreed = await _showConsentSheet();
+      if (!mounted || !agreed) return;
+
+      final accepted = await auth.acceptVerificationConsent();
+      if (!mounted) return;
+
+      if (accepted) {
+        await _attemptVerification(nin);
+      } else if (auth.errorMessage != null) {
+        LandaToast.error(context, auth.errorMessage!);
+      }
     } else if (auth.errorMessage != null) {
       LandaToast.error(context, auth.errorMessage!);
     }
+  }
+
+  Future<bool> _showConsentSheet() async {
+    final agreed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => const _VerificationConsentSheet(),
+    );
+    return agreed ?? false;
   }
 
   void _startPolling() {
@@ -552,4 +586,136 @@ class _IdentityVerificationScreenState
       ),
     );
   }
+}
+
+/// One-time gate before the first `POST /verify/`: the backend rejects
+/// verification with `403 CONSENT_REQUIRED` until this has been accepted.
+class _VerificationConsentSheet extends StatelessWidget {
+  const _VerificationConsentSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        top: 24,
+        left: 24,
+        right: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.vacantSurfaceColor,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.privacy_tip_outlined,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Verification & Privacy Consent',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Before we verify your identity, you need to agree to how we handle your data:',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const _ConsentPoint(
+            text:
+                'Your selfie and National Identification Number (NIN) are sent to our identity verification provider to confirm you are who you say you are.',
+          ),
+          const _ConsentPoint(
+            text:
+                'We never store your raw NIN — only a tokenized fingerprint of it, plus a reference to the verification attempt.',
+          ),
+          const _ConsentPoint(
+            text:
+                'This data is used solely to unlock Landa product features and is not shared for any other purpose.',
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.actionColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'I Agree & Continue',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Not now'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConsentPoint extends StatelessWidget {
+  final String text;
+
+  const _ConsentPoint({required this.text});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 3),
+          child: Icon(Icons.check_circle, size: 16, color: AppTheme.successColor),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: Colors.grey.shade800,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
