@@ -39,13 +39,21 @@ class MarketplaceService {
   /// Re-applying for the same unit while an application is still pending
   /// returns the existing application rather than creating a duplicate, so
   /// callers can treat this as idempotent.
-  Future<RentalApplication> applyForUnit(String unitId) async {
+  Future<RentalApplication> applyForUnit(
+    String unitId, {
+    String? message,
+  }) async {
     debugPrint(
       '📨 [MARKETPLACE SERVICE] Applying for unit $unitId POST ${ApiConstants.tenantApplicationsEndpoint}',
     );
+    final trimmedMessage = message?.trim();
     final response = await _apiClient.post(
       ApiConstants.tenantApplicationsEndpoint,
-      body: {'unit': unitId},
+      body: {
+        'unit': unitId,
+        if (trimmedMessage != null && trimmedMessage.isNotEmpty)
+          'message': trimmedMessage,
+      },
     );
     final application = RentalApplication.fromJson(response);
     debugPrint(

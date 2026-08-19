@@ -31,7 +31,7 @@ class RentDueCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.secondaryColor.withOpacity(0.1),
+                  color: AppTheme.secondaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -59,7 +59,7 @@ class RentDueCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          
+
           // Amount
           const Text(
             '₦450,000',
@@ -73,23 +73,17 @@ class RentDueCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Due by October 1st, 2023',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 24),
-          
+
           // Vault Progress
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'Rent Vault Progress',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
               ),
               Text(
                 '₦200,000 Saved',
@@ -102,7 +96,7 @@ class RentDueCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          
+
           // Custom Progress Bar
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
@@ -121,29 +115,23 @@ class RentDueCard extends StatelessWidget {
                 ),
                 Expanded(
                   flex: 55,
-                  child: Container(
-                    height: 8,
-                    color: Colors.grey.shade200,
-                  ),
+                  child: Container(height: 8, color: Colors.grey.shade200),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          
+
           // Percentage text
           Align(
             alignment: Alignment.centerRight,
             child: Text(
               '45% of total due',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // Action Buttons
           Row(
             children: [

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/landa_entrance.dart';
+import '../../../core/widgets/landa_shimmer.dart';
+import '../../../core/widgets/landa_state_views.dart';
 import '../../dashboard/controllers/landlord_dashboard_controller.dart';
 import '../../dashboard/models/property_unit.dart';
 import '../../profile/views/profile_screen.dart';
@@ -63,12 +66,19 @@ class _UnitsScreenState extends State<UnitsScreen> {
       ),
       body: Consumer<LandlordDashboardController>(
         builder: (context, controller, child) {
-          if (controller.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+          if (controller.isLoading && controller.activeUnits == null) {
+            return const LandaSkeletonList(count: 4, hasThumbnail: true);
           }
 
-          if (controller.errorMessage != null) {
-            return Center(child: Text(controller.errorMessage!));
+          if (controller.hasError && controller.activeUnits == null) {
+            return RefreshIndicator(
+              onRefresh: controller.loadDashboardData,
+              child: LandaErrorState(
+                message: controller.errorMessage,
+                isConnectionError: controller.errorIsConnection,
+                onRetry: controller.loadDashboardData,
+              ),
+            );
           }
 
           final units = controller.activeUnits ?? [];
@@ -81,20 +91,29 @@ class _UnitsScreenState extends State<UnitsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'My Units',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                    style: AppTheme.screenTitle(
+                      context,
                       color: AppTheme.primaryColor,
-                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     'Manage your property portfolio',
-                    style: TextStyle(fontSize: 14, color: secondaryTextColor),
+                    style: AppTheme.bodyText(
+                      context,
+                      color: secondaryTextColor,
+                    ),
                   ),
+                  if (controller.hasError) ...[
+                    const SizedBox(height: 16),
+                    LandaErrorBanner(
+                      message: controller.errorMessage!,
+                      isConnectionError: controller.errorIsConnection,
+                      onRetry: controller.loadDashboardData,
+                    ),
+                  ],
                   const SizedBox(height: 32),
 
                   // Portfolio Health Section
@@ -155,18 +174,31 @@ class _UnitsScreenState extends State<UnitsScreen> {
                   const SizedBox(height: 24),
 
                   // Units List
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: units.length,
-                    itemBuilder: (context, index) {
-                      final unit = units[index];
-                      return _UnitCard(
-                        unit: unit,
-                        isLast: index == units.length - 1,
-                      );
-                    },
-                  ),
+                  if (units.isEmpty)
+                    const LandaEmptyState(
+                      icon: Icons.meeting_room_outlined,
+                      title: 'No units yet',
+                      message:
+                          'Units you add to your properties will be listed here.',
+                      scrollable: false,
+                      padding: EdgeInsets.fromLTRB(8, 24, 8, 24),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: units.length,
+                      itemBuilder: (context, index) {
+                        final unit = units[index];
+                        return LandaEntrance(
+                          index: index,
+                          child: _UnitCard(
+                            unit: unit,
+                            isLast: index == units.length - 1,
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
@@ -197,7 +229,9 @@ class _PortfolioHealthSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.slateSurfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.profileColor.withOpacity(0.15)),
+        border: Border.all(
+          color: AppTheme.profileColor.withValues(alpha: 0.15),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

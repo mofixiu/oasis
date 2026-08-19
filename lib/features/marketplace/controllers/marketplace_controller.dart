@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../core/network/api_client.dart';
+import '../../../core/network/load_failure.dart';
 import '../../../core/session/session_scope.dart';
 import '../models/marketplace_models.dart';
 import '../services/marketplace_service.dart';
 
 class MarketplaceController extends ChangeNotifier
+    with LoadFailureState
     implements SessionScopedController {
   final MarketplaceService _service;
 
@@ -20,8 +21,19 @@ class MarketplaceController extends ChangeNotifier
   String? _applyingUnitId;
   String? get applyingUnitId => _applyingUnitId;
 
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
+  /// Id of the application currently being approved/rejected. Separate from
+  /// [_isLoading] so the landlord's Approve/Reject buttons only disable for a
+  /// real decision in flight, not for every background list refresh (the
+  /// dashboard preloads this list, so the inbox's own reload used to grey the
+  /// buttons out for a moment on every visit).
+  String? _decidingApplicationId;
+  String? get decidingApplicationId => _decidingApplicationId;
+  bool get isDecidingApplication => _decidingApplicationId != null;
+
+  /// Which decision is running, so only the button that was pressed shows a
+  /// spinner instead of both.
+  bool _decidingIsApproval = false;
+  bool get decidingIsApproval => _decidingIsApproval;
 
   List<MarketplaceProperty> _listings = [];
   List<MarketplaceProperty> get listings => _listings;
@@ -54,7 +66,9 @@ class MarketplaceController extends ChangeNotifier
   /// Unit ids the tenant already has a live application for, so the UI can
   /// show "Applied" instead of offering a duplicate apply.
   Set<String> get appliedUnitIds => _tenantApplications
-      .where((a) => a.status.isPending || a.status == ApplicationStatus.approved)
+      .where(
+        (a) => a.status.isPending || a.status == ApplicationStatus.approved,
+      )
       .map((a) => a.unitId)
       .toSet();
 
@@ -70,7 +84,8 @@ class MarketplaceController extends ChangeNotifier
     _filters = const MarketplaceFilters();
     _landlordStatusFilter = null;
     _applyingUnitId = null;
-    _errorMessage = null;
+    _decidingApplicationId = null;
+    clearFailure();
     _isLoading = false;
     // Back to "never loaded", so the next screen shows a skeleton rather than
     // briefly claiming the new user has no applications.
@@ -84,7 +99,7 @@ class MarketplaceController extends ChangeNotifier
 
   Future<void> loadMarketplace() async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
     try {
       _listings = await _service.getMarketplace(filters: _filters);
@@ -92,7 +107,7 @@ class MarketplaceController extends ChangeNotifier
       _tenantApplications = await _service.getTenantApplications();
       _hasLoadedTenantApplications = true;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
     } finally {
       // Set even on failure: the attempt is over, so the screen should show
       // its error/empty state rather than shimmering forever.
@@ -114,12 +129,12 @@ class MarketplaceController extends ChangeNotifier
 
   Future<void> loadTenantApplications() async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
     try {
       _tenantApplications = await _service.getTenantApplications();
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
     } finally {
       _hasLoadedTenantApplications = true;
       _isLoading = false;
@@ -128,12 +143,15 @@ class MarketplaceController extends ChangeNotifier
   }
 
   /// Returns the application on success, or null with [errorMessage] set.
-  Future<RentalApplication?> applyForUnit(String unitId) async {
+  Future<RentalApplication?> applyForUnit(
+    String unitId, {
+    String? message,
+  }) async {
     _applyingUnitId = unitId;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
     try {
-      final application = await _service.applyForUnit(unitId);
+      final application = await _service.applyForUnit(unitId, message: message);
       final index = _tenantApplications.indexWhere(
         (a) => a.id == application.id,
       );
@@ -145,7 +163,7 @@ class MarketplaceController extends ChangeNotifier
       }
       return application;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return null;
     } finally {
       _applyingUnitId = null;
@@ -157,14 +175,14 @@ class MarketplaceController extends ChangeNotifier
 
   Future<void> loadLandlordApplications() async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
     try {
       _landlordApplications = await _service.getLandlordApplications(
         status: _landlordStatusFilter,
       );
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
     } finally {
       _hasLoadedLandlordApplications = true;
       _isLoading = false;
@@ -183,8 +201,9 @@ class MarketplaceController extends ChangeNotifier
     required String endDate,
     String? rules,
   }) async {
-    _isLoading = true;
-    _errorMessage = null;
+    _decidingApplicationId = applicationId;
+    _decidingIsApproval = true;
+    clearFailure();
     notifyListeners();
     try {
       await _service.approveApplication(
@@ -198,26 +217,29 @@ class MarketplaceController extends ChangeNotifier
       await loadLandlordApplications();
       return true;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
-      _isLoading = false;
-      notifyListeners();
+      captureFailure(e);
       return false;
+    } finally {
+      _decidingApplicationId = null;
+      notifyListeners();
     }
   }
 
   Future<bool> rejectApplication(String applicationId) async {
-    _isLoading = true;
-    _errorMessage = null;
+    _decidingApplicationId = applicationId;
+    _decidingIsApproval = false;
+    clearFailure();
     notifyListeners();
     try {
       await _service.rejectApplication(applicationId);
       await loadLandlordApplications();
       return true;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
-      _isLoading = false;
-      notifyListeners();
+      captureFailure(e);
       return false;
+    } finally {
+      _decidingApplicationId = null;
+      notifyListeners();
     }
   }
 }

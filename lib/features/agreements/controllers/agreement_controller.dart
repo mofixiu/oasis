@@ -1,21 +1,19 @@
 import 'package:flutter/foundation.dart';
-import '../../../core/network/api_client.dart';
+import '../../../core/network/load_failure.dart';
 import '../../../core/session/session_scope.dart';
 import '../models/agreement_model.dart';
 import '../services/agreement_service.dart';
 
 class AgreementController extends ChangeNotifier
+    with LoadFailureState
     implements SessionScopedController {
   final AgreementService _agreementService;
 
   AgreementController({AgreementService? agreementService})
-      : _agreementService = agreementService ?? AgreementService();
+    : _agreementService = agreementService ?? AgreementService();
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
-
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
 
   List<TenancyAgreementModel> _agreements = [];
   List<TenancyAgreementModel> get agreements => _agreements;
@@ -26,7 +24,7 @@ class AgreementController extends ChangeNotifier
   @override
   void resetSessionState() {
     _agreements = [];
-    _errorMessage = null;
+    clearFailure();
     _isLoading = false;
     notifyListeners();
   }
@@ -34,13 +32,13 @@ class AgreementController extends ChangeNotifier
   /// Load agreements for user
   Future<void> loadAgreements() async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
       _agreements = await _agreementService.getAgreements();
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -57,7 +55,7 @@ class AgreementController extends ChangeNotifier
     required String rules,
   }) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -72,7 +70,7 @@ class AgreementController extends ChangeNotifier
       _agreements.insert(0, newAgreement);
       return newAgreement;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return null;
     } finally {
       _isLoading = false;
@@ -83,7 +81,7 @@ class AgreementController extends ChangeNotifier
   /// Sign Tenancy Agreement (Tenant or Landlord)
   Future<bool> signAgreement(String agreementId) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -96,7 +94,7 @@ class AgreementController extends ChangeNotifier
       }
       return true;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return false;
     } finally {
       _isLoading = false;

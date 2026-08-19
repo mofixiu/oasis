@@ -31,9 +31,7 @@ class PropertyService {
   /// Get single property detail with nested units
   Future<PropertyDetail> getPropertyDetail(String propertyId) async {
     final endpoint = ApiConstants.propertyDetailEndpoint(propertyId);
-    debugPrint(
-      '🏢 [PROPERTY SERVICE] Fetching property detail GET $endpoint',
-    );
+    debugPrint('🏢 [PROPERTY SERVICE] Fetching property detail GET $endpoint');
     final response = await _apiClient.get(endpoint);
     if (response is Map<String, dynamic>) {
       final property = PropertyModel.fromJson(response);
@@ -61,6 +59,7 @@ class PropertyService {
     required File verificationVideo,
     required File deedFile,
     List<File> photos = const [],
+    File? listingVideo,
   }) async {
     debugPrint(
       '🏢 [PROPERTY SERVICE] Creating verified property POST ${ApiConstants.propertiesEndpoint} (Name: $name)',
@@ -85,6 +84,10 @@ class PropertyService {
           file: verificationVideo,
         ),
         MultipartUpload(fieldName: 'deed', file: deedFile),
+        // Optional public property tour, distinct from the private
+        // verification_video used for ownership review.
+        if (listingVideo != null)
+          MultipartUpload(fieldName: 'listing_video', file: listingVideo),
       ],
     );
     final prop = PropertyModel.fromJson(response);
@@ -92,6 +95,106 @@ class PropertyService {
       '🏢 [PROPERTY SERVICE] Property created: ID=${prop.id}, Name=${prop.name}',
     );
     return prop;
+  }
+
+  // ------------------------------------------------------- listing media
+
+  /// List a property's listing photos.
+  Future<List<PropertyPhoto>> getPropertyPhotos(String propertyId) async {
+    final endpoint = ApiConstants.propertyPhotosEndpoint(propertyId);
+    debugPrint('🖼️ [PROPERTY SERVICE] Fetching listing photos GET $endpoint');
+    final response = await _apiClient.get(endpoint);
+    if (response is List) {
+      return response
+          .whereType<Map<String, dynamic>>()
+          .map(PropertyPhoto.fromJson)
+          .toList();
+    }
+    return const [];
+  }
+
+  /// Upload one or more listing photos. Returns the created records.
+  Future<List<PropertyPhoto>> uploadPropertyPhotos({
+    required String propertyId,
+    required List<File> photos,
+  }) async {
+    final endpoint = ApiConstants.propertyPhotosEndpoint(propertyId);
+    debugPrint(
+      '🖼️ [PROPERTY SERVICE] Uploading ${photos.length} listing photos POST $endpoint',
+    );
+    final response = await _apiClient.postMultipartFiles(
+      endpoint,
+      fields: const {},
+      files: photos
+          .map((photo) => MultipartUpload(fieldName: 'photos', file: photo))
+          .toList(),
+    );
+    if (response is List) {
+      return response
+          .whereType<Map<String, dynamic>>()
+          .map(PropertyPhoto.fromJson)
+          .toList();
+    }
+    // A single-object response is still a valid create result.
+    if (response is Map<String, dynamic>) {
+      return [PropertyPhoto.fromJson(response)];
+    }
+    return const [];
+  }
+
+  /// Delete one listing photo.
+  Future<void> deletePropertyPhoto({
+    required String propertyId,
+    required String photoId,
+  }) async {
+    final endpoint = ApiConstants.propertyPhotoDetailEndpoint(
+      propertyId,
+      photoId,
+    );
+    debugPrint(
+      '🗑️ [PROPERTY SERVICE] Deleting listing photo DELETE $endpoint',
+    );
+    await _apiClient.delete(endpoint);
+  }
+
+  /// Current listing video URL, or null when the property has none.
+  Future<String?> getPropertyVideo(String propertyId) async {
+    final endpoint = ApiConstants.propertyVideoEndpoint(propertyId);
+    debugPrint('🎬 [PROPERTY SERVICE] Fetching listing video GET $endpoint');
+    final response = await _apiClient.get(endpoint);
+    if (response is Map<String, dynamic>) {
+      final url = response['video_url']?.toString();
+      return (url == null || url.isEmpty) ? null : url;
+    }
+    return null;
+  }
+
+  /// Upload or replace the single listing video. Returns the new URL.
+  Future<String?> uploadPropertyVideo({
+    required String propertyId,
+    required File video,
+  }) async {
+    final endpoint = ApiConstants.propertyVideoEndpoint(propertyId);
+    debugPrint('🎬 [PROPERTY SERVICE] Uploading listing video POST $endpoint');
+    final response = await _apiClient.postMultipartFiles(
+      endpoint,
+      fields: const {},
+      files: [MultipartUpload(fieldName: 'video', file: video)],
+    );
+    if (response is Map<String, dynamic>) {
+      final url = response['video_url']?.toString();
+      return (url == null || url.isEmpty) ? null : url;
+    }
+    return null;
+  }
+
+  /// Delete the listing video.
+  Future<void> deletePropertyVideo(String propertyId) async {
+    final endpoint = ApiConstants.propertyVideoEndpoint(propertyId);
+    debugPrint(
+      '🗑️ [PROPERTY SERVICE] Deleting listing video DELETE $endpoint',
+    );
+    await _apiClient.delete(endpoint);
   }
 
   /// Creates all supplied units atomically. The backend rejects the full batch if a row is invalid.

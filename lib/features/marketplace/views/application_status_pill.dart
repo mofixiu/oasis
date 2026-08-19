@@ -17,8 +17,7 @@ class ApplicationStatusPill extends StatelessWidget {
         AppTheme.successColor,
         AppTheme.successSurfaceColor,
       ),
-      ApplicationStatus.rejected ||
-      ApplicationStatus.withdrawn => (
+      ApplicationStatus.rejected || ApplicationStatus.withdrawn => (
         AppTheme.disputeColor,
         AppTheme.disputeSurfaceColor,
       ),
@@ -33,19 +32,21 @@ class ApplicationStatusPill extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(12),
+        // Stadium plus a hairline in the status colour: a flat tint alone
+        // reads as a coloured rectangle, the border makes it a badge.
+        shape: BoxShape.rectangle,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(
         status.label,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
+        style: AppTheme.labelText(
+          context,
           color: color,
-        ),
+        ).copyWith(fontSize: 10, letterSpacing: 0.4),
       ),
     );
   }

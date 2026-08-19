@@ -1,21 +1,19 @@
 import 'package:flutter/foundation.dart';
-import '../../../core/network/api_client.dart';
+import '../../../core/network/load_failure.dart';
 import '../../../core/session/session_scope.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
 class NotificationController extends ChangeNotifier
+    with LoadFailureState
     implements SessionScopedController {
   final NotificationService _notificationService;
 
   NotificationController({NotificationService? notificationService})
-      : _notificationService = notificationService ?? NotificationService();
+    : _notificationService = notificationService ?? NotificationService();
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
-
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
 
   List<NotificationItemModel> _notifications = [];
   List<NotificationItemModel> get notifications => _notifications;
@@ -49,7 +47,7 @@ class NotificationController extends ChangeNotifier
     _unreadCount = 0;
     _typeFilter = null;
     _unreadOnly = false;
-    _errorMessage = null;
+    clearFailure();
     _isLoading = false;
     _hasLoaded = false;
     notifyListeners();
@@ -58,7 +56,7 @@ class NotificationController extends ChangeNotifier
   /// Fetch notifications using the current filters.
   Future<void> loadNotifications() async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -68,7 +66,7 @@ class NotificationController extends ChangeNotifier
       );
       await _refreshUnreadCount();
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
     } finally {
       _hasLoaded = true;
       _isLoading = false;
@@ -120,8 +118,9 @@ class NotificationController extends ChangeNotifier
     if (index != -1 && _notifications[index].isRead) return;
 
     try {
-      final updated =
-          await _notificationService.markNotificationRead(notificationId);
+      final updated = await _notificationService.markNotificationRead(
+        notificationId,
+      );
       if (index != -1) {
         // Under an unread-only filter the item no longer belongs in the list.
         if (_unreadOnly) {
@@ -133,7 +132,7 @@ class NotificationController extends ChangeNotifier
       if (_unreadCount > 0) _unreadCount--;
       notifyListeners();
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       notifyListeners();
     }
   }
@@ -151,7 +150,7 @@ class NotificationController extends ChangeNotifier
       }
       await loadNotifications();
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       _isLoading = false;
       notifyListeners();
     }

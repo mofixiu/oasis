@@ -43,7 +43,7 @@ class PaymentHistorySection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // List Items
           _buildPaymentItem(
             title: 'September Rent',
@@ -85,20 +85,22 @@ class PaymentHistorySection extends StatelessWidget {
     bool isWarning = false,
   }) {
     final statusColor = status == 'PAID' ? AppTheme.secondaryColor : Colors.red;
-    
+
     return Row(
       children: [
         // Leading Icon Container
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: isWarning ? Colors.red.withOpacity(0.1) : Colors.grey.shade100,
+            color: isWarning
+                ? Colors.red.withValues(alpha: 0.1)
+                : Colors.grey.shade100,
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: iconColor, size: 20),
         ),
         const SizedBox(width: 12),
-        
+
         // Title & Date
         Expanded(
           child: Column(
@@ -115,15 +117,12 @@ class PaymentHistorySection extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 date,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
             ],
           ),
         ),
-        
+
         // Amount & Status Pill
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,

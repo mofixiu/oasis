@@ -87,7 +87,9 @@ class _SignInScreenState extends State<SignInScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Image.asset(
-                      'assets/images/newlogonobackground.png',
+                      AppTheme.isDarkMode(context)
+                          ? 'assets/images/logo_wordmark_light.png'
+                          : 'assets/images/newlogonobackground.png',
                       height: 44,
                       fit: BoxFit.contain,
                     ),
@@ -115,7 +117,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),

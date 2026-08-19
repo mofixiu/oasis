@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/network/load_failure.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/landa_currency.dart';
 import '../../../core/widgets/landa_app_bar.dart';
+import '../../../core/widgets/landa_entrance.dart';
+import '../../../core/widgets/landa_pressable.dart';
 import '../../../core/widgets/landa_shimmer.dart';
+import '../../../core/widgets/landa_state_views.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../../agreements/controllers/agreement_controller.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
@@ -34,15 +39,19 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadAllData());
   }
 
-  void _loadAllData() {
-    context.read<LandlordController>().loadLandlordProperties();
-    context.read<AgreementController>().loadAgreements();
-    context.read<PaymentController>().loadPayments();
-    context.read<AuthController>().refreshProfile();
-    context.read<NotificationController>().loadNotifications();
-    // Drives the pending-applications dot on the bottom nav, so it must be
-    // fresh on landing rather than only after visiting that tab.
-    context.read<MarketplaceController>().loadLandlordApplications();
+  /// Awaited so pull-to-refresh and the retry button both finish when the
+  /// data actually has.
+  Future<void> _loadAllData() async {
+    await Future.wait([
+      context.read<LandlordController>().loadLandlordProperties(),
+      context.read<AgreementController>().loadAgreements(),
+      context.read<PaymentController>().loadPayments(),
+      context.read<AuthController>().refreshProfile(),
+      context.read<NotificationController>().loadNotifications(),
+      // Drives the pending-applications dot on the bottom nav, so it must be
+      // fresh on landing rather than only after visiting that tab.
+      context.read<MarketplaceController>().loadLandlordApplications(),
+    ]);
   }
 
   void _showAddPropertyModal() {
@@ -51,9 +60,7 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
       context: context,
       isScrollControlled: true,
       constraints: BoxConstraints.tightFor(height: sheetHeight),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (_) => const AddPropertyModal(),
     );
   }
@@ -84,17 +91,55 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
         .toList();
     final secondaryTextColor = AppTheme.secondaryTextColor(context);
 
+    // Same rule as the tenant dashboard: nothing loaded at all is a dead page
+    // and earns the full retry state, a partial failure only earns a banner.
+    final failedControllers = <LoadFailureState>[
+      landlordCtrl,
+      agreementCtrl,
+    ].where((c) => c.hasError).toList();
+    final isOffline = failedControllers.any((c) => c.errorIsConnection);
+    final failureMessage = failedControllers.isEmpty
+        ? null
+        : failedControllers.first.errorMessage;
+    final hasAnyContent =
+        landlordCtrl.properties.isNotEmpty ||
+        agreementCtrl.agreements.isNotEmpty;
+
+    if (!landlordCtrl.isLoading && failureMessage != null && !hasAnyContent) {
+      return Scaffold(
+        backgroundColor: AppTheme.pageBackground(context),
+        appBar: const LandaAppBar(),
+        body: RefreshIndicator(
+          onRefresh: _loadAllData,
+          child: LandaErrorState(
+            message: failureMessage,
+            isConnectionError: isOffline,
+            onRetry: _loadAllData,
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
       appBar: const LandaAppBar(),
       body: RefreshIndicator(
-        onRefresh: () async => _loadAllData(),
+        onRefresh: _loadAllData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (failureMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: LandaErrorBanner(
+                    message: failureMessage,
+                    isConnectionError: isOffline,
+                    onRetry: _loadAllData,
+                  ),
+                ),
               // Verification prompt. Only shown while unverified — once the
               // user is verified there is nothing to act on, so we don't
               // occupy the top of the dashboard with a status badge.
@@ -121,7 +166,8 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const IdentityVerificationScreen(),
+                              builder: (_) =>
+                                  const IdentityVerificationScreen(),
                             ),
                           ),
                           child: const Column(
@@ -320,174 +366,165 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
               ],
 
               // Properties List Section
-              const Text(
-                'MY PROPERTIES',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              Text('MY PROPERTIES', style: AppTheme.labelText(context)),
               const SizedBox(height: 12),
               if (landlordCtrl.isLoading && landlordCtrl.properties.isEmpty)
-                const ShimmerListSkeleton(count: 2)
+                const LandaSkeletonList(
+                  count: 2,
+                  hasThumbnail: true,
+                  padding: EdgeInsets.zero,
+                )
               else if (landlordCtrl.properties.isEmpty)
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceColor(context),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: AppTheme.cornerLg,
+                    border: Border.all(color: AppTheme.borderColor(context)),
                   ),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        const Text('No properties added yet.'),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _showAddPropertyModal,
-                          icon: const Icon(
-                            Icons.add,
-                            size: 18,
-                            color: Colors.white,
-                          ),
-                          label: const Text(
-                            'Add Your First Property',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.actionColor,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: LandaEmptyState(
+                    icon: Icons.apartment_outlined,
+                    title: 'No properties yet',
+                    message:
+                        'Add your first property to start listing units and receiving applications.',
+                    actionLabel: 'Add property',
+                    actionIcon: Icons.add_rounded,
+                    onAction: _showAddPropertyModal,
+                    scrollable: false,
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                   ),
                 )
               else
                 Column(
-                  children: landlordCtrl.properties.map((prop) {
+                  children: landlordCtrl.properties.indexed.map((entry) {
+                    final (index, prop) = entry;
                     final units = landlordCtrl.propertyUnits[prop.id] ?? [];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ManagedPropertyDetailScreen(
-                              property: prop,
-                              units: units,
-                              onAddUnits: () => _showAddUnitModal(prop),
+                    return LandaEntrance(
+                      index: index,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: LandaPressable(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ManagedPropertyDetailScreen(
+                                property: prop,
+                                units: units,
+                                onAddUnits: () => _showAddUnitModal(prop),
+                              ),
                             ),
                           ),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppTheme.surfaceColor(context),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: AppTheme.borderColor(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceColor(context),
+                              borderRadius: AppTheme.cornerLg,
+                              border: Border.all(
+                                color: AppTheme.borderColor(context),
+                              ),
+                              boxShadow: AppTheme.cardShadow(context),
                             ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        prop.name,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppTheme.primaryColor,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          prop.name,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.primaryColor,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${prop.address}, ${prop.city}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: secondaryTextColor,
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${prop.address}, ${prop.city}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: secondaryTextColor,
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.add_home_outlined,
-                                      color: AppTheme.actionColor,
+                                      ],
                                     ),
-                                    onPressed: () => _showAddUnitModal(prop),
-                                    tooltip: 'Add units in batch',
-                                  ),
-                                ],
-                              ),
-                              const Divider(height: 24),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Units: ${units.length}',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.primaryColor,
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.add_home_outlined,
+                                        color: AppTheme.actionColor,
+                                      ),
+                                      onPressed: () => _showAddUnitModal(prop),
+                                      tooltip: 'Add units in batch',
                                     ),
-                                  ),
-                                  Text(
-                                    units.any((u) => u.isOccupied)
-                                        ? 'Occupied'
-                                        : 'Vacant',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: units.any((u) => u.isOccupied)
-                                          ? AppTheme.successColor
-                                          : AppTheme.vacantColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (units.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: units.map((u) {
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: u.isOccupied
-                                            ? AppTheme.successSurfaceColor
-                                            : AppTheme.vacantSurfaceColor,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        'Unit ${u.unitNumber} (₦${u.rentAmount})',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: u.isOccupied
-                                              ? AppTheme.successColor
-                                              : AppTheme.primaryColor,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                  ],
                                 ),
+                                const Divider(height: 24),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Units: ${units.length}',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ),
+                                    Text(
+                                      units.any((u) => u.isOccupied)
+                                          ? 'Occupied'
+                                          : 'Vacant',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: units.any((u) => u.isOccupied)
+                                            ? AppTheme.successColor
+                                            : AppTheme.vacantColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (units.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: units.map((u) {
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: u.isOccupied
+                                              ? AppTheme.successSurfaceColor
+                                              : AppTheme.vacantSurfaceColor,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Unit ${u.unitNumber} (${LandaCurrency.format(u.rentAmount)})',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: u.isOccupied
+                                                ? AppTheme.successColor
+                                                : AppTheme.primaryColor,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
                       ),

@@ -22,6 +22,16 @@ class ApiConstants {
   static const String propertiesEndpoint = '/properties/';
   static String propertyDetailEndpoint(String propertyId) =>
       '/properties/$propertyId/';
+  // Listing media (photos + one property-tour video)
+  static String propertyPhotosEndpoint(String propertyId) =>
+      '/properties/$propertyId/photos/';
+  static String propertyPhotoDetailEndpoint(
+    String propertyId,
+    String photoId,
+  ) => '/properties/$propertyId/photos/$photoId/';
+  static String propertyVideoEndpoint(String propertyId) =>
+      '/properties/$propertyId/video/';
+
   static String propertyUnitsEndpoint(String propertyId) =>
       '/properties/$propertyId/units/';
   static String propertyUnitsBatchEndpoint(String propertyId) =>

@@ -8,18 +8,33 @@ class ThemeController extends ChangeNotifier {
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
-  ThemeMode _themeMode = ThemeMode.light;
+  /// Starts on [ThemeMode.system] until the user picks a side.
+  ///
+  /// This is what makes a cold start in dark mode look right: the OS-drawn
+  /// launch screen can only follow the system appearance, so an app that
+  /// defaulted to light on a dark phone flashed white before its own dark
+  /// splash appeared. Following the system by default keeps the launch
+  /// screen, the Flutter splash and the app itself in one state.
+  ThemeMode _themeMode = ThemeMode.system;
   ThemeMode get themeMode => _themeMode;
 
+  /// True only for an explicit dark choice. Screens that need "is the UI dark
+  /// right now" should ask [AppTheme.isDarkMode], which resolves
+  /// [ThemeMode.system] against the platform brightness.
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
   Future<void> loadThemeMode() async {
     try {
       final storedMode = await _storage.read(key: _themeModeKey);
 
-      _themeMode = storedMode == 'dark' ? ThemeMode.dark : ThemeMode.light;
+      _themeMode = switch (storedMode) {
+        'dark' => ThemeMode.dark,
+        'light' => ThemeMode.light,
+        // Nothing stored: the user has never chosen, so follow the phone.
+        _ => ThemeMode.system,
+      };
     } catch (_) {
-      _themeMode = ThemeMode.light;
+      _themeMode = ThemeMode.system;
     }
 
     notifyListeners();

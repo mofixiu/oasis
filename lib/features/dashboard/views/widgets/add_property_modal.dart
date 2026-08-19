@@ -7,8 +7,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/landa_pressable.dart';
+import '../../../../core/widgets/landa_sheet.dart';
 import '../../../../core/widgets/landa_toast.dart';
 import '../../../properties/controllers/landlord_controller.dart';
+import '../../../properties/models/property_model.dart';
 import '../../../properties/views/widgets/property_location_picker.dart';
 
 class AddPropertyModal extends StatefulWidget {
@@ -26,6 +29,10 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
   final _picker = ImagePicker();
   final List<File> _photos = [];
   File? _verificationVideo;
+
+  /// Optional public property tour, separate from the private
+  /// [_verificationVideo] used for ownership review.
+  File? _listingVideo;
   File? _deed;
   LatLng? _pin;
   bool _isSubmitting = false;
@@ -86,6 +93,33 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
     }
   }
 
+  Future<void> _pickListingVideo() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: PropertyMediaLimits.videoExtensions,
+      );
+      final path = result?.files.single.path;
+      if (path == null || !mounted) return;
+
+      final file = File(path);
+      if (await file.length() > PropertyMediaLimits.maxVideoBytes) {
+        if (mounted) {
+          LandaToast.error(
+            context,
+            'Tour video must not exceed 50MB. Choose a shorter clip.',
+          );
+        }
+        return;
+      }
+      if (mounted) setState(() => _listingVideo = file);
+    } catch (error) {
+      if (mounted) {
+        LandaToast.error(context, 'Unable to select video: $error');
+      }
+    }
+  }
+
   Future<void> _pickDeed() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -131,6 +165,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
       photos: _photos,
       verificationVideo: _verificationVideo!,
       deedFile: _deed!,
+      listingVideo: _listingVideo,
     );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -146,222 +181,240 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
     LandaToast.success(context, '${property.name} submitted for verification.');
   }
 
-  Widget _sectionLabel(String label) => Text(
-    label,
-    style: const TextStyle(
-      fontSize: 11,
-      fontWeight: FontWeight.bold,
-      color: Colors.grey,
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: 24,
-        left: 24,
-        right: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+    return LandaSheet(
+      icon: Icons.add_location_alt_rounded,
+      title: 'Add verified property',
+      subtitle:
+          'Pin the property, record a live walkthrough and attach proof of ownership.',
+      accent: AppTheme.primaryColor,
+      footer: LandaSheetButton(
+        label: 'Submit property for review',
+        icon: Icons.verified_outlined,
+        color: AppTheme.primaryColor,
+        isLoading: _isSubmitting,
+        onPressed: _submitProperty,
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const LandaFieldLabel('Property details'),
+        TextField(
+          controller: _nameCtrl,
+          textCapitalization: TextCapitalization.words,
+          style: AppTheme.cardTitle(context),
+          decoration: landaInputDecoration(
+            context,
+            hint: 'Property name',
+            prefixIcon: Icons.home_work_outlined,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _addressCtrl,
+          textCapitalization: TextCapitalization.words,
+          style: AppTheme.cardTitle(context),
+          decoration: landaInputDecoration(
+            context,
+            hint: 'Street address',
+            prefixIcon: Icons.signpost_outlined,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
           children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.add_location_alt_outlined,
-                  color: AppTheme.primaryColor,
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Add verified property',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Pin the property, record a live walkthrough and attach proof of ownership.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Property name',
-                border: OutlineInputBorder(),
+            Expanded(
+              child: TextField(
+                controller: _cityCtrl,
+                textCapitalization: TextCapitalization.words,
+                style: AppTheme.cardTitle(context),
+                decoration: landaInputDecoration(context, hint: 'City'),
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _addressCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Street address',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _cityCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'City',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _stateCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'State',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            PropertyLocationPicker(onChanged: (pin) => _pin = pin),
-            const SizedBox(height: 20),
-            _sectionLabel('PROPERTY PHOTOS (OPTIONAL)'),
-            const SizedBox(height: 8),
-            if (_photos.isNotEmpty)
-              SizedBox(
-                height: 84,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _photos.length,
-                  itemBuilder: (_, index) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            _photos[index],
-                            width: 84,
-                            height: 84,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          child: IconButton(
-                            icon: const CircleAvatar(
-                              radius: 11,
-                              backgroundColor: Colors.black54,
-                              child: Icon(
-                                Icons.close,
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                            ),
-                            onPressed: () =>
-                                setState(() => _photos.removeAt(index)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _pickPhotos(ImageSource.camera),
-                    icon: const Icon(Icons.camera_alt, size: 17),
-                    label: const Text('Camera'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _pickPhotos(ImageSource.gallery),
-                    icon: const Icon(Icons.photo_library, size: 17),
-                    label: const Text('Gallery'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _sectionLabel('LIVE OWNERSHIP CHECK (REQUIRED)'),
-            const SizedBox(height: 8),
-            _EvidenceTile(
-              icon: Icons.videocam_outlined,
-              title: _verificationVideo == null
-                  ? 'Record live walkthrough'
-                  : 'Live walkthrough recorded',
-              subtitle: _verificationVideo == null
-                  ? 'Record up to 60 seconds showing the exterior and your presence.'
-                  : _verificationVideo!.path.split('/').last,
-              action: _verificationVideo == null ? 'Record' : 'Re-record',
-              onTap: _recordVerificationVideo,
-              complete: _verificationVideo != null,
-            ),
-            const SizedBox(height: 10),
-            _EvidenceTile(
-              icon: Icons.description_outlined,
-              title: _deed == null
-                  ? 'Attach deed or proof of ownership'
-                  : 'Proof of ownership attached',
-              subtitle: _deed == null
-                  ? 'PDF, JPG or PNG. This is reviewed with the live video.'
-                  : _deed!.path.split('/').last,
-              action: _deed == null ? 'Attach' : 'Replace',
-              onTap: _pickDeed,
-              complete: _deed != null,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitProperty,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Submit property for review',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _stateCtrl,
+                textCapitalization: TextCapitalization.words,
+                style: AppTheme.cardTitle(context),
+                decoration: landaInputDecoration(context, hint: 'State'),
               ),
             ),
           ],
         ),
+        const SizedBox(height: 24),
+
+        PropertyLocationPicker(onChanged: (pin) => _pin = pin),
+        const SizedBox(height: 24),
+
+        LandaFieldLabel(
+          'Property photos',
+          trailing: _OptionalTag(
+            label: _photos.isEmpty ? 'Optional' : '${_photos.length} added',
+            highlight: _photos.isNotEmpty,
+          ),
+        ),
+        if (_photos.isNotEmpty) ...[
+          SizedBox(
+            height: 88,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _photos.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, index) => Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: AppTheme.cornerMd,
+                    child: Image.file(
+                      _photos[index],
+                      width: 88,
+                      height: 88,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: LandaPressable(
+                      onTap: () => setState(() => _photos.removeAt(index)),
+                      pressedScale: 0.88,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        Row(
+          children: [
+            Expanded(
+              child: LandaSheetChipButton(
+                icon: Icons.photo_camera_outlined,
+                label: 'Camera',
+                onTap: () => _pickPhotos(ImageSource.camera),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: LandaSheetChipButton(
+                icon: Icons.photo_library_outlined,
+                label: 'Gallery',
+                onTap: () => _pickPhotos(ImageSource.gallery),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        LandaFieldLabel(
+          'Live ownership check',
+          trailing: _OptionalTag(
+            label: (_verificationVideo != null && _deed != null)
+                ? 'Complete'
+                : 'Required',
+            highlight: _verificationVideo != null && _deed != null,
+            required: !(_verificationVideo != null && _deed != null),
+          ),
+        ),
+        _EvidenceTile(
+          icon: Icons.videocam_outlined,
+          title: _verificationVideo == null
+              ? 'Record live walkthrough'
+              : 'Live walkthrough recorded',
+          subtitle: _verificationVideo == null
+              ? 'Record up to 60 seconds showing the exterior and your presence.'
+              : _verificationVideo!.path.split('/').last,
+          action: _verificationVideo == null ? 'Record' : 'Redo',
+          onTap: _recordVerificationVideo,
+          complete: _verificationVideo != null,
+        ),
+        const SizedBox(height: 10),
+        _EvidenceTile(
+          icon: Icons.description_outlined,
+          title: _deed == null
+              ? 'Attach deed or proof of ownership'
+              : 'Proof of ownership attached',
+          subtitle: _deed == null
+              ? 'PDF, JPG or PNG. This is reviewed with the live video.'
+              : _deed!.path.split('/').last,
+          action: _deed == null ? 'Attach' : 'Replace',
+          onTap: _pickDeed,
+          complete: _deed != null,
+        ),
+        const SizedBox(height: 24),
+
+        // Public-facing tour, distinct from the private ownership check
+        // above. Optional, and can also be added later from the property
+        // screen.
+        LandaFieldLabel(
+          'Property tour video',
+          trailing: _OptionalTag(
+            label: _listingVideo == null ? 'Optional' : 'Added',
+            highlight: _listingVideo != null,
+          ),
+        ),
+        _EvidenceTile(
+          icon: Icons.movie_outlined,
+          title: _listingVideo == null
+              ? 'Add a tour video for your listing'
+              : 'Tour video attached',
+          subtitle: _listingVideo == null
+              ? 'MP4 or MOV up to 50MB. Shown to tenants browsing the marketplace.'
+              : _listingVideo!.path.split('/').last,
+          action: _listingVideo == null ? 'Attach' : 'Replace',
+          onTap: _pickListingVideo,
+          complete: _listingVideo != null,
+        ),
+      ],
+    );
+  }
+}
+
+/// Small status pill beside a section label: whether the section is optional,
+/// still required, or already satisfied.
+class _OptionalTag extends StatelessWidget {
+  final String label;
+  final bool highlight;
+  final bool required;
+
+  const _OptionalTag({
+    required this.label,
+    this.highlight = false,
+    this.required = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = highlight
+        ? AppTheme.successColor
+        : required
+        ? AppTheme.actionColor
+        : AppTheme.mutedTextColor(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: AppTheme.cornerSm,
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: AppTheme.labelText(
+          context,
+          color: color,
+        ).copyWith(fontSize: 10, letterSpacing: 0.6),
       ),
     );
   }
@@ -385,45 +438,75 @@ class _EvidenceTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: complete ? Colors.green.shade50 : const Color(0xfff8f9fb),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(
-        color: complete ? Colors.green.shade200 : Colors.grey.shade300,
-      ),
-    ),
-    child: Row(
-      children: [
-        Icon(
-          complete ? Icons.check_circle : icon,
-          color: complete ? Colors.green : AppTheme.actionColor,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-            ],
+  Widget build(BuildContext context) {
+    final accent = complete ? AppTheme.successColor : AppTheme.actionColor;
+    return LandaPressable(
+      onTap: onTap,
+      pressedScale: 0.99,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: complete
+              ? accent.withValues(alpha: 0.08)
+              : AppTheme.subtleSurfaceColor(context),
+          borderRadius: AppTheme.cornerMd,
+          border: Border.all(
+            color: complete
+                ? accent.withValues(alpha: 0.3)
+                : AppTheme.borderColor(context),
           ),
         ),
-        TextButton(onPressed: onTap, child: Text(action)),
-      ],
-    ),
-  );
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: AppTheme.cornerSm,
+              ),
+              child: Icon(
+                complete ? Icons.check_rounded : icon,
+                size: 19,
+                color: accent,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTheme.cardTitle(
+                      context,
+                    ).copyWith(fontSize: AppTheme.textSm),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.bodyText(
+                      context,
+                      color: AppTheme.mutedTextColor(context),
+                    ).copyWith(fontSize: AppTheme.textXs, height: 1.35),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              action.toUpperCase(),
+              style: AppTheme.labelText(
+                context,
+                color: accent,
+              ).copyWith(fontSize: 10, letterSpacing: 0.6),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 18, color: accent),
+          ],
+        ),
+      ),
+    );
+  }
 }

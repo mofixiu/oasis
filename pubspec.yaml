@@ -25,6 +25,8 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   url_launcher: ^6.3.1
+  video_player: ^2.11.1
+  chewie: ^1.13.1
 
 dev_dependencies:
   flutter_test:
@@ -39,6 +41,8 @@ flutter:
     - assets/images/iconlogo.png
     - assets/images/newlogo.png
     - assets/images/newlogonobackground.png
+    # White-on-transparent variant of the wordmark, for dark backgrounds.
+    - assets/images/logo_wordmark_light.png
     - assets/images/profile_avatar.png
     - assets/images/artisan_bisi.png
     - assets/images/artisan_emeka.png

@@ -117,7 +117,17 @@ class RentalApplication {
   final String? tenantName;
   final String? tenantEmail;
   final String? tenantPhone;
+
+  /// Applicant's identity-verification status, shown to the landlord.
+  final String? tenantVerificationStatus;
+
+  /// Optional note the tenant attached when applying (max 1000 chars).
+  final String message;
   final String? rentAmount;
+
+  /// Set once approved — the tenancy agreement the approval created.
+  final String? agreementId;
+  final String? decidedAt;
   final PropertyModel? property;
 
   const RentalApplication({
@@ -129,9 +139,15 @@ class RentalApplication {
     this.tenantName,
     this.tenantEmail,
     this.tenantPhone,
+    this.tenantVerificationStatus,
+    this.message = '',
     this.rentAmount,
+    this.agreementId,
+    this.decidedAt,
     this.property,
   });
+
+  bool get hasMessage => message.trim().isNotEmpty;
 
   /// True when the payload carried nothing identifying the applicant, so the
   /// landlord UI can say so explicitly instead of silently omitting the row.
@@ -153,8 +169,8 @@ class RentalApplication {
     return RentalApplication(
       id: json['id']?.toString() ?? '',
       unitId: (nestedUnit?['id'] ?? rawUnit)?.toString() ?? '',
-      unitNumber:
-          (json['unit_number'] ?? nestedUnit?['unit_number'] ?? '').toString(),
+      unitNumber: (json['unit_number'] ?? nestedUnit?['unit_number'] ?? '')
+          .toString(),
       status: ApplicationStatus.fromString(json['status']?.toString()),
       createdAt: (json['created_at'] ?? json['applied_at'] ?? '').toString(),
       tenantName: _firstNonEmpty([
@@ -168,8 +184,7 @@ class RentalApplication {
         json['tenant_email'],
         nestedTenant?['email'],
         // A bare `tenant` UUID is an identifier, not contact info.
-        if (rawTenant is! Map && !_isUuid(rawTenant?.toString()))
-          rawTenant,
+        if (rawTenant is! Map && !_isUuid(rawTenant?.toString())) rawTenant,
       ]),
       tenantPhone: _firstNonEmpty([
         json['tenant_phone'],
@@ -177,8 +192,15 @@ class RentalApplication {
         nestedTenant?['phone_number'],
         nestedTenant?['phone'],
       ]),
+      tenantVerificationStatus: _firstNonEmpty([
+        json['tenant_verification_status'],
+        nestedTenant?['verification_status'],
+      ]),
+      message: json['message']?.toString() ?? '',
       rentAmount: (json['rent_amount'] ?? nestedUnit?['rent_amount'])
           ?.toString(),
+      agreementId: _firstNonEmpty([json['agreement_id'], json['agreement']]),
+      decidedAt: _firstNonEmpty([json['decided_at']]),
       property: json['property'] is Map<String, dynamic>
           ? PropertyModel.fromJson(json['property'] as Map<String, dynamic>)
           : null,

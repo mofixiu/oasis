@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/landa_currency.dart';
 import '../../../core/widgets/landa_app_bar.dart';
+import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_shimmer.dart';
+import '../../../core/widgets/landa_state_views.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../../properties/models/property_model.dart';
 import '../controllers/marketplace_controller.dart';
 import '../models/marketplace_models.dart';
+import 'apply_for_unit_sheet.dart';
 import 'marketplace_filter_sheet.dart';
+import 'marketplace_property_screen.dart';
 import 'my_applications_screen.dart';
 
 /// Tenant-facing marketplace: browse properties with available units and
@@ -44,54 +49,21 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   Future<void> _apply(UnitModel unit, MarketplaceProperty listing) async {
     final controller = context.read<MarketplaceController>();
-    final confirmed = await showDialog<bool>(
+    final result = await showModalBottomSheet<ApplyResult>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor(dialogContext),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Apply for this unit?',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
-          ),
-        ),
-        content: Text(
-          'You are applying for Unit ${unit.unitNumber} at ${listing.property.name} '
-          '(₦${unit.rentAmount}/yr).\n\n'
-          'The landlord will review your application and, if approved, send you '
-          'a tenancy agreement to sign.',
-          style: const TextStyle(fontSize: 13, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.actionColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text(
-              'Send application',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (_) => ApplyForUnitSheet(unit: unit, listing: listing),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (result == null || !mounted) return;
 
-    final application = await controller.applyForUnit(unit.id);
+    final application = await controller.applyForUnit(
+      unit.id,
+      message: result.message,
+    );
     if (!mounted) return;
 
     if (application != null) {
@@ -175,7 +147,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                 builder: (_) => const MyApplicationsScreen(),
                               ),
                             ),
-                            icon: const Icon(Icons.description_outlined, size: 18),
+                            icon: const Icon(
+                              Icons.description_outlined,
+                              size: 18,
+                            ),
                             label: const Text('My applications'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppTheme.secondaryTextColor(
@@ -240,29 +215,21 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           sliver: SliverList.separated(
             itemCount: 3,
             separatorBuilder: (_, __) => const SizedBox(height: 16),
-            itemBuilder: (_, __) => LandaShimmer(
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor(context),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
+            itemBuilder: (_, __) => const LandaListingSkeleton(),
           ),
         ),
       ];
     }
 
-    if (controller.errorMessage != null && controller.listings.isEmpty) {
+    if (controller.hasError && controller.listings.isEmpty) {
       return [
         SliverToBoxAdapter(
-          child: _EmptyState(
-            icon: Icons.cloud_off_outlined,
-            title: 'Could not load listings',
-            message: controller.errorMessage!,
-            actionLabel: 'Try again',
-            onAction: controller.loadMarketplace,
+          child: LandaErrorState(
+            message: controller.errorMessage,
+            isConnectionError: controller.errorIsConnection,
+            onRetry: controller.loadMarketplace,
+            scrollable: false,
+            padding: const EdgeInsets.fromLTRB(32, 40, 32, 32),
           ),
         ),
       ];
@@ -271,18 +238,27 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     if (controller.listings.isEmpty) {
       return [
         SliverToBoxAdapter(
-          child: _EmptyState(
-            icon: Icons.home_work_outlined,
+          child: LandaEmptyState(
+            icon: controller.filters.isEmpty
+                ? Icons.home_work_outlined
+                : Icons.filter_alt_off_outlined,
             title: controller.filters.isEmpty
                 ? 'No listings available yet'
                 : 'Nothing matches those filters',
             message: controller.filters.isEmpty
                 ? 'Available units will appear here as landlords list them.'
                 : 'Try widening your search to see more homes.',
-            actionLabel: controller.filters.isEmpty ? null : 'Clear filters',
+            actionLabel: controller.filters.isEmpty
+                ? 'Refresh listings'
+                : 'Clear filters',
+            actionIcon: controller.filters.isEmpty
+                ? Icons.refresh_rounded
+                : Icons.filter_alt_off_rounded,
             onAction: controller.filters.isEmpty
-                ? null
+                ? controller.loadMarketplace
                 : controller.clearFilters,
+            scrollable: false,
+            padding: const EdgeInsets.fromLTRB(32, 40, 32, 32),
           ),
         ),
       ];
@@ -297,11 +273,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           separatorBuilder: (_, __) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
             final listing = controller.listings[index];
-            return _MarketplaceCard(
-              listing: listing,
-              appliedUnitIds: appliedUnitIds,
-              applyingUnitId: controller.applyingUnitId,
-              onApply: (unit) => _apply(unit, listing),
+            return LandaEntrance(
+              index: index,
+              child: _MarketplaceCard(
+                listing: listing,
+                appliedUnitIds: appliedUnitIds,
+                applyingUnitId: controller.applyingUnitId,
+                onApply: (unit) => _apply(unit, listing),
+                onOpen: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MarketplacePropertyScreen(listing: listing),
+                  ),
+                ),
+              ),
             );
           },
         ),
@@ -315,12 +300,14 @@ class _MarketplaceCard extends StatelessWidget {
   final Set<String> appliedUnitIds;
   final String? applyingUnitId;
   final void Function(UnitModel unit) onApply;
+  final VoidCallback onOpen;
 
   const _MarketplaceCard({
     required this.listing,
     required this.appliedUnitIds,
     required this.applyingUnitId,
     required this.onApply,
+    required this.onOpen,
   });
 
   @override
@@ -338,97 +325,168 @@ class _MarketplaceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
-            children: [
-              SizedBox(
-                height: 170,
-                width: double.infinity,
-                child: property.photoUrls.isNotEmpty
-                    ? Image.network(
-                        property.photoUrls.first,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _fallbackImage(),
-                      )
-                    : _fallbackImage(),
-              ),
-              if (isVerified)
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.successColor,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.verified, color: Colors.white, size: 13),
-                        SizedBox(width: 4),
-                        Text(
-                          'VERIFIED',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          // Image + header open the full listing; the per-unit Apply buttons
+          // below stay as their own tap targets.
+          GestureDetector(
+            onTap: onOpen,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  property.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
+                Stack(
                   children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 15,
-                      color: Colors.grey,
+                    SizedBox(
+                      height: 170,
+                      width: double.infinity,
+                      // Backend picks the cover (first uploaded photo); fall back to
+                      // the first in the list for payloads without cover_photo_url.
+                      child: property.displayImageUrl != null
+                          ? Image.network(
+                              property.displayImageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _fallbackImage(),
+                            )
+                          : _fallbackImage(),
                     ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        [property.address, property.city, property.state]
-                            .where((part) => part.isNotEmpty)
-                            .join(', '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.secondaryTextColor(context),
+                    if (property.hasVideo)
+                      Positioned(
+                        bottom: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.62),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.play_circle_outline,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'TOUR',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+                    if (isVerified)
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.successColor,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.verified,
+                                color: Colors.white,
+                                size: 13,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'VERIFIED',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  '${listing.availableUnits.length} '
-                  '${listing.availableUnits.length == 1 ? 'UNIT' : 'UNITS'} AVAILABLE',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                    color: Colors.grey,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        property.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 15,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              [
+                                property.address,
+                                property.city,
+                                property.state,
+                              ].where((part) => part.isNotEmpty).join(', '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.secondaryTextColor(context),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Text(
+                            '${listing.availableUnits.length} '
+                            '${listing.availableUnits.length == 1 ? 'UNIT' : 'UNITS'} AVAILABLE',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.8,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const Spacer(),
+                          const Text(
+                            'View listing',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.actionColor,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right,
+                            size: 16,
+                            color: AppTheme.actionColor,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -484,7 +542,7 @@ class _UnitRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Unit ${unit.unitNumber} · ₦${unit.rentAmount}/yr',
+                  'Unit ${unit.unitNumber} · ${LandaCurrency.perYear(unit.rentAmount)}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -560,63 +618,4 @@ class _UnitRow extends StatelessWidget {
       ),
     );
   }
-}
-
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(32, 60, 32, 32),
-    child: Column(
-      children: [
-        Icon(icon, size: 56, color: AppTheme.mutedTextColor(context)),
-        const SizedBox(height: 16),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryTextColor(context),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          message,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13,
-            height: 1.4,
-            color: AppTheme.secondaryTextColor(context),
-          ),
-        ),
-        if (actionLabel != null && onAction != null) ...[
-          const SizedBox(height: 20),
-          TextButton(
-            onPressed: onAction,
-            child: Text(
-              actionLabel!,
-              style: const TextStyle(
-                color: AppTheme.actionColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ],
-    ),
-  );
 }

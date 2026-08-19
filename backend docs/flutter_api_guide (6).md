@@ -773,7 +773,8 @@ Creates a property for the authenticated landlord with verification evidence.
 | `verification_method` | String | Yes | Currently `LIVE_VIDEO_AND_DEED` |
 | `verification_video` | File | Yes | MP4/MOV, max 100MB |
 | `deed` | File | Yes | PDF/JPG/PNG, max 15MB |
-| `photos` | File[] | No | Repeat the `photos` key for multiple images |
+| `photos` | File[] | No | Repeat the `photos` key for multiple JPG/PNG/WEBP images. Max 10 per property, max 5MB each. |
+| `listing_video` | File | No | MP4/MOV property tour video. Max 50MB. One video per property. |
 
 ##### Response `201 Created`
 
@@ -786,7 +787,11 @@ Creates a property for the authenticated landlord with verification evidence.
   "state": "Lagos",
   "latitude": "6.428055",
   "longitude": "3.421944",
-  "photo_urls": [],
+  "photo_urls": [
+    "https://landa-os-staging.onrender.com/media/property_photos/front.jpg"
+  ],
+  "cover_photo_url": "https://landa-os-staging.onrender.com/media/property_photos/front.jpg",
+  "video_url": "https://ekdofhlayixtjmhxvlzy.supabase.co/storage/v1/object/public/landa-staging-media/properties/videos/tour.mp4",
   "verification_method": "LIVE_VIDEO_AND_DEED",
   "verification_status": "PENDING_REVIEW",
   "verification_note": "",
@@ -815,7 +820,96 @@ Creates a property for the authenticated landlord with verification evidence.
 
 ---
 
-### 5.13 Get Property Detail
+### 5.13 Manage Property Listing Photos
+
+#### `GET /properties/{property_id}/photos/`
+Lists the landlord-owned property's uploaded listing photos.
+
+#### `POST /properties/{property_id}/photos/`
+Uploads listing photos after property creation.
+
+- **Authentication:** Required
+- **Roles:** `OWNER`
+- **Content-Type:** `multipart/form-data`
+
+##### Multipart Fields
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `photos` | File[] | Yes | Repeat the `photos` key. JPG/PNG/WEBP only, max 10 total photos per property, max 5MB each. |
+
+##### Response `201 Created`
+
+```json
+[
+  {
+    "id": "PHOTO_UUID",
+    "image_url": "https://landa-os-staging.onrender.com/media/property_photos/front.jpg",
+    "created_at": "2026-08-18T09:30:00Z"
+  }
+]
+```
+
+#### `DELETE /properties/{property_id}/photos/{photo_id}/`
+Deletes one listing photo from the landlord-owned property.
+
+Success response:
+
+```text
+204 No Content
+```
+
+Listing media now uses Supabase Storage. Flutter should render the returned URLs directly.
+
+---
+
+### 5.14 Manage Property Listing Video
+
+Each property supports one listing/property-tour video.
+
+#### `GET /properties/{property_id}/video/`
+
+Returns:
+
+```json
+{
+  "video_url": "https://ekdofhlayixtjmhxvlzy.supabase.co/storage/v1/object/public/landa-staging-media/properties/videos/tour.mp4"
+}
+```
+
+If no video exists:
+
+```json
+{
+  "video_url": null
+}
+```
+
+#### `POST /properties/{property_id}/video/`
+
+Uploads or replaces the listing video.
+
+- **Authentication:** Required
+- **Roles:** `OWNER`
+- **Content-Type:** `multipart/form-data`
+
+| Field | Type | Required | Notes |
+| :--- | :--- | :--- | :--- |
+| `video` | File | Yes | MP4/MOV, max 50MB |
+
+#### `DELETE /properties/{property_id}/video/`
+
+Deletes the listing video.
+
+Success response:
+
+```text
+204 No Content
+```
+
+---
+
+### 5.15 Get Property Detail
 
 #### `GET /properties/{property_id}/`
 Returns one landlord-owned property with property fields and a `units` array.
@@ -1895,17 +1989,51 @@ Optional filters: `city`, `state`, `min_rent`, `max_rent`, `bedrooms`, `bathroom
 GET /api/users/tenant/marketplace/?city=Lagos&max_rent=300000&bedrooms=2
 ```
 
+Response shape:
+
+```json
+[
+  {
+    "id": "PROPERTY_UUID",
+    "name": "Sunset House",
+    "address": "12 Listing Road",
+    "city": "Lagos",
+    "state": "Lagos",
+    "photo_urls": [
+      "https://landa-os-staging.onrender.com/media/property_photos/front.jpg"
+    ],
+    "cover_photo_url": "https://landa-os-staging.onrender.com/media/property_photos/front.jpg",
+    "video_url": "https://ekdofhlayixtjmhxvlzy.supabase.co/storage/v1/object/public/landa-staging-media/properties/videos/tour.mp4",
+    "available_units": [
+      {
+        "id": "UNIT_UUID",
+        "unit_number": "A1",
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "rent_amount": "300000.00",
+        "created_at": "2026-08-18T09:00:00Z"
+      }
+    ]
+  }
+]
+```
+
 #### `POST /tenant/applications/`
 
 Tenant applies for an available unit with one button.
 
 ```json
 {
-  "unit": "UNIT_UUID"
+  "unit": "UNIT_UUID",
+  "message": "I am interested in this unit and can move in soon."
 }
 ```
 
+`message` is optional and can be blank. Maximum length: 1000 characters.
+
 If the same tenant applies again for the same unit while the first application is still pending, backend returns the existing application instead of creating a duplicate.
+
+Tenant-facing application responses do not include applicant contact details.
 
 #### `GET /tenant/applications/`
 
@@ -1914,6 +2042,48 @@ Lists the tenant's own applications.
 #### `GET /landlord/applications/`
 
 Lists applications received by the landlord. Optional filter: `?status=PENDING`.
+
+Landlord-facing application responses include applicant identity:
+
+```json
+[
+  {
+    "id": "APPLICATION_UUID",
+    "property": {
+      "id": "PROPERTY_UUID",
+      "name": "Sunset House",
+      "address": "12 Listing Road",
+      "city": "Lagos",
+      "state": "Lagos"
+    },
+    "unit": {
+      "id": "UNIT_UUID",
+      "unit_number": "A1",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "rent_amount": "300000.00"
+    },
+    "tenant": {
+      "id": "TENANT_UUID",
+      "full_name": "Ada Okafor",
+      "email": "ada@example.com",
+      "phone_number": "+2348012345678"
+    },
+    "tenant_name": "Ada Okafor",
+    "tenant_email": "ada@example.com",
+    "tenant_phone": "+2348012345678",
+    "tenant_verification_status": "VERIFIED",
+    "unit_number": "A1",
+    "rent_amount": "300000.00",
+    "message": "I am interested in this unit and can move in soon.",
+    "status": "PENDING",
+    "agreement_id": null,
+    "applied_at": "2026-08-18T09:00:00Z",
+    "created_at": "2026-08-18T09:00:00Z",
+    "decided_at": null
+  }
+]
+```
 
 #### `POST /landlord/applications/{application_id}/approve/`
 
@@ -1972,6 +2142,12 @@ Each model should support nullable timestamps and unknown enum values gracefully
 | List properties | `GET` | `/api/users/properties/` | Yes + verified | `OWNER` |
 | Create property | `POST` | `/api/users/properties/` | Yes + verified | `OWNER` |
 | Get property detail | `GET` | `/api/users/properties/{property_id}/` | Yes + verified | `OWNER` |
+| List property photos | `GET` | `/api/users/properties/{property_id}/photos/` | Yes + verified | `OWNER` |
+| Upload property photos | `POST` | `/api/users/properties/{property_id}/photos/` | Yes + verified | `OWNER` |
+| Delete property photo | `DELETE` | `/api/users/properties/{property_id}/photos/{photo_id}/` | Yes + verified | `OWNER` |
+| Get property video | `GET` | `/api/users/properties/{property_id}/video/` | Yes + verified | `OWNER` |
+| Upload/replace property video | `POST` | `/api/users/properties/{property_id}/video/` | Yes + verified | `OWNER` |
+| Delete property video | `DELETE` | `/api/users/properties/{property_id}/video/` | Yes + verified | `OWNER` |
 | List units | `GET` | `/api/users/properties/{property_id}/units/` | Yes + verified | `OWNER` |
 | Create unit | `POST` | `/api/users/properties/{property_id}/units/` | Yes + verified | `OWNER` |
 | Create units in batch | `POST` | `/api/users/properties/{property_id}/units/batch/` | Yes + verified | `OWNER` |

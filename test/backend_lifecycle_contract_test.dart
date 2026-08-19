@@ -19,6 +19,7 @@ import 'package:landa_app/features/notifications/services/notification_service.d
 import 'package:landa_app/features/payments/controllers/payment_controller.dart';
 import 'package:landa_app/features/payments/models/payment_model.dart';
 import 'package:landa_app/features/payments/services/payment_service.dart';
+import 'package:landa_app/features/properties/services/property_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -170,28 +171,28 @@ void main() {
     },
   );
 
-  test('escrow status exposes the backend countdown and dispute window', () async {
-    final paymentService = PaymentService(
-      apiClient: ApiClient(
-        client: MockClient((request) async {
-          expect(request.method, 'GET');
-          expect(request.url.path, '/api/users/payments/payment-id/escrow/');
-          return _jsonResponse(
-            _paymentPayload(
-              escrowSecondsRemaining: 172800,
-              canDispute: true,
-            ),
-          );
-        }),
-      ),
-    );
+  test(
+    'escrow status exposes the backend countdown and dispute window',
+    () async {
+      final paymentService = PaymentService(
+        apiClient: ApiClient(
+          client: MockClient((request) async {
+            expect(request.method, 'GET');
+            expect(request.url.path, '/api/users/payments/payment-id/escrow/');
+            return _jsonResponse(
+              _paymentPayload(escrowSecondsRemaining: 172800, canDispute: true),
+            );
+          }),
+        ),
+      );
 
-    final escrow = await paymentService.getEscrowStatus('payment-id');
-    expect(escrow.status, PaymentStatus.escrow);
-    expect(escrow.escrowSecondsRemaining, 172800);
-    expect(escrow.canDispute, isTrue);
-    expect(escrow.disputedAt, isNull);
-  });
+      final escrow = await paymentService.getEscrowStatus('payment-id');
+      expect(escrow.status, PaymentStatus.escrow);
+      expect(escrow.escrowSecondsRemaining, 172800);
+      expect(escrow.canDispute, isTrue);
+      expect(escrow.disputedAt, isNull);
+    },
+  );
 
   test('disputing a payment sends the reason and closes the window', () async {
     final paymentService = PaymentService(
@@ -221,10 +222,7 @@ void main() {
     expect(disputed.status, PaymentStatus.disputed);
     expect(disputed.canDispute, isFalse);
     expect(disputed.disputedAt, isNotNull);
-    expect(
-      disputed.disputeReason,
-      'The unit was not handed over as agreed.',
-    );
+    expect(disputed.disputeReason, 'The unit was not handed over as agreed.');
   });
 
   test(
@@ -365,11 +363,7 @@ void main() {
         bedrooms: 2,
       ),
     );
-    expect(captured, {
-      'city': 'Lagos',
-      'max_rent': '300000',
-      'bedrooms': '2',
-    });
+    expect(captured, {'city': 'Lagos', 'max_rent': '300000', 'bedrooms': '2'});
     expect(listings.single.property.name, 'Sunset House');
     expect(listings.single.availableUnits.single.unitNumber, 'A1');
     expect(listings.single.lowestRent, 450000.00);
@@ -439,6 +433,209 @@ void main() {
     expect(approved.status, ApplicationStatus.approved);
   });
 
+  test('marketplace parses the documented response shape', () async {
+    // Verbatim from the guide's "Tenant Marketplace And Applications" example.
+    final service = MarketplaceService(
+      apiClient: ApiClient(
+        client: MockClient((request) async {
+          return _jsonResponse2([
+            {
+              'id': 'PROPERTY_UUID',
+              'name': 'Sunset House',
+              'address': '12 Listing Road',
+              'city': 'Lagos',
+              'state': 'Lagos',
+              'photo_urls': ['https://example.test/front.jpg'],
+              'cover_photo_url': 'https://example.test/front.jpg',
+              'video_url': 'https://example.test/tour.mp4',
+              'available_units': [
+                {
+                  'id': 'UNIT_UUID',
+                  'unit_number': 'A1',
+                  'bedrooms': 2,
+                  'bathrooms': 2,
+                  'rent_amount': '300000.00',
+                  'created_at': '2026-08-18T09:00:00Z',
+                },
+              ],
+            },
+          ]);
+        }),
+      ),
+    );
+
+    final listing = (await service.getMarketplace()).single;
+    expect(listing.property.name, 'Sunset House');
+    expect(listing.property.coverPhotoUrl, 'https://example.test/front.jpg');
+    expect(listing.property.videoUrl, 'https://example.test/tour.mp4');
+    expect(listing.property.hasVideo, isTrue);
+    expect(listing.property.displayImageUrl, 'https://example.test/front.jpg');
+    expect(listing.availableUnits.single.unitNumber, 'A1');
+  });
+
+  test(
+    'landlord applications parse the documented applicant payload',
+    () async {
+      final service = MarketplaceService(
+        apiClient: ApiClient(
+          client: MockClient((request) async {
+            return _jsonResponse2([
+              {
+                'id': 'APPLICATION_UUID',
+                'property': {
+                  'id': 'PROPERTY_UUID',
+                  'name': 'Sunset House',
+                  'address': '12 Listing Road',
+                  'city': 'Lagos',
+                  'state': 'Lagos',
+                },
+                'unit': {
+                  'id': 'UNIT_UUID',
+                  'unit_number': 'A1',
+                  'bedrooms': 2,
+                  'bathrooms': 2,
+                  'rent_amount': '300000.00',
+                },
+                'tenant': {
+                  'id': 'TENANT_UUID',
+                  'full_name': 'Ada Okafor',
+                  'email': 'ada@example.com',
+                  'phone_number': '+2348012345678',
+                },
+                'tenant_name': 'Ada Okafor',
+                'tenant_email': 'ada@example.com',
+                'tenant_phone': '+2348012345678',
+                'tenant_verification_status': 'VERIFIED',
+                'unit_number': 'A1',
+                'rent_amount': '300000.00',
+                'message': 'I am interested in this unit and can move in soon.',
+                'status': 'PENDING',
+                'agreement_id': null,
+                'applied_at': '2026-08-18T09:00:00Z',
+                'created_at': '2026-08-18T09:00:00Z',
+                'decided_at': null,
+              },
+            ]);
+          }),
+        ),
+      );
+
+      final application = (await service.getLandlordApplications()).single;
+      expect(application.tenantName, 'Ada Okafor');
+      expect(application.tenantEmail, 'ada@example.com');
+      expect(application.tenantPhone, '+2348012345678');
+      expect(application.tenantVerificationStatus, 'VERIFIED');
+      expect(application.hasApplicantDetails, isTrue);
+      expect(application.unitId, 'UNIT_UUID');
+      expect(application.rentAmount, '300000.00');
+      expect(application.hasMessage, isTrue);
+      expect(application.property?.name, 'Sunset House');
+      expect(application.agreementId, isNull);
+      expect(application.decidedAt, isNull);
+    },
+  );
+
+  test('applying sends an optional message and omits it when blank', () async {
+    Map<String, dynamic>? captured;
+    final service = MarketplaceService(
+      apiClient: ApiClient(
+        client: MockClient((request) async {
+          captured = jsonDecode(request.body) as Map<String, dynamic>;
+          return _jsonResponse({
+            'id': 'application-id',
+            'unit': 'unit-id',
+            'unit_number': 'A1',
+            'status': 'PENDING',
+            'message': captured?['message'] ?? '',
+            'created_at': '2026-08-18T09:00:00Z',
+          }, 201);
+        }),
+      ),
+    );
+
+    await service.applyForUnit('unit-id', message: '  Keen to move in.  ');
+    expect(captured, {'unit': 'unit-id', 'message': 'Keen to move in.'});
+
+    // A blank note must not be sent as an empty string.
+    await service.applyForUnit('unit-id', message: '   ');
+    expect(captured, {'unit': 'unit-id'});
+
+    await service.applyForUnit('unit-id');
+    expect(captured, {'unit': 'unit-id'});
+  });
+
+  test('property listing photo and video endpoints round-trip', () async {
+    var deletedPhoto = false;
+    var deletedVideo = false;
+    final service = PropertyService(
+      apiClient: ApiClient(
+        client: MockClient((request) async {
+          final path = request.url.path;
+          if (path == '/api/users/properties/prop-1/photos/' &&
+              request.method == 'GET') {
+            return _jsonResponse2([
+              {
+                'id': 'PHOTO_UUID',
+                'image_url': 'https://example.test/front.jpg',
+                'created_at': '2026-08-18T09:30:00Z',
+              },
+            ]);
+          }
+          if (path == '/api/users/properties/prop-1/photos/PHOTO_UUID/' &&
+              request.method == 'DELETE') {
+            deletedPhoto = true;
+            // Deletion answers 204 with no body.
+            return http.Response('', 204);
+          }
+          if (path == '/api/users/properties/prop-1/video/') {
+            if (request.method == 'GET') {
+              return _jsonResponse({
+                'video_url': 'https://example.test/tour.mp4',
+              });
+            }
+            if (request.method == 'DELETE') {
+              deletedVideo = true;
+              return http.Response('', 204);
+            }
+          }
+          fail('Unexpected request: ${request.method} ${request.url}');
+        }),
+      ),
+    );
+
+    final photos = await service.getPropertyPhotos('prop-1');
+    expect(photos.single.id, 'PHOTO_UUID');
+    expect(photos.single.imageUrl, 'https://example.test/front.jpg');
+
+    expect(
+      await service.getPropertyVideo('prop-1'),
+      'https://example.test/tour.mp4',
+    );
+
+    await service.deletePropertyPhoto(
+      propertyId: 'prop-1',
+      photoId: 'PHOTO_UUID',
+    );
+    await service.deletePropertyVideo('prop-1');
+    expect(deletedPhoto, isTrue);
+    expect(
+      deletedVideo,
+      isTrue,
+      reason: '204 No Content must be treated as success, not a parse failure',
+    );
+  });
+
+  test('a property with no video reports none', () async {
+    final service = PropertyService(
+      apiClient: ApiClient(
+        client: MockClient(
+          (request) async => _jsonResponse({'video_url': null}),
+        ),
+      ),
+    );
+    expect(await service.getPropertyVideo('prop-1'), isNull);
+  });
+
   test('applicant details parse from flattened or nested payloads', () {
     final flattened = RentalApplication.fromJson({
       'id': 'a1',
@@ -482,9 +679,18 @@ void main() {
   });
 
   test('an unrecognised application status is never treated as pending', () {
-    expect(ApplicationStatus.fromString('APPROVED'), ApplicationStatus.approved);
-    expect(ApplicationStatus.fromString('REJECTED'), ApplicationStatus.rejected);
-    expect(ApplicationStatus.fromString('ESCALATED'), ApplicationStatus.unknown);
+    expect(
+      ApplicationStatus.fromString('APPROVED'),
+      ApplicationStatus.approved,
+    );
+    expect(
+      ApplicationStatus.fromString('REJECTED'),
+      ApplicationStatus.rejected,
+    );
+    expect(
+      ApplicationStatus.fromString('ESCALATED'),
+      ApplicationStatus.unknown,
+    );
     expect(ApplicationStatus.unknown.isPending, isFalse);
   });
 

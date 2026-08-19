@@ -36,10 +36,12 @@ class ActiveUnitsList extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        ...units.map((unit) => Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: _ActiveUnitCard(unit: unit),
-            )),
+        ...units.map(
+          (unit) => Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: _ActiveUnitCard(unit: unit),
+          ),
+        ),
       ],
     );
   }
@@ -73,7 +75,7 @@ class _ActiveUnitCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -88,7 +90,7 @@ class _ActiveUnitCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.home, color: AppTheme.primaryColor),
@@ -120,7 +122,9 @@ class _ActiveUnitCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isPaid ? AppTheme.secondaryColor.withOpacity(0.1) : AppTheme.warningColor.withOpacity(0.1),
+                  color: isPaid
+                      ? AppTheme.secondaryColor.withValues(alpha: 0.1)
+                      : AppTheme.warningColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -129,7 +133,9 @@ class _ActiveUnitCard extends StatelessWidget {
                     Icon(
                       isPaid ? Icons.check_circle_outline : Icons.access_time,
                       size: 12,
-                      color: isPaid ? AppTheme.secondaryColor : AppTheme.warningColor,
+                      color: isPaid
+                          ? AppTheme.secondaryColor
+                          : AppTheme.warningColor,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -137,7 +143,9 @@ class _ActiveUnitCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: isPaid ? AppTheme.secondaryColor : AppTheme.warningColor,
+                        color: isPaid
+                            ? AppTheme.secondaryColor
+                            : AppTheme.warningColor,
                       ),
                     ),
                   ],
@@ -192,7 +200,9 @@ class _ActiveUnitCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: isPaid ? AppTheme.primaryColor : AppTheme.warningColor,
+                      color: isPaid
+                          ? AppTheme.primaryColor
+                          : AppTheme.warningColor,
                     ),
                   ),
                 ],

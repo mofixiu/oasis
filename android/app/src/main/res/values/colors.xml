@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cold-start window background. Matches AppTheme.slateSurfaceColor /
+         AppTheme.blackColor so the OS-drawn splash is the same colour as the
+         Flutter splash that replaces it. -->
+    <color name="launch_background">#F1F4F8</color>
+    <color name="launch_background_dark">#101010</color>
+</resources>

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_shimmer.dart';
+import '../../../core/widgets/landa_state_views.dart';
 import '../controllers/notification_controller.dart';
 import '../models/notification_model.dart';
 
@@ -76,55 +78,81 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildBody(BuildContext context, NotificationController controller) {
     if (!controller.hasLoaded ||
         (controller.isLoading && controller.notifications.isEmpty)) {
-      return ListView.separated(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        itemCount: 5,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, __) => LandaShimmer(
-          child: Container(
-            height: 78,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor(context),
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
+      return const LandaContentSwitcher(
+        stateKey: 'loading',
+        child: LandaSkeletonList(
+          count: 5,
+          hasAvatar: true,
+          hasPill: false,
+          padding: EdgeInsets.fromLTRB(20, 8, 20, 32),
         ),
       );
     }
 
-    if (controller.errorMessage != null && controller.notifications.isEmpty) {
-      return _EmptyState(
-        icon: Icons.cloud_off_outlined,
-        title: 'Could not load notifications',
-        message: controller.errorMessage!,
-        actionLabel: 'Try again',
-        onAction: controller.loadNotifications,
+    if (controller.hasError && controller.notifications.isEmpty) {
+      return LandaContentSwitcher(
+        stateKey: 'error',
+        child: LandaErrorState(
+          message: controller.errorMessage,
+          isConnectionError: controller.errorIsConnection,
+          onRetry: controller.loadNotifications,
+          padding: const EdgeInsets.fromLTRB(32, 56, 32, 32),
+        ),
       );
     }
 
     if (controller.notifications.isEmpty) {
-      return _EmptyState(
-        icon: Icons.notifications_none_outlined,
-        title: controller.hasActiveFilter
-            ? 'Nothing matches this filter'
-            : 'You are all caught up',
-        message: controller.hasActiveFilter
-            ? 'Try a different filter to see more activity.'
-            : 'Agreement, payment, and escrow updates will appear here.',
-        actionLabel: controller.hasActiveFilter ? 'Clear filters' : null,
-        onAction: controller.hasActiveFilter ? controller.clearFilters : null,
+      return LandaContentSwitcher(
+        stateKey: 'empty',
+        child: LandaEmptyState(
+          icon: controller.hasActiveFilter
+              ? Icons.filter_alt_off_outlined
+              : Icons.notifications_none_outlined,
+          title: controller.hasActiveFilter
+              ? 'Nothing matches this filter'
+              : 'You are all caught up',
+          message: controller.hasActiveFilter
+              ? 'Try a different filter to see more activity.'
+              : 'Agreement, payment, and escrow updates will appear here.',
+          actionLabel: controller.hasActiveFilter ? 'Clear filters' : 'Refresh',
+          actionIcon: controller.hasActiveFilter
+              ? Icons.filter_alt_off_rounded
+              : Icons.refresh_rounded,
+          onAction: controller.hasActiveFilter
+              ? controller.clearFilters
+              : controller.loadNotifications,
+          padding: const EdgeInsets.fromLTRB(32, 64, 32, 32),
+        ),
       );
     }
 
-    return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-      itemCount: controller.notifications.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => _NotificationCard(
-        notification: controller.notifications[index],
-        onTap: () =>
-            controller.markRead(controller.notifications[index].id),
+    return LandaContentSwitcher(
+      stateKey: 'content',
+      child: Column(
+        children: [
+          if (controller.hasError)
+            LandaErrorBanner(
+              message: controller.errorMessage!,
+              isConnectionError: controller.errorIsConnection,
+              onRetry: controller.loadNotifications,
+            ),
+          Expanded(
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              itemCount: controller.notifications.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) => LandaEntrance(
+                index: index,
+                child: _NotificationCard(
+                  notification: controller.notifications[index],
+                  onTap: () =>
+                      controller.markRead(controller.notifications[index].id),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -214,9 +242,7 @@ class _Chip extends StatelessWidget {
       ),
       backgroundColor: AppTheme.surfaceColor(context),
       selectedColor: color,
-      side: BorderSide(
-        color: selected ? color : AppTheme.borderColor(context),
-      ),
+      side: BorderSide(color: selected ? color : AppTheme.borderColor(context)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
@@ -331,68 +357,5 @@ class _NotificationCard extends StatelessWidget {
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
     return '${parsed.toLocal()}'.split(' ').first;
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Stays scrollable so pull-to-refresh still works when empty.
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(32, 80, 32, 32),
-      children: [
-        Icon(icon, size: 56, color: AppTheme.mutedTextColor(context)),
-        const SizedBox(height: 16),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryTextColor(context),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          message,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13,
-            height: 1.4,
-            color: AppTheme.secondaryTextColor(context),
-          ),
-        ),
-        if (actionLabel != null && onAction != null) ...[
-          const SizedBox(height: 20),
-          Center(
-            child: TextButton(
-              onPressed: onAction,
-              child: Text(
-                actionLabel!,
-                style: const TextStyle(
-                  color: AppTheme.actionColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
   }
 }

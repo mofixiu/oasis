@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -24,6 +25,25 @@ class ConsentRequiredException extends ApiException {
   ConsentRequiredException(super.message, {super.statusCode, super.errors});
 }
 
+/// Thrown when the request never reached the backend — no internet, DNS
+/// failure, TLS handshake failure or timeout. Distinct from [ApiException] so
+/// screens can offer "Try again" instead of showing a server-side message the
+/// user cannot act on.
+class NetworkException extends ApiException {
+  NetworkException([
+    super.message = 'No internet connection. Check your network and try again.',
+  ]);
+}
+
+/// True when [error] means "we could not reach the server", as opposed to the
+/// server answering with a rejection. Drives the retry-able error state.
+bool isConnectionError(Object error) =>
+    error is NetworkException ||
+    error is SocketException ||
+    error is TimeoutException ||
+    error is HandshakeException ||
+    error is http.ClientException;
+
 /// Extracts a clean, user-presentable message from a caught error.
 ///
 /// [ApiException.message] is already the backend's human-readable detail
@@ -31,6 +51,9 @@ class ConsentRequiredException extends ApiException {
 /// `ApiException(403): ...` debug string in toasts/banners.
 String friendlyErrorMessage(Object error) {
   if (error is ApiException) return error.message;
+  // Raw transport failures stringify to things like "SocketException: Failed
+  // host lookup" — never show that to a user.
+  if (isConnectionError(error)) return NetworkException().message;
   return error.toString();
 }
 
@@ -45,6 +68,41 @@ class ApiClient {
   final http.Client _client;
 
   ApiClient({http.Client? client}) : _client = client ?? http.Client();
+
+  /// Ordinary requests give up after this long. Without a ceiling a dropped
+  /// connection leaves the caller's spinner running indefinitely instead of
+  /// surfacing a retry-able error.
+  static const Duration requestTimeout = Duration(seconds: 30);
+
+  /// Uploads carry file bytes, so they get a far longer leash.
+  static const Duration uploadTimeout = Duration(minutes: 3);
+
+  /// Runs an HTTP call, converting every "never reached the server" failure
+  /// into a [NetworkException] so callers get one type to test for.
+  Future<T> _guard<T>(
+    Future<T> Function() send, {
+    Duration timeout = requestTimeout,
+  }) async {
+    try {
+      return await send().timeout(timeout);
+    } on TimeoutException {
+      debugPrint('⌛ [API TIMEOUT] No response within ${timeout.inSeconds}s.');
+      throw NetworkException(
+        'The server took too long to respond. Please try again.',
+      );
+    } on SocketException catch (e) {
+      debugPrint('📡 [API OFFLINE] $e');
+      throw NetworkException();
+    } on HandshakeException catch (e) {
+      debugPrint('🔒 [API TLS FAILURE] $e');
+      throw NetworkException(
+        'Could not establish a secure connection. Please try again.',
+      );
+    } on http.ClientException catch (e) {
+      debugPrint('📡 [API CLIENT FAILURE] $e');
+      throw NetworkException();
+    }
+  }
 
   /// Fired whenever any request hits the backend's verification gate (403
   /// "Complete identity verification before accessing this feature."),
@@ -85,7 +143,8 @@ class ApiClient {
   }) async {
     var url = Uri.parse('${ApiConstants.baseUrl}$path');
     final filters = <String, String>{
-      for (final entry in (queryParameters ?? const <String, String?>{}).entries)
+      for (final entry
+          in (queryParameters ?? const <String, String?>{}).entries)
         if (entry.value != null) entry.key: entry.value!,
     };
     if (filters.isNotEmpty) {
@@ -101,7 +160,7 @@ class ApiClient {
     );
 
     final stopwatch = Stopwatch()..start();
-    var response = await _client.get(url, headers: headers);
+    var response = await _guard(() => _client.get(url, headers: headers));
     stopwatch.stop();
 
     debugPrint(
@@ -117,7 +176,7 @@ class ApiClient {
           requiresAuth: requiresAuth,
         );
         debugPrint('🔄 [API GET RETRY WITH NEW TOKEN] -> URL: $url');
-        response = await _client.get(url, headers: newHeaders);
+        response = await _guard(() => _client.get(url, headers: newHeaders));
         debugPrint(
           '📩 [API GET RETRY RESPONSE] <- Status: ${response.statusCode}',
         );
@@ -142,7 +201,9 @@ class ApiClient {
     );
 
     final stopwatch = Stopwatch()..start();
-    var response = await _client.post(url, headers: headers, body: encodedBody);
+    var response = await _guard(
+      () => _client.post(url, headers: headers, body: encodedBody),
+    );
     stopwatch.stop();
 
     debugPrint(
@@ -158,10 +219,8 @@ class ApiClient {
           requiresAuth: requiresAuth,
         );
         debugPrint('🔄 [API POST RETRY WITH NEW TOKEN] -> URL: $url');
-        response = await _client.post(
-          url,
-          headers: newHeaders,
-          body: encodedBody,
+        response = await _guard(
+          () => _client.post(url, headers: newHeaders, body: encodedBody),
         );
         debugPrint(
           '📩 [API POST RETRY RESPONSE] <- Status: ${response.statusCode}',
@@ -187,10 +246,8 @@ class ApiClient {
     );
 
     final stopwatch = Stopwatch()..start();
-    var response = await _client.patch(
-      url,
-      headers: headers,
-      body: encodedBody,
+    var response = await _guard(
+      () => _client.patch(url, headers: headers, body: encodedBody),
     );
     stopwatch.stop();
 
@@ -207,13 +264,55 @@ class ApiClient {
           requiresAuth: requiresAuth,
         );
         debugPrint('🔄 [API PATCH RETRY WITH NEW TOKEN] -> URL: $url');
-        response = await _client.patch(
-          url,
-          headers: newHeaders,
-          body: encodedBody,
+        response = await _guard(
+          () => _client.patch(url, headers: newHeaders, body: encodedBody),
         );
         debugPrint(
           '📩 [API PATCH RETRY RESPONSE] <- Status: ${response.statusCode}',
+        );
+      }
+    }
+
+    return _processResponse(response, path: path);
+  }
+
+  /// Perform DELETE request.
+  ///
+  /// Deletion endpoints answer `204 No Content`, so an empty body here is a
+  /// success rather than a parse failure.
+  Future<dynamic> delete(String path, {bool requiresAuth = true}) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}$path');
+    final headers = await _getHeaders(
+      isJson: false,
+      requiresAuth: requiresAuth,
+    );
+
+    debugPrint(
+      '🌐 [API DELETE REQUEST] -> URL: $url | Auth: ${headers.containsKey('Authorization')}',
+    );
+
+    final stopwatch = Stopwatch()..start();
+    var response = await _guard(() => _client.delete(url, headers: headers));
+    stopwatch.stop();
+
+    debugPrint(
+      '📩 [API DELETE RESPONSE] <- URL: $url | Status: ${response.statusCode} | Duration: ${stopwatch.elapsedMilliseconds}ms',
+    );
+
+    if (response.statusCode == 401 && requiresAuth) {
+      debugPrint(
+        '⚠️ [API DELETE 401 UNAUTHORIZED] Attempting token refresh...',
+      );
+      final refreshed = await _attemptRefreshToken();
+      if (refreshed) {
+        final newHeaders = await _getHeaders(
+          isJson: false,
+          requiresAuth: requiresAuth,
+        );
+        debugPrint('🔄 [API DELETE RETRY WITH NEW TOKEN] -> URL: $url');
+        response = await _guard(() => _client.delete(url, headers: newHeaders));
+        debugPrint(
+          '📩 [API DELETE RETRY RESPONSE] <- Status: ${response.statusCode}',
         );
       }
     }
@@ -269,7 +368,10 @@ class ApiClient {
     // its own throwaway http.Client() and would silently ignore any client
     // injected into this ApiClient (e.g. a MockClient in tests), always
     // hitting the real network instead.
-    final streamedResponse = await _client.send(request);
+    final streamedResponse = await _guard(
+      () => _client.send(request),
+      timeout: uploadTimeout,
+    );
     final response = await http.Response.fromStream(streamedResponse);
     stopwatch.stop();
 
@@ -297,7 +399,10 @@ class ApiClient {
             contentType: mediaType,
           ),
         );
-        final retryStreamed = await _client.send(retryRequest);
+        final retryStreamed = await _guard(
+          () => _client.send(retryRequest),
+          timeout: uploadTimeout,
+        );
         final retryResponse = await http.Response.fromStream(retryStreamed);
         debugPrint(
           '📩 [API MULTIPART RETRY RESPONSE] <- Status: ${retryResponse.statusCode}',
@@ -344,13 +449,19 @@ class ApiClient {
       '🌐 [API MULTIPART POST REQUEST] -> URL: $url | Files: ${files.length}',
     );
     var response = await http.Response.fromStream(
-      await _client.send(await buildRequest()),
+      await _guard(
+        () async => _client.send(await buildRequest()),
+        timeout: uploadTimeout,
+      ),
     );
     if (response.statusCode == 401 &&
         requiresAuth &&
         await _attemptRefreshToken()) {
       response = await http.Response.fromStream(
-        await _client.send(await buildRequest()),
+        await _guard(
+          () async => _client.send(await buildRequest()),
+          timeout: uploadTimeout,
+        ),
       );
     }
     return _processResponse(response, path: path);
@@ -383,13 +494,15 @@ class ApiClient {
       final url = Uri.parse(
         '${ApiConstants.baseUrl}${ApiConstants.refreshTokenEndpoint}',
       );
-      final response = await _client.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({'refresh': refreshToken}),
+      final response = await _guard(
+        () => _client.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({'refresh': refreshToken}),
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -400,6 +513,11 @@ class ApiClient {
           return true;
         }
       }
+    } on NetworkException catch (e) {
+      // Offline is not "your session expired" — dropping the tokens here
+      // would sign the user out every time the network blips.
+      debugPrint('📡 [TOKEN REFRESH UNREACHABLE] ${e.message}');
+      return false;
     } catch (e) {
       debugPrint('❌ [TOKEN REFRESH FAILED] Error: $e');
     }

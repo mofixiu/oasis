@@ -104,18 +104,15 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     final isDarkMode = AppTheme.isDarkMode(context);
     final backgroundColor = AppTheme.pageBackground(context);
+    // The tagline is the only line of copy on the screen, so it is set in
+    // full-strength brand colour. At 0.35 alpha it read as a rendering
+    // artefact rather than a deliberate mark.
     final accentTextColor = isDarkMode
-        ? AppTheme.whiteColor.withOpacity(0.55)
-        : AppTheme.primaryColor.withOpacity(0.35);
+        ? AppTheme.sandColor
+        : AppTheme.terracottaColor;
     final footerTextColor = isDarkMode
-        ? AppTheme.whiteColor.withOpacity(0.4)
-        : AppTheme.primaryColor.withOpacity(0.25);
-    final logoShellColor = isDarkMode
-        ? AppTheme.whiteColor.withOpacity(0.08)
-        : Colors.transparent;
-    final logoShellBorder = isDarkMode
-        ? AppTheme.whiteColor.withOpacity(0.08)
-        : Colors.transparent;
+        ? AppTheme.whiteColor.withValues(alpha: 0.42)
+        : AppTheme.profileColor.withValues(alpha: 0.55);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -131,30 +128,23 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isDarkMode ? 24 : 0,
-                        vertical: isDarkMode ? 20 : 0,
-                      ),
-                      decoration: BoxDecoration(
-                        color: logoShellColor,
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: logoShellBorder),
-                      ),
-                      child: Image.asset(
-                        'assets/images/newlogonobackground.png',
-                        height: 52,
-                        fit: BoxFit.contain,
-                      ),
+                    // The navy wordmark disappears on the dark background, so
+                    // dark mode gets the white-on-transparent variant.
+                    Image.asset(
+                      isDarkMode
+                          ? 'assets/images/logo_wordmark_light.png'
+                          : 'assets/images/newlogonobackground.png',
+                      height: 104,
+                      fit: BoxFit.contain,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 18),
                     Text(
                       'RADICAL CLARITY',
                       style: TextStyle(
                         color: accentTextColor,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 3.5,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 4.5,
                       ),
                     ),
                   ],

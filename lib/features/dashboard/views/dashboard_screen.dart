@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/landa_haptics.dart';
 import '../../../core/widgets/landa_app_bar.dart';
+import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_shimmer.dart';
+import '../../../core/widgets/landa_state_views.dart';
 import '../../agreements/controllers/agreement_controller.dart';
 import '../../agreements/models/agreement_model.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
@@ -39,9 +43,10 @@ class _TenantAgreementCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppTheme.surfaceColor(context),
+        borderRadius: AppTheme.cornerLg,
+        border: Border.all(color: AppTheme.borderColor(context)),
+        boxShadow: AppTheme.cardShadow(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,12 +118,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadTenantData());
   }
 
-  void _loadTenantData() {
-    context.read<LandlordController>().loadTenantAssignedUnit();
-    context.read<AgreementController>().loadAgreements();
-    context.read<PaymentController>().loadPayments();
-    context.read<AuthController>().refreshProfile();
-    context.read<NotificationController>().loadNotifications();
+  /// Awaits every fetch so pull-to-refresh and the retry button both know
+  /// when the dashboard has actually finished reloading.
+  Future<void> _loadTenantData() async {
+    await Future.wait([
+      context.read<LandlordController>().loadTenantAssignedUnit(),
+      context.read<AgreementController>().loadAgreements(),
+      context.read<PaymentController>().loadPayments(),
+      context.read<AuthController>().refreshProfile(),
+      context.read<NotificationController>().loadNotifications(),
+    ]);
   }
 
   @override
@@ -137,20 +146,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
         agreementCtrl.isLoading ||
         paymentCtrl.isLoading;
 
+    // The dashboard is stitched from three independent fetches, so it reports
+    // failure the way the user experiences it: if nothing at all loaded it is
+    // a dead page and gets the full retry state; if some of it loaded, the
+    // failure is a banner over the content that did arrive.
+    final failedControllers = [
+      landlordCtrl,
+      agreementCtrl,
+      paymentCtrl,
+    ].where((c) => c.hasError).toList();
+    final hasAnyContent =
+        assignedUnit != null ||
+        tenantAgreements.isNotEmpty ||
+        paymentCtrl.payments.isNotEmpty;
+    final isOffline = failedControllers.any((c) => c.errorIsConnection);
+    final failureMessage = failedControllers.isEmpty
+        ? null
+        : failedControllers.first.errorMessage;
+
     final displayName = user?.email.split("@").first ?? "tenant";
     final secondaryTextColor = AppTheme.secondaryTextColor(context);
+
+    if (!isLoading && failureMessage != null && !hasAnyContent) {
+      return Scaffold(
+        backgroundColor: AppTheme.pageBackground(context),
+        appBar: const LandaAppBar(),
+        body: RefreshIndicator(
+          onRefresh: _loadTenantData,
+          child: LandaErrorState(
+            message: failureMessage,
+            isConnectionError: isOffline,
+            onRetry: _loadTenantData,
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
       appBar: const LandaAppBar(),
       body: RefreshIndicator(
-        onRefresh: () async => _loadTenantData(),
+        onRefresh: _loadTenantData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (failureMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: LandaErrorBanner(
+                    // Banner owns its own horizontal inset elsewhere; here the
+                    // page padding already provides it.
+                    message: failureMessage,
+                    isConnectionError: isOffline,
+                    onRetry: _loadTenantData,
+                  ),
+                ),
               // Verification prompt. Only shown while unverified — once the
               // user is verified there is nothing to act on, so we don't
               // occupy the top of the dashboard with a status badge.
@@ -177,7 +230,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const IdentityVerificationScreen(),
+                              builder: (_) =>
+                                  const IdentityVerificationScreen(),
                             ),
                           ),
                           child: const Column(
@@ -212,30 +266,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Single-Line Greeting Header
               Text(
                 'Welcome, $displayName',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.blackColor,
+                // profileTextColor rather than a hard-coded black: the old
+                // value rendered black-on-black in dark mode.
+                style: AppTheme.screenTitle(
+                  context,
+                  color: AppTheme.profileTextColor(context),
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 'Manage your unit tenancy, sign agreements & track escrow payments.',
-                style: TextStyle(fontSize: 13, color: secondaryTextColor),
+                style: AppTheme.bodyText(context, color: secondaryTextColor),
               ),
               const SizedBox(height: 24),
 
               // Assigned Unit Section
-              const Text(
-                'MY ASSIGNED UNIT',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              Text('MY ASSIGNED UNIT', style: AppTheme.labelText(context)),
               const SizedBox(height: 8),
               if (isLoading && assignedUnit == null)
                 const ShimmerCardSkeleton()
@@ -298,7 +345,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             style: TextStyle(fontSize: 13, color: Colors.grey),
                           ),
                           Text(
-                            '₦${assignedUnit.rentAmount}',
+                            LandaCurrency.format(assignedUnit.rentAmount),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -355,49 +402,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 24),
 
               // Tenancy Agreement Inbox
-              const Text(
-                'TENANCY AGREEMENTS',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              Text('TENANCY AGREEMENTS', style: AppTheme.labelText(context)),
               const SizedBox(height: 8),
               if (isLoading && tenantAgreements.isEmpty)
                 const ShimmerCardSkeleton()
               else if (tenantAgreements.isNotEmpty)
                 Column(
-                  children: tenantAgreements
-                      .map(
-                        (agreement) => Padding(
+                  children: [
+                    for (final (index, agreement) in tenantAgreements.indexed)
+                      LandaEntrance(
+                        index: index,
+                        child: Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: _TenantAgreementCard(agreement: agreement),
                         ),
-                      )
-                      .toList(),
+                      ),
+                  ],
                 )
               else
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
+                    color: AppTheme.surfaceColor(context),
+                    borderRadius: AppTheme.cornerLg,
+                    border: Border.all(color: AppTheme.borderColor(context)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Icon(
                         Icons.assignment_outlined,
-                        size: 36,
-                        color: Colors.grey,
+                        size: 32,
+                        color: AppTheme.mutedTextColor(context),
                       ),
-                      SizedBox(width: 16),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Text(
                           'No pending tenancy agreement to sign.',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                          style: AppTheme.bodyText(context),
                         ),
                       ),
                     ],
@@ -406,15 +447,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 24),
 
               // Recent Payment Transactions Section
-              const Text(
-                'RECENT PAYMENTS',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              Text('RECENT PAYMENTS', style: AppTheme.labelText(context)),
               const SizedBox(height: 8),
               if (isLoading && paymentCtrl.payments.isEmpty)
                 const ShimmerCardSkeleton()
@@ -431,60 +464,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final isReleased = p.status == PaymentStatus.released;
                     final isDisputed = p.status == PaymentStatus.disputed;
 
-                    return ListTile(
-                      tileColor: AppTheme.surfaceColor(context),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: AppTheme.borderColor(context)),
-                      ),
-                      leading: CircleAvatar(
-                        backgroundColor: isDisputed
-                            ? AppTheme.disputeSurfaceColor
-                            : isReleased
-                            ? AppTheme.successSurfaceColor
-                            : AppTheme.vacantSurfaceColor,
-                        child: Icon(
-                          isDisputed
-                              ? Icons.gavel
-                              : isReleased
-                              ? Icons.verified
-                              : Icons.lock_clock,
-                          color: isDisputed
-                              ? AppTheme.disputeColor
-                              : isReleased
-                              ? AppTheme.successColor
-                              : AppTheme.primaryColor,
-                          size: 18,
-                        ),
-                      ),
-                      title: Text(
-                        '₦${p.amount}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      subtitle: Text(
-                        p.status.label,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      trailing: const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 14,
-                        color: Colors.grey,
-                      ),
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(24),
-                            ),
+                    return LandaEntrance(
+                      index: index,
+                      child: ListTile(
+                        tileColor: AppTheme.surfaceColor(context),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: AppTheme.borderColor(context),
                           ),
-                          builder: (_) => PaymentReceiptModal(payment: p),
-                        );
-                      },
+                        ),
+                        leading: CircleAvatar(
+                          backgroundColor: isDisputed
+                              ? AppTheme.disputeSurfaceColor
+                              : isReleased
+                              ? AppTheme.successSurfaceColor
+                              : AppTheme.vacantSurfaceColor,
+                          child: Icon(
+                            isDisputed
+                                ? Icons.gavel
+                                : isReleased
+                                ? Icons.verified
+                                : Icons.lock_clock,
+                            color: isDisputed
+                                ? AppTheme.disputeColor
+                                : isReleased
+                                ? AppTheme.successColor
+                                : AppTheme.primaryColor,
+                            size: 18,
+                          ),
+                        ),
+                        title: Text(
+                          LandaCurrency.format(p.amount),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                        subtitle: Text(
+                          p.status.label,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
+                        onTap: () {
+                          LandaHaptics.tap();
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(24),
+                              ),
+                            ),
+                            builder: (_) => PaymentReceiptModal(payment: p),
+                          );
+                        },
+                      ),
                     );
                   },
                 )
@@ -492,13 +531,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
+                    color: AppTheme.surfaceColor(context),
+                    borderRadius: AppTheme.cornerLg,
+                    border: Border.all(color: AppTheme.borderColor(context)),
                   ),
-                  child: const Text(
+                  child: Text(
                     'No payment receipts found.',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                    style: AppTheme.bodyText(context),
                   ),
                 ),
             ],

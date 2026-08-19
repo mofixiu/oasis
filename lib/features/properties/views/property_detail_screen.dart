@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/landa_pressable.dart';
+import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/utils/landa_currency.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
 import '../controllers/landlord_controller.dart';
 import '../models/property_model.dart';
+import 'widgets/property_media_manager.dart';
 
 class ManagedPropertyDetailScreen extends StatefulWidget {
   final PropertyModel property;
@@ -58,75 +62,76 @@ class _ManagedPropertyDetailScreenState
         final currentUnits =
             controller.propertyUnits[widget.property.id] ?? widget.units;
         return RefreshIndicator(
-          onRefresh: () =>
-              controller.refreshPropertyDetail(widget.property.id),
+          onRefresh: () => controller.refreshPropertyDetail(widget.property.id),
           child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          children: [
-            _PropertyHero(property: currentProperty),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            children: [
+              // The property itself was passed in, so a failed detail refresh
+              // never blanks the page — it reports itself over the stale copy.
+              if (controller.hasError)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: LandaErrorBanner(
+                    message: controller.errorMessage!,
+                    isConnectionError: controller.errorIsConnection,
+                    onRetry: () =>
+                        controller.refreshPropertyDetail(widget.property.id),
+                  ),
+                ),
+              _PropertyHero(property: currentProperty),
+              const SizedBox(height: 24),
+              PropertyMediaManager(property: currentProperty),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('UNITS', style: AppTheme.labelText(context)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${currentUnits.length} total',
+                          style: AppTheme.screenTitle(
+                            context,
+                            color: AppTheme.primaryColor,
+                          ).copyWith(fontSize: AppTheme.textXl),
+                        ),
+                      ],
+                    ),
+                  ),
+                  LandaButton(
+                    label: 'Add units',
+                    icon: Icons.add_rounded,
+                    expand: false,
+                    onPressed: widget.onAddUnits,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (currentUnits.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceColor(context),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Column(
                     children: [
-                      const Text(
-                        'UNITS',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Icon(
+                        Icons.meeting_room_outlined,
+                        size: 36,
+                        color: Colors.grey,
                       ),
-                      Text(
-                        '${currentUnits.length} total',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      SizedBox(height: 8),
+                      Text('No units added yet'),
                     ],
                   ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: widget.onAddUnits,
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text(
-                    'Add units',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.actionColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (currentUnits.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor(context),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Column(
-                  children: [
-                    Icon(
-                      Icons.meeting_room_outlined,
-                      size: 36,
-                      color: Colors.grey,
-                    ),
-                    SizedBox(height: 8),
-                    Text('No units added yet'),
-                  ],
-                ),
+              ...currentUnits.map(
+                (unit) => _UnitCard(unit: unit, pageContext: context),
               ),
-            ...currentUnits.map(
-              (unit) => _UnitCard(unit: unit, pageContext: context),
-            ),
-          ],
+            ],
           ),
         );
       },
@@ -151,9 +156,9 @@ class _PropertyHero extends StatelessWidget {
         SizedBox(
           height: 190,
           width: double.infinity,
-          child: property.photoUrls.isNotEmpty
+          child: property.displayImageUrl != null
               ? Image.network(
-                  property.photoUrls.first,
+                  property.displayImageUrl!,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => _fallback(),
                 )
@@ -298,7 +303,7 @@ class _UnitCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${unit.bedrooms} bed · ${unit.bathrooms} bath · ₦${unit.rentAmount}/yr',
+                    '${unit.bedrooms} bed · ${unit.bathrooms} bath · ${LandaCurrency.perYear(unit.rentAmount)}',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 5),
@@ -370,7 +375,7 @@ class _UnitInfoSheet extends StatelessWidget {
           'Layout',
           '${unit.bedrooms} bedroom · ${unit.bathrooms} bathroom',
         ),
-        _InfoRow('Annual rent', '₦${unit.rentAmount}'),
+        _InfoRow('Annual rent', LandaCurrency.format(unit.rentAmount)),
         _InfoRow('Occupancy', unit.isOccupied ? 'Occupied' : 'Vacant'),
         if (unit.isOccupied) ...[
           _InfoRow('Tenant', unit.tenant ?? 'Tenant assigned'),

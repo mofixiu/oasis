@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
-import '../../../core/network/api_client.dart';
+import '../../../core/network/load_failure.dart';
 import '../../../core/session/session_scope.dart';
 import '../../agreements/models/agreement_model.dart';
 import '../models/payment_model.dart';
 import '../services/payment_service.dart';
 
 class PaymentController extends ChangeNotifier
+    with LoadFailureState
     implements SessionScopedController {
   final PaymentService _paymentService;
 
@@ -14,9 +15,6 @@ class PaymentController extends ChangeNotifier
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
-
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
 
   List<PaymentModel> _payments = [];
   List<PaymentModel> get payments => _payments;
@@ -28,7 +26,7 @@ class PaymentController extends ChangeNotifier
   void resetSessionState() {
     _payments = [];
     _selectedReceipt = null;
-    _errorMessage = null;
+    clearFailure();
     _isLoading = false;
     notifyListeners();
   }
@@ -36,13 +34,13 @@ class PaymentController extends ChangeNotifier
   /// Load payments
   Future<void> loadPayments() async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
       _payments = await _paymentService.getPayments();
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -54,14 +52,15 @@ class PaymentController extends ChangeNotifier
     TenancyAgreementModel agreement,
   ) async {
     if (!agreement.canPayRent) {
-      _errorMessage =
-          'Rent payment is locked until the agreement is executed by both parties.';
+      setFailureMessage(
+        'Rent payment is locked until the agreement is executed by both parties.',
+      );
       notifyListeners();
       return null;
     }
 
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -70,7 +69,7 @@ class PaymentController extends ChangeNotifier
       _selectedReceipt = payment;
       return payment;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return null;
     } finally {
       _isLoading = false;
@@ -82,7 +81,7 @@ class PaymentController extends ChangeNotifier
   /// whether a payment is in escrow; Flutter never marks it paid locally.
   Future<PaymentModel?> verifyPayment(PaymentModel payment) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -91,7 +90,7 @@ class PaymentController extends ChangeNotifier
       _selectedReceipt = verified;
       return verified;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return null;
     } finally {
       _isLoading = false;
@@ -102,7 +101,7 @@ class PaymentController extends ChangeNotifier
   /// Release Escrow Payment (Landlord)
   Future<bool> releaseEscrow(String paymentId) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -117,7 +116,7 @@ class PaymentController extends ChangeNotifier
       _selectedReceipt = updated;
       return true;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return false;
     } finally {
       _isLoading = false;
@@ -135,7 +134,7 @@ class PaymentController extends ChangeNotifier
       notifyListeners();
       return updated;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       notifyListeners();
       return null;
     }
@@ -147,7 +146,7 @@ class PaymentController extends ChangeNotifier
     String? reason,
   }) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -159,7 +158,7 @@ class PaymentController extends ChangeNotifier
       _selectedReceipt = disputed;
       return disputed;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return null;
     } finally {
       _isLoading = false;
@@ -175,7 +174,7 @@ class PaymentController extends ChangeNotifier
   /// [refreshEscrowStatus].
   Future<PaymentModel?> loadReceipt(String paymentId) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -184,7 +183,7 @@ class PaymentController extends ChangeNotifier
       _selectedReceipt = receipt;
       return receipt;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return null;
     } finally {
       _isLoading = false;

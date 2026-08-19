@@ -8,7 +8,12 @@ class TenantVaultView extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 100), // Bottom padding for navbar
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        24,
+        20,
+        100,
+      ), // Bottom padding for navbar
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -41,7 +46,7 @@ class TenantVaultView extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -102,7 +107,7 @@ class TenantVaultView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Release Window Sub-card
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -128,7 +133,9 @@ class TenantVaultView extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
-                                color: AppTheme.warningColor.withOpacity(0.9),
+                                color: AppTheme.warningColor.withValues(
+                                  alpha: 0.9,
+                                ),
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -149,7 +156,10 @@ class TenantVaultView extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -179,7 +189,7 @@ class TenantVaultView extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -220,7 +230,7 @@ class TenantVaultView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Progress Label
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -245,7 +255,7 @@ class TenantVaultView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Progress Bar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
@@ -257,7 +267,10 @@ class TenantVaultView extends StatelessWidget {
                           height: 10,
                           decoration: const BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [AppTheme.actionColor, AppTheme.secondaryColor],
+                              colors: [
+                                AppTheme.actionColor,
+                                AppTheme.secondaryColor,
+                              ],
                             ),
                           ),
                         ),
@@ -273,7 +286,7 @@ class TenantVaultView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Target Subtitle
                 Align(
                   alignment: Alignment.centerRight,
@@ -287,7 +300,7 @@ class TenantVaultView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Top up Vault Button
                 SizedBox(
                   width: double.infinity,
@@ -295,7 +308,10 @@ class TenantVaultView extends StatelessWidget {
                     onPressed: () {},
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primaryColor,
-                      side: const BorderSide(color: AppTheme.primaryColor, width: 1.2),
+                      side: const BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 1.2,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -327,7 +343,10 @@ class TenantVaultView extends StatelessWidget {
               children: [
                 // Secured by Landa Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.actionColor,
                     borderRadius: BorderRadius.circular(20),
@@ -343,7 +362,7 @@ class TenantVaultView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 const Text(
                   'Uncompromising Security',
                   style: TextStyle(
@@ -353,7 +372,7 @@ class TenantVaultView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                
+
                 const Text(
                   'Every transaction in your vault is protected by institutional-grade encryption and 2-factor verification.',
                   style: TextStyle(
@@ -363,7 +382,7 @@ class TenantVaultView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Overlapping avatars and monitored text
                 Row(
                   children: [
@@ -379,7 +398,9 @@ class TenantVaultView extends StatelessWidget {
                               backgroundColor: Colors.white,
                               child: CircleAvatar(
                                 radius: 11,
-                                backgroundImage: const AssetImage('assets/images/profile_avatar.png'),
+                                backgroundImage: const AssetImage(
+                                  'assets/images/profile_avatar.png',
+                                ),
                                 backgroundColor: Colors.grey.shade300,
                               ),
                             ),
@@ -391,7 +412,9 @@ class TenantVaultView extends StatelessWidget {
                               backgroundColor: Colors.white,
                               child: CircleAvatar(
                                 radius: 11,
-                                backgroundImage: const AssetImage('assets/images/profile_avatar.png'),
+                                backgroundImage: const AssetImage(
+                                  'assets/images/profile_avatar.png',
+                                ),
                                 backgroundColor: Colors.grey.shade400,
                               ),
                             ),
@@ -524,10 +547,7 @@ class TenantVaultView extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '$date • ID: $id',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey.shade500,
-                  ),
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
                 ),
               ],
             ),
@@ -547,7 +567,9 @@ class TenantVaultView extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFECFDF5), // light emerald green background
+                  color: const Color(
+                    0xFFECFDF5,
+                  ), // light emerald green background
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(

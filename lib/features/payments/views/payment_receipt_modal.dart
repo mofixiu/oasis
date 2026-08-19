@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/landa_currency.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
@@ -59,9 +60,9 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
   /// Re-reads the full receipt. Deliberately not the escrow endpoint: that
   /// payload omits property/unit, so swapping it in would blank those rows.
   Future<void> _refreshReceipt() async {
-    final updated = await context
-        .read<PaymentController>()
-        .loadReceipt(_payment.id);
+    final updated = await context.read<PaymentController>().loadReceipt(
+      _payment.id,
+    );
     if (!mounted || updated == null) return;
     setState(() {
       _payment = updated;
@@ -188,7 +189,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
               child: Column(
                 children: [
                   Text(
-                    '₦${_payment.amount}',
+                    LandaCurrency.format(_payment.amount),
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -229,10 +230,26 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
             const SizedBox(height: 12),
             _receiptRow(context, 'Transaction Ref:', _payment.reference),
             if (_payment.provider.isNotEmpty)
-              _receiptRow(context, 'Provider:', _payment.provider.toUpperCase()),
-            _receiptRow(context, 'Rent amount:', '₦${_payment.amount}'),
-            _receiptRow(context, 'Platform fee:', '₦${_payment.platformFee}'),
-            _receiptRow(context, 'Total paid:', '₦${_payment.totalAmount}'),
+              _receiptRow(
+                context,
+                'Provider:',
+                _payment.provider.toUpperCase(),
+              ),
+            _receiptRow(
+              context,
+              'Rent amount:',
+              LandaCurrency.format(_payment.amount),
+            ),
+            _receiptRow(
+              context,
+              'Platform fee:',
+              LandaCurrency.format(_payment.platformFee),
+            ),
+            _receiptRow(
+              context,
+              'Total paid:',
+              LandaCurrency.format(_payment.totalAmount),
+            ),
 
             // Property/unit context, returned by GET /payments/{id}/.
             if (_payment.property != null) ...[
@@ -532,7 +549,11 @@ class _NoticeBanner extends StatelessWidget {
         Expanded(
           child: Text(
             message,
-            style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
           ),
         ),
       ],
@@ -654,10 +675,7 @@ class _DisputeReasonDialogState extends State<_DisputeReasonDialog> {
           ),
           child: const Text(
             'Submit dispute',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
         ),
       ],

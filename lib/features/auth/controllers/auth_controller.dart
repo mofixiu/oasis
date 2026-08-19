@@ -1,13 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/load_failure.dart';
 import '../../../core/network/auth_token_storage.dart';
 import '../../../core/session/session_scope.dart';
 import '../models/consent_model.dart';
 import '../models/user_model.dart';
 import '../services/i_auth_service.dart';
 
-class AuthController extends ChangeNotifier {
+class AuthController extends ChangeNotifier with LoadFailureState {
   final IAuthService _authService;
 
   AuthController({required IAuthService authService})
@@ -24,9 +25,6 @@ class AuthController extends ChangeNotifier {
 
   UserRole get currentRole => _currentUser?.role ?? UserRole.owner;
 
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
-
   /// True right after `verifyIdentity` fails because the backend requires
   /// privacy/verification consent first. The verification screen watches
   /// this to show a consent step, then retries automatically.
@@ -41,7 +39,7 @@ class AuthController extends ChangeNotifier {
       if (token != null && token.isNotEmpty) {
         _currentUser = await _authService.getProfile();
         _isAuthenticated = true;
-        _errorMessage = null;
+        clearFailure();
       } else {
         _currentUser = null;
         _isAuthenticated = false;
@@ -51,7 +49,7 @@ class AuthController extends ChangeNotifier {
       if (cachedUser != null) {
         _currentUser = cachedUser;
         _isAuthenticated = true;
-        _errorMessage = null;
+        clearFailure();
       } else {
         _currentUser = null;
         _isAuthenticated = false;
@@ -64,7 +62,7 @@ class AuthController extends ChangeNotifier {
   /// User Sign In
   Future<bool> login(String email, String password) async {
     _setLoading(true);
-    _errorMessage = null;
+    clearFailure();
     // A session can end without `logout()` running — an expired refresh token
     // clears storage from inside ApiClient and drops the user here. Clearing
     // on the way in guarantees a signed-in user never inherits cached data,
@@ -78,7 +76,7 @@ class AuthController extends ChangeNotifier {
       return true;
     } catch (e) {
       _isAuthenticated = false;
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       notifyListeners();
       return false;
     } finally {
@@ -89,12 +87,12 @@ class AuthController extends ChangeNotifier {
   /// Request a password reset email without changing the signed-in state.
   Future<bool> requestPasswordReset(String email) async {
     _setLoading(true);
-    _errorMessage = null;
+    clearFailure();
     try {
       await _authService.requestPasswordReset(email: email);
       return true;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return false;
     } finally {
       _setLoading(false);
@@ -107,7 +105,7 @@ class AuthController extends ChangeNotifier {
     required String newPassword,
   }) async {
     _setLoading(true);
-    _errorMessage = null;
+    clearFailure();
     try {
       await _authService.confirmPasswordReset(
         token: token,
@@ -115,7 +113,7 @@ class AuthController extends ChangeNotifier {
       );
       return true;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return false;
     } finally {
       _setLoading(false);
@@ -130,7 +128,7 @@ class AuthController extends ChangeNotifier {
     required UserRole role,
   }) async {
     _setLoading(true);
-    _errorMessage = null;
+    clearFailure();
     SessionScope.resetAll();
 
     try {
@@ -145,7 +143,7 @@ class AuthController extends ChangeNotifier {
       return true;
     } catch (e) {
       _isAuthenticated = false;
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       notifyListeners();
       return false;
     } finally {
@@ -166,7 +164,7 @@ class AuthController extends ChangeNotifier {
     String? email,
   }) async {
     _setLoading(true);
-    _errorMessage = null;
+    clearFailure();
     _consentRequired = false;
 
     try {
@@ -187,7 +185,7 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       notifyListeners();
       return null;
     } finally {
@@ -206,7 +204,7 @@ class AuthController extends ChangeNotifier {
       _consentRequired = false;
       return true;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       notifyListeners();
       return false;
     }
@@ -220,12 +218,12 @@ class AuthController extends ChangeNotifier {
     try {
       final response = await _authService.getVerificationStatus();
       final status = _applyVerificationResponse(response);
-      _errorMessage = null;
+      clearFailure();
       notifyListeners();
       return status;
     } catch (e) {
       if (reportErrors) {
-        _errorMessage = friendlyErrorMessage(e);
+        captureFailure(e);
         notifyListeners();
       }
       return null;
@@ -277,7 +275,7 @@ class AuthController extends ChangeNotifier {
     _currentUser = null;
     _isAuthenticated = false;
     _consentRequired = false;
-    _errorMessage = null;
+    clearFailure();
     // Feature controllers are process-lifetime singletons, so without this
     // the previous user's properties, agreements, payments, and notification
     // badge stay in memory and are rendered to whoever signs in next.
@@ -291,7 +289,7 @@ class AuthController extends ChangeNotifier {
   }
 
   void clearError() {
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
   }
 }

@@ -8,7 +8,12 @@ class LandlordVaultView extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 100), // Bottom padding for navbar
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        24,
+        20,
+        100,
+      ), // Bottom padding for navbar
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -29,7 +34,7 @@ class LandlordVaultView extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 ),
@@ -48,7 +53,7 @@ class LandlordVaultView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Rich balance display with decimals
                 RichText(
                   text: const TextSpan(
@@ -64,13 +69,16 @@ class LandlordVaultView extends StatelessWidget {
                       ),
                       TextSpan(
                         text: '.00',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.normal,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Secured Label
                 Row(
                   children: [
@@ -91,13 +99,17 @@ class LandlordVaultView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Withdraw Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {},
-                    icon: const Icon(Icons.account_balance_outlined, size: 18, color: Colors.white),
+                    icon: const Icon(
+                      Icons.account_balance_outlined,
+                      size: 18,
+                      color: Colors.white,
+                    ),
                     label: const Text(
                       'Withdraw to Bank',
                       style: TextStyle(
@@ -129,7 +141,7 @@ class LandlordVaultView extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -148,7 +160,7 @@ class LandlordVaultView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -164,13 +176,18 @@ class LandlordVaultView extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          
+
                           // Hold Badge
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFFBEB),
-                              border: Border.all(color: const Color(0xFFFDE68A)),
+                              border: Border.all(
+                                color: const Color(0xFFFDE68A),
+                              ),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Row(
@@ -195,7 +212,7 @@ class LandlordVaultView extends StatelessWidget {
                         ],
                       ),
                     ),
-                    
+
                     // Padlock and Clock Container
                     Container(
                       padding: const EdgeInsets.all(10),
@@ -212,7 +229,7 @@ class LandlordVaultView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 Text(
                   'Expected release: Oct 24, 2023',
                   style: TextStyle(
@@ -234,7 +251,7 @@ class LandlordVaultView extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -275,7 +292,7 @@ class LandlordVaultView extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 // Yield Icon Green Circle
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -383,7 +400,7 @@ class LandlordVaultView extends StatelessWidget {
                   ),
                 ),
                 const Divider(height: 1),
-                
+
                 // Rows
                 _buildPayoutRow(
                   date: 'Oct 18, 2023',
@@ -443,15 +460,12 @@ class LandlordVaultView extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   date.split(',')[1].trim(),
-                  style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 10,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 10),
                 ),
               ],
             ),
           ),
-          
+
           // Destination
           Expanded(
             flex: 5,
@@ -496,7 +510,7 @@ class LandlordVaultView extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Amount
           Expanded(
             flex: 3,

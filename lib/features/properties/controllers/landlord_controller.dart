@@ -1,11 +1,12 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import '../../../core/network/api_client.dart';
+import '../../../core/network/load_failure.dart';
 import '../../../core/session/session_scope.dart';
 import '../models/property_model.dart';
 import '../services/property_service.dart';
 
 class LandlordController extends ChangeNotifier
+    with LoadFailureState
     implements SessionScopedController {
   final PropertyService _propertyService;
 
@@ -14,9 +15,6 @@ class LandlordController extends ChangeNotifier
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
-
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
 
   List<PropertyModel> _properties = [];
   List<PropertyModel> get properties => _properties;
@@ -27,10 +25,22 @@ class LandlordController extends ChangeNotifier
   UnitModel? _tenantAssignedUnit;
   UnitModel? get tenantAssignedUnit => _tenantAssignedUnit;
 
+  // Listing media, keyed by property id.
+  final Map<String, List<PropertyPhoto>> _propertyPhotos = {};
+  Map<String, List<PropertyPhoto>> get propertyPhotos => _propertyPhotos;
+
+  final Map<String, String?> _propertyVideos = {};
+  String? videoUrlFor(String propertyId) => _propertyVideos[propertyId];
+
+  /// Separate from [isLoading] so a media upload doesn't blank the whole
+  /// property screen behind a spinner.
+  bool _isMediaBusy = false;
+  bool get isMediaBusy => _isMediaBusy;
+
   /// Load properties for landlord
   Future<void> loadLandlordProperties() async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -40,7 +50,7 @@ class LandlordController extends ChangeNotifier
         _propertyUnits[prop.id] = units;
       }
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -51,10 +61,133 @@ class LandlordController extends ChangeNotifier
   void resetSessionState() {
     _properties = [];
     _propertyUnits.clear();
+    _propertyPhotos.clear();
+    _propertyVideos.clear();
     _tenantAssignedUnit = null;
-    _errorMessage = null;
+    clearFailure();
     _isLoading = false;
+    _isMediaBusy = false;
     notifyListeners();
+  }
+
+  // -------------------------------------------------------- listing media
+
+  /// Loads photos and video for one property.
+  Future<void> loadPropertyMedia(String propertyId) async {
+    _isMediaBusy = true;
+    clearFailure();
+    notifyListeners();
+    try {
+      final results = await Future.wait([
+        _propertyService.getPropertyPhotos(propertyId),
+        _propertyService.getPropertyVideo(propertyId),
+      ]);
+      _propertyPhotos[propertyId] = results[0] as List<PropertyPhoto>;
+      _propertyVideos[propertyId] = results[1] as String?;
+    } catch (e) {
+      captureFailure(e);
+    } finally {
+      _isMediaBusy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Uploads listing photos. Returns false with [errorMessage] set on failure.
+  Future<bool> uploadPropertyPhotos({
+    required String propertyId,
+    required List<File> photos,
+  }) async {
+    if (photos.isEmpty) return false;
+    _isMediaBusy = true;
+    clearFailure();
+    notifyListeners();
+    try {
+      final created = await _propertyService.uploadPropertyPhotos(
+        propertyId: propertyId,
+        photos: photos,
+      );
+      _propertyPhotos[propertyId] = [
+        ...(_propertyPhotos[propertyId] ?? const []),
+        ...created,
+      ];
+      // The cover is derived from the photo set, so the property row is stale.
+      await refreshPropertyDetail(propertyId);
+      return true;
+    } catch (e) {
+      captureFailure(e);
+      return false;
+    } finally {
+      _isMediaBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deletePropertyPhoto({
+    required String propertyId,
+    required String photoId,
+  }) async {
+    _isMediaBusy = true;
+    clearFailure();
+    notifyListeners();
+    try {
+      await _propertyService.deletePropertyPhoto(
+        propertyId: propertyId,
+        photoId: photoId,
+      );
+      _propertyPhotos[propertyId] = (_propertyPhotos[propertyId] ?? const [])
+          .where((photo) => photo.id != photoId)
+          .toList();
+      // Deleting the first photo promotes a new cover server-side.
+      await refreshPropertyDetail(propertyId);
+      return true;
+    } catch (e) {
+      captureFailure(e);
+      return false;
+    } finally {
+      _isMediaBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> uploadPropertyVideo({
+    required String propertyId,
+    required File video,
+  }) async {
+    _isMediaBusy = true;
+    clearFailure();
+    notifyListeners();
+    try {
+      _propertyVideos[propertyId] = await _propertyService.uploadPropertyVideo(
+        propertyId: propertyId,
+        video: video,
+      );
+      await refreshPropertyDetail(propertyId);
+      return true;
+    } catch (e) {
+      captureFailure(e);
+      return false;
+    } finally {
+      _isMediaBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deletePropertyVideo(String propertyId) async {
+    _isMediaBusy = true;
+    clearFailure();
+    notifyListeners();
+    try {
+      await _propertyService.deletePropertyVideo(propertyId);
+      _propertyVideos[propertyId] = null;
+      await refreshPropertyDetail(propertyId);
+      return true;
+    } catch (e) {
+      captureFailure(e);
+      return false;
+    } finally {
+      _isMediaBusy = false;
+      notifyListeners();
+    }
   }
 
   /// Refresh a single property's detail (fields + units) from the backend.
@@ -68,7 +201,7 @@ class LandlordController extends ChangeNotifier
       _propertyUnits[propertyId] = detail.units;
       notifyListeners();
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       notifyListeners();
     }
   }
@@ -84,9 +217,10 @@ class LandlordController extends ChangeNotifier
     required File verificationVideo,
     required File deedFile,
     List<File> photos = const [],
+    File? listingVideo,
   }) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -100,12 +234,13 @@ class LandlordController extends ChangeNotifier
         verificationVideo: verificationVideo,
         deedFile: deedFile,
         photos: photos,
+        listingVideo: listingVideo,
       );
       _properties.insert(0, newProp);
       _propertyUnits[newProp.id] = [];
       return newProp;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return null;
     } finally {
       _isLoading = false;
@@ -119,7 +254,7 @@ class LandlordController extends ChangeNotifier
     required List<Map<String, dynamic>> units,
   }) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
     try {
       final created = await _propertyService.createUnitsBatch(
@@ -132,7 +267,7 @@ class LandlordController extends ChangeNotifier
       ];
       return created;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return null;
     } finally {
       _isLoading = false;
@@ -149,7 +284,7 @@ class LandlordController extends ChangeNotifier
     required String rentAmount,
   }) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -165,7 +300,7 @@ class LandlordController extends ChangeNotifier
       _propertyUnits[propertyId] = List.from(currentList);
       return newUnit;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return null;
     } finally {
       _isLoading = false;
@@ -180,7 +315,7 @@ class LandlordController extends ChangeNotifier
     required String propertyId,
   }) async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
@@ -196,7 +331,7 @@ class LandlordController extends ChangeNotifier
       }
       return true;
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
       return false;
     } finally {
       _isLoading = false;
@@ -207,13 +342,13 @@ class LandlordController extends ChangeNotifier
   /// Fetch tenant's assigned unit
   Future<void> loadTenantAssignedUnit() async {
     _isLoading = true;
-    _errorMessage = null;
+    clearFailure();
     notifyListeners();
 
     try {
       _tenantAssignedUnit = await _propertyService.getTenantAssignedUnit();
     } catch (e) {
-      _errorMessage = friendlyErrorMessage(e);
+      captureFailure(e);
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -8,6 +8,13 @@ class PropertyModel {
   final double? latitude;
   final double? longitude;
   final List<String> photoUrls;
+
+  /// Backend-chosen cover image (the first uploaded photo). Tenants see this
+  /// while browsing the marketplace.
+  final String? coverPhotoUrl;
+
+  /// Optional property-tour video. One per property.
+  final String? videoUrl;
   final String verificationStatus;
 
   PropertyModel({
@@ -20,8 +27,21 @@ class PropertyModel {
     this.latitude,
     this.longitude,
     this.photoUrls = const [],
+    this.coverPhotoUrl,
+    this.videoUrl,
     this.verificationStatus = 'PENDING',
   });
+
+  /// Image to lead with: the backend's cover choice, falling back to the
+  /// first photo for payloads that predate `cover_photo_url`.
+  String? get displayImageUrl {
+    if (coverPhotoUrl != null && coverPhotoUrl!.isNotEmpty) {
+      return coverPhotoUrl;
+    }
+    return photoUrls.isNotEmpty ? photoUrls.first : null;
+  }
+
+  bool get hasVideo => videoUrl != null && videoUrl!.isNotEmpty;
 
   factory PropertyModel.fromJson(Map<String, dynamic> json) {
     return PropertyModel(
@@ -34,6 +54,8 @@ class PropertyModel {
       latitude: _asDouble(json['latitude']),
       longitude: _asDouble(json['longitude']),
       photoUrls: _asStringList(json['photo_urls'] ?? json['images']),
+      coverPhotoUrl: _asNonEmptyString(json['cover_photo_url']),
+      videoUrl: _asNonEmptyString(json['video_url']),
       verificationStatus: json['verification_status']?.toString() ?? 'PENDING',
     );
   }
@@ -48,8 +70,15 @@ class PropertyModel {
     if (latitude != null) 'latitude': latitude,
     if (longitude != null) 'longitude': longitude,
     'photo_urls': photoUrls,
+    if (coverPhotoUrl != null) 'cover_photo_url': coverPhotoUrl,
+    if (videoUrl != null) 'video_url': videoUrl,
     'verification_status': verificationStatus,
   };
+
+  static String? _asNonEmptyString(dynamic value) {
+    final text = value?.toString().trim();
+    return (text == null || text.isEmpty) ? null : text;
+  }
 
   static double? _asDouble(dynamic value) => value is num
       ? value.toDouble()
@@ -69,6 +98,36 @@ class PropertyModel {
         .where((url) => url.isNotEmpty)
         .toList();
   }
+}
+
+/// One uploaded listing photo, as returned by
+/// `GET|POST /properties/{id}/photos/`.
+class PropertyPhoto {
+  final String id;
+  final String imageUrl;
+  final String createdAt;
+
+  const PropertyPhoto({
+    required this.id,
+    required this.imageUrl,
+    required this.createdAt,
+  });
+
+  factory PropertyPhoto.fromJson(Map<String, dynamic> json) => PropertyPhoto(
+    id: json['id']?.toString() ?? '',
+    imageUrl: (json['image_url'] ?? json['url'] ?? '').toString(),
+    createdAt: json['created_at']?.toString() ?? '',
+  );
+}
+
+/// Backend limits for listing media, mirrored client-side so the app can
+/// reject oversized files before spending an upload round-trip.
+class PropertyMediaLimits {
+  static const int maxPhotos = 10;
+  static const int maxPhotoBytes = 5 * 1024 * 1024; // 5MB
+  static const int maxVideoBytes = 50 * 1024 * 1024; // 50MB
+  static const List<String> photoExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+  static const List<String> videoExtensions = ['mp4', 'mov'];
 }
 
 class UnitModel {

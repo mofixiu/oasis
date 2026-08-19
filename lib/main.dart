@@ -43,9 +43,8 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(
           create: (_) {
-            final authController = AuthController(
-              authService: apiAuthService,
-            )..checkAuthStatus();
+            final authController = AuthController(authService: apiAuthService)
+              ..checkAuthStatus();
             // Any gated endpoint can return a live 403 verification-required
             // response even if the cached local status is stale VERIFIED;
             // route that signal back to AuthController so the UI reacts.
@@ -103,7 +102,7 @@ class _LandaAppState extends State<LandaApp> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: themeController?.themeMode ?? ThemeMode.light,
+      themeMode: themeController?.themeMode ?? ThemeMode.system,
       home: const SplashScreen(),
     );
   }

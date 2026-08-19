@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../../features/marketplace/controllers/marketplace_controller.dart';
 import '../theme/app_theme.dart';
+import '../utils/landa_haptics.dart';
 
 /// Custom bottom navigation bar for Landa OS MVP.
 class CustomBottomNavbar extends StatelessWidget {
@@ -24,19 +25,19 @@ class CustomBottomNavbar extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       decoration: BoxDecoration(
-        color: (isDarkMode ? AppTheme.darkCardColor : Colors.white).withOpacity(
-          isDarkMode ? 0.94 : 0.85,
+        color: (isDarkMode ? AppTheme.darkCardColor : Colors.white).withValues(
+          alpha: isDarkMode ? 0.94 : 0.85,
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: isDarkMode
-              ? AppTheme.profileColor.withOpacity(0.28)
-              : Colors.white.withOpacity(0.5),
+              ? AppTheme.profileColor.withValues(alpha: 0.28)
+              : Colors.white.withValues(alpha: 0.5),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
@@ -53,13 +54,17 @@ class CustomBottomNavbar extends StatelessWidget {
               removeBottom: true,
               child: BottomNavigationBar(
                 currentIndex: currentIndex,
-                onTap: onTap,
+                onTap: (index) {
+                  // Tab changes are selection-class feedback, not commits.
+                  if (index != currentIndex) LandaHaptics.select();
+                  onTap(index);
+                },
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 type: BottomNavigationBarType.fixed,
                 selectedItemColor: AppTheme.actionColor,
                 unselectedItemColor: isDarkMode
-                    ? AppTheme.whiteColor.withOpacity(0.65)
+                    ? AppTheme.whiteColor.withValues(alpha: 0.65)
                     : Colors.grey.shade600,
                 showSelectedLabels: true,
                 showUnselectedLabels: true,

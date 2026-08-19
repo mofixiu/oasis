@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../utils/landa_haptics.dart';
 
 enum LandaToastType { success, error, info }
 
@@ -41,10 +42,14 @@ class LandaToast {
   }
 
   static void success(BuildContext context, String message) {
+    // Outcome haptics live here so every success/failure in the app is felt
+    // the same way without each screen remembering to fire one.
+    LandaHaptics.success();
     show(context, message: message, type: LandaToastType.success);
   }
 
   static void error(BuildContext context, String message) {
+    LandaHaptics.warning();
     show(context, message: message, type: LandaToastType.error);
   }
 
@@ -153,13 +158,13 @@ class _LandaToastWidgetState extends State<_LandaToastWidget>
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: _iconColor.withOpacity(0.12),
+                        color: _iconColor.withValues(alpha: 0.12),
                         blurRadius: 12,
                         offset: const Offset(0, 8),
                       ),
                     ],
                     border: Border.all(
-                      color: _iconColor.withOpacity(0.45),
+                      color: _iconColor.withValues(alpha: 0.45),
                       width: 1.2,
                     ),
                   ),
@@ -183,7 +188,7 @@ class _LandaToastWidgetState extends State<_LandaToastWidget>
                         onTap: widget.onDismiss,
                         child: Icon(
                           Icons.close,
-                          color: _iconColor.withOpacity(0.7),
+                          color: _iconColor.withValues(alpha: 0.7),
                           size: 18,
                         ),
                       ),

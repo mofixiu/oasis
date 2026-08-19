@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/landa_currency.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
@@ -118,9 +119,9 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
         right: 24,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -389,225 +390,231 @@ class ViewAgreementModal extends StatelessWidget {
                 }
               },
               child: Padding(
-              padding: EdgeInsets.only(
-                top: 24,
-                left: 24,
-                right: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(
-                            Icons.shield_outlined,
-                            color: AppTheme.actionColor,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Landa Escrow Payment',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Pay securely with Paystack. Confirmed rent is held in 48-hour escrow.',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Column(
+                padding: EdgeInsets.only(
+                  top: 24,
+                  left: 24,
+                  right: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        const Row(
                           children: [
-                            const Text(
-                              'Property Unit:',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 13,
-                              ),
+                            Icon(
+                              Icons.shield_outlined,
+                              color: AppTheme.actionColor,
                             ),
+                            SizedBox(width: 8),
                             Text(
-                              'Unit ${agreement.unitNumber}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Rent Amount:',
+                              'Landa Escrow Payment',
                               style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 13,
-                              ),
-                            ),
-                            Text(
-                              '₦${agreement.rentAmount}',
-                              style: const TextStyle(
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
                                 color: AppTheme.primaryColor,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Escrow Release Period:',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 13,
-                              ),
-                            ),
-                            Text(
-                              '48 Hours',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: Colors.orange.shade800,
-                              ),
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  if (payment != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Pay securely with Paystack. Confirmed rent is held in 48-hour escrow.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Container(
-                      width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.shade100),
+                        color: AppTheme.subtleSurfaceColor(context),
+                        borderRadius: AppTheme.cornerMd,
+                        border: Border.all(color: AppTheme.borderColor(context)),
                       ),
                       child: Column(
                         children: [
-                          _paymentSummaryRow('Rent', '₦${payment!.amount}'),
-                          const SizedBox(height: 8),
-                          _paymentSummaryRow(
-                            'Platform fee',
-                            '₦${payment!.platformFee}',
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Property Unit:',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                'Unit ${agreement.unitNumber}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
-                          const Divider(height: 20),
-                          _paymentSummaryRow(
-                            'Total to pay',
-                            '₦${payment!.totalAmount}',
-                            emphasized: true,
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Rent Amount:',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                LandaCurrency.format(agreement.rentAmount),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Escrow Release Period:',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                '48 Hours',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: Colors.orange.shade800,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (errorMessage != null) ...[
-                    Text(
-                      errorMessage!,
-                      style: TextStyle(color: Colors.red.shade700),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: isBusy
-                          ? null
-                          : payment == null
-                          ? initializeAndOpen
-                          : openCheckout,
-                      icon: isBusy
-                          ? const SizedBox()
-                          : const Icon(
-                              Icons.open_in_new,
-                              color: Colors.white,
-                              size: 18,
+                    const SizedBox(height: 24),
+                    if (payment != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade100),
+                        ),
+                        child: Column(
+                          children: [
+                            _paymentSummaryRow(
+                              'Rent',
+                              LandaCurrency.format(payment!.amount),
                             ),
-                      label: isBusy
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              payment == null
-                                  ? 'Continue to Paystack'
-                                  : 'Open Paystack Checkout',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                            const SizedBox(height: 8),
+                            _paymentSummaryRow(
+                              'Platform fee',
+                              LandaCurrency.format(payment!.platformFee),
                             ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.actionColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                            const Divider(height: 20),
+                            _paymentSummaryRow(
+                              'Total to pay',
+                              LandaCurrency.format(payment!.totalAmount),
+                              emphasized: true,
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ),
-                  if (payment?.status == PaymentStatus.pending) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'After checkout closes or you return to Landa, verify the payment below.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
+                      const SizedBox(height: 16),
+                    ],
+                    if (errorMessage != null) ...[
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(color: Colors.red.shade700),
                       ),
-                    ),
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 12),
+                    ],
                     SizedBox(
                       width: double.infinity,
                       height: 52,
-                      child: OutlinedButton.icon(
-                        onPressed: isBusy ? null : verifyCheckout,
-                        icon: const Icon(Icons.verified_outlined),
-                        label: const Text(
-                          'I completed checkout — Verify payment',
+                      child: ElevatedButton.icon(
+                        onPressed: isBusy
+                            ? null
+                            : payment == null
+                            ? initializeAndOpen
+                            : openCheckout,
+                        icon: isBusy
+                            ? const SizedBox()
+                            : const Icon(
+                                Icons.open_in_new,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                        label: isBusy
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                payment == null
+                                    ? 'Continue to Paystack'
+                                    : 'Open Paystack Checkout',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.actionColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),
+                    if (payment?.status == PaymentStatus.pending) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'After checkout closes or you return to Landa, verify the payment below.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: OutlinedButton.icon(
+                          onPressed: isBusy ? null : verifyCheckout,
+                          icon: const Icon(Icons.verified_outlined),
+                          label: const Text(
+                            'I completed checkout — Verify payment',
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
+                ),
               ),
             );
           },
@@ -648,9 +655,9 @@ class ViewAgreementModal extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -703,7 +710,10 @@ class ViewAgreementModal extends StatelessWidget {
             ),
             _infoRow('Landlord:', agreement.landlordEmail),
             _infoRow('Tenant:', agreement.tenantEmail),
-            _infoRow('Rent Amount:', '₦${agreement.rentAmount}'),
+            _infoRow(
+              'Rent Amount:',
+              LandaCurrency.format(agreement.rentAmount),
+            ),
             _infoRow(
               'Lease Term:',
               '${agreement.startDate} to ${agreement.endDate}',
@@ -777,7 +787,7 @@ class ViewAgreementModal extends StatelessWidget {
                           },
                           icon: const Icon(Icons.payments, color: Colors.white),
                           label: Text(
-                            'Pay Rent into Escrow (₦${agreement.rentAmount})',
+                            'Pay Rent into Escrow (${LandaCurrency.format(agreement.rentAmount)})',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,

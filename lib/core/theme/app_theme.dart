@@ -41,6 +41,119 @@ class AppTheme {
   static const Color darkBackgroundColor = blackColor;
   static const Color darkCardColor = darkSurfaceColor;
 
+  // ---------------------------------------------------------------- shape
+  // Three radii only. Anything that needs a corner picks the nearest of these
+  // rather than inventing a new value, which is what made the UI read as
+  // hand-assembled.
+  /// Chips, pills, small controls.
+  static const double radiusSm = 8;
+
+  /// Buttons, inputs, inner tiles.
+  static const double radiusMd = 16;
+
+  /// Cards, sheets, modals.
+  static const double radiusLg = 24;
+
+  static BorderRadius get cornerSm => BorderRadius.circular(radiusSm);
+  static BorderRadius get cornerMd => BorderRadius.circular(radiusMd);
+  static BorderRadius get cornerLg => BorderRadius.circular(radiusLg);
+
+  // --------------------------------------------------------------- shadow
+  /// Two-layer card shadow: a tight contact shadow that anchors the card to
+  /// the page, plus a wide soft one that gives it height. A single blurred
+  /// shadow always reads either muddy or flat; the pair is what makes a
+  /// surface look lifted.
+  static List<BoxShadow> cardShadow(BuildContext context) {
+    final dark = isDarkMode(context);
+    return [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: dark ? 0.32 : 0.04),
+        blurRadius: 2,
+        offset: const Offset(0, 1),
+      ),
+      BoxShadow(
+        color: Colors.black.withValues(alpha: dark ? 0.24 : 0.05),
+        blurRadius: 18,
+        spreadRadius: -4,
+        offset: const Offset(0, 8),
+      ),
+    ];
+  }
+
+  /// For sheets, dialogs and anything that floats above the page.
+  static List<BoxShadow> raisedShadow(BuildContext context) {
+    final dark = isDarkMode(context);
+    return [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: dark ? 0.40 : 0.06),
+        blurRadius: 3,
+        offset: const Offset(0, 1),
+      ),
+      BoxShadow(
+        color: Colors.black.withValues(alpha: dark ? 0.34 : 0.10),
+        blurRadius: 34,
+        spreadRadius: -8,
+        offset: const Offset(0, 18),
+      ),
+    ];
+  }
+
+  // ----------------------------------------------------------------- type
+  // One ramp, used everywhere. Headings carry negative tracking — at display
+  // sizes Montserrat's default spacing looks loose and generic.
+  static const double textXs = 11;
+  static const double textSm = 13;
+  static const double textMd = 15;
+  static const double textLg = 17;
+  static const double textXl = 22;
+  static const double text2xl = 28;
+
+  /// Page-level heading, one per screen.
+  static TextStyle screenTitle(BuildContext context, {Color? color}) =>
+      TextStyle(
+        fontSize: text2xl,
+        fontWeight: FontWeight.bold,
+        letterSpacing: -0.7,
+        height: 1.15,
+        color: color ?? primaryTextColor(context),
+      );
+
+  /// Heading above a group of cards or rows.
+  static TextStyle sectionTitle(BuildContext context, {Color? color}) =>
+      TextStyle(
+        fontSize: textLg,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.35,
+        height: 1.25,
+        color: color ?? primaryTextColor(context),
+      );
+
+  /// Title line inside a card or list row.
+  static TextStyle cardTitle(BuildContext context, {Color? color}) => TextStyle(
+    fontSize: textMd,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+    height: 1.3,
+    color: color ?? primaryTextColor(context),
+  );
+
+  /// Running text and supporting copy.
+  static TextStyle bodyText(BuildContext context, {Color? color}) => TextStyle(
+    fontSize: textSm,
+    fontWeight: FontWeight.w500,
+    height: 1.45,
+    color: color ?? secondaryTextColor(context),
+  );
+
+  /// Small uppercase-ish labels, metadata, pill text.
+  static TextStyle labelText(BuildContext context, {Color? color}) => TextStyle(
+    fontSize: textXs,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.3,
+    height: 1.2,
+    color: color ?? mutedTextColor(context),
+  );
+
   static bool isDarkMode(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark;
   }
@@ -67,7 +180,7 @@ class AppTheme {
 
   static Color borderColor(BuildContext context) {
     return isDarkMode(context)
-        ? profileColor.withOpacity(0.35)
+        ? profileColor.withValues(alpha: 0.35)
         : const Color(0xFFE5E7EB);
   }
 
@@ -81,14 +194,33 @@ class AppTheme {
 
   static Color secondaryTextColor(BuildContext context) {
     return isDarkMode(context)
-        ? whiteColor.withOpacity(0.72)
+        ? whiteColor.withValues(alpha: 0.72)
         : const Color(0xFF6B7280);
   }
 
   static Color mutedTextColor(BuildContext context) {
     return isDarkMode(context)
-        ? whiteColor.withOpacity(0.55)
+        ? whiteColor.withValues(alpha: 0.55)
         : const Color(0xFF9CA3AF);
+  }
+
+  /// Applies the app's tracking to a Montserrat text theme.
+  ///
+  /// Display and headline sizes get progressively tighter letter-spacing:
+  /// Montserrat's default tracking is tuned for small text and looks slack
+  /// once type gets large, which is most of why untouched headings read as
+  /// "default Flutter app".
+  static TextTheme _tracked(TextTheme base) {
+    return base.copyWith(
+      displayLarge: base.displayLarge?.copyWith(letterSpacing: -1.2),
+      displayMedium: base.displayMedium?.copyWith(letterSpacing: -1.0),
+      displaySmall: base.displaySmall?.copyWith(letterSpacing: -0.8),
+      headlineLarge: base.headlineLarge?.copyWith(letterSpacing: -0.8),
+      headlineMedium: base.headlineMedium?.copyWith(letterSpacing: -0.6),
+      headlineSmall: base.headlineSmall?.copyWith(letterSpacing: -0.5),
+      titleLarge: base.titleLarge?.copyWith(letterSpacing: -0.4),
+      titleMedium: base.titleMedium?.copyWith(letterSpacing: -0.2),
+    );
   }
 
   /// Provides the ThemeData for the application.
@@ -97,7 +229,7 @@ class AppTheme {
       primaryColor: primaryColor,
       scaffoldBackgroundColor: backgroundColor,
       cardColor: whiteColor,
-      textTheme: GoogleFonts.montserratTextTheme(),
+      textTheme: _tracked(GoogleFonts.montserratTextTheme()),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: FadePageTransitionsBuilder(),
@@ -107,15 +239,19 @@ class AppTheme {
           TargetPlatform.windows: FadePageTransitionsBuilder(),
         },
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: primaryColor,
         elevation: 0,
         centerTitle: true,
-        iconTheme: IconThemeData(color: Colors.white),
-        titleTextStyle: TextStyle(
+        iconTheme: const IconThemeData(color: Colors.white),
+        // Montserrat explicitly: an AppBar title ignores the global textTheme
+        // and inherits from this style, so a bare TextStyle here silently
+        // drops every app bar back to the platform default font.
+        titleTextStyle: GoogleFonts.montserrat(
           color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.bold,
+          letterSpacing: -0.2,
         ),
       ),
       colorScheme: const ColorScheme.light(
@@ -128,8 +264,34 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: actionColor,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: cornerMd),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          textStyle: GoogleFonts.montserrat(
+            fontSize: textMd,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: actionColor,
+          shape: RoundedRectangleBorder(borderRadius: cornerMd),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          textStyle: GoogleFonts.montserrat(
+            fontSize: textMd,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ),
+      chipTheme: const ChipThemeData(shape: StadiumBorder()),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: cornerLg),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusLg)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -144,9 +306,11 @@ class AppTheme {
       primaryColor: primaryColor,
       scaffoldBackgroundColor: darkBackgroundColor,
       cardColor: darkCardColor,
-      textTheme: GoogleFonts.montserratTextTheme(
-        ThemeData.dark().textTheme,
-      ).apply(bodyColor: whiteColor, displayColor: whiteColor),
+      textTheme: _tracked(
+        GoogleFonts.montserratTextTheme(
+          ThemeData.dark().textTheme,
+        ).apply(bodyColor: whiteColor, displayColor: whiteColor),
+      ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: FadePageTransitionsBuilder(),
@@ -156,15 +320,16 @@ class AppTheme {
           TargetPlatform.windows: FadePageTransitionsBuilder(),
         },
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: darkBackgroundColor,
         elevation: 0,
         centerTitle: true,
-        iconTheme: IconThemeData(color: whiteColor),
-        titleTextStyle: TextStyle(
+        iconTheme: const IconThemeData(color: whiteColor),
+        titleTextStyle: GoogleFonts.montserrat(
           color: whiteColor,
           fontSize: 20,
           fontWeight: FontWeight.bold,
+          letterSpacing: -0.2,
         ),
       ),
       colorScheme: const ColorScheme.dark(
@@ -177,8 +342,34 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: actionColor,
           foregroundColor: whiteColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: cornerMd),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          textStyle: GoogleFonts.montserrat(
+            fontSize: textMd,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: actionColor,
+          shape: RoundedRectangleBorder(borderRadius: cornerMd),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          textStyle: GoogleFonts.montserrat(
+            fontSize: textMd,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ),
+      chipTheme: const ChipThemeData(shape: StadiumBorder()),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: cornerLg),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusLg)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(

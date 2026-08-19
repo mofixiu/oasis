@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/landa_currency.dart';
+import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_shimmer.dart';
+import '../../../core/widgets/landa_state_views.dart';
 import '../controllers/marketplace_controller.dart';
 import '../models/marketplace_models.dart';
 import 'application_status_pill.dart';
@@ -56,63 +59,70 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
 
     if (!controller.hasLoadedTenantApplications ||
         (controller.isLoading && applications.isEmpty)) {
-      return ListView.separated(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        itemCount: 4,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, __) => LandaShimmer(
-          child: Container(
-            height: 92,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor(context),
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
+      return const LandaContentSwitcher(
+        stateKey: 'loading',
+        child: LandaSkeletonList(
+          hasAvatar: true,
+          padding: EdgeInsets.fromLTRB(20, 8, 20, 32),
+        ),
+      );
+    }
+
+    // A failed load no longer hides inside the empty state — "no applications
+    // yet" and "we could not reach the server" are different situations and
+    // only one of them is fixed by trying again.
+    if (controller.hasError && applications.isEmpty) {
+      return LandaContentSwitcher(
+        stateKey: 'error',
+        child: LandaErrorState(
+          message: controller.errorMessage,
+          isConnectionError: controller.errorIsConnection,
+          onRetry: controller.loadTenantApplications,
+          padding: const EdgeInsets.fromLTRB(32, 56, 32, 32),
         ),
       );
     }
 
     if (applications.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(32, 80, 32, 32),
-        children: [
-          Icon(
-            Icons.description_outlined,
-            size: 56,
-            color: AppTheme.mutedTextColor(context),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            controller.errorMessage ?? 'No applications yet',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryTextColor(context),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Apply for a unit from the marketplace and track its progress here.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.4,
-              color: AppTheme.secondaryTextColor(context),
-            ),
-          ),
-        ],
+      return LandaContentSwitcher(
+        stateKey: 'empty',
+        child: LandaEmptyState(
+          icon: Icons.description_outlined,
+          title: 'No applications yet',
+          message:
+              'Apply for a unit from the marketplace and track its progress here.',
+          actionLabel: 'Browse marketplace',
+          actionIcon: Icons.storefront_outlined,
+          onAction: () => Navigator.pop(context),
+          padding: const EdgeInsets.fromLTRB(32, 64, 32, 32),
+        ),
       );
     }
 
-    return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-      itemCount: applications.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) =>
-          _ApplicationCard(application: applications[index]),
+    return LandaContentSwitcher(
+      stateKey: 'content',
+      child: Column(
+        children: [
+          if (controller.hasError)
+            LandaErrorBanner(
+              message: controller.errorMessage!,
+              isConnectionError: controller.errorIsConnection,
+              onRetry: controller.loadTenantApplications,
+            ),
+          Expanded(
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              itemCount: applications.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) => LandaEntrance(
+                index: index,
+                child: _ApplicationCard(application: applications[index]),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -157,9 +167,21 @@ class _ApplicationCard extends StatelessWidget {
           if (application.rentAmount != null) ...[
             const SizedBox(height: 6),
             Text(
-              '₦${application.rentAmount}/yr',
+              LandaCurrency.perYear(application.rentAmount),
               style: TextStyle(
                 fontSize: 13,
+                color: AppTheme.secondaryTextColor(context),
+              ),
+            ),
+          ],
+          if (application.hasMessage) ...[
+            const SizedBox(height: 10),
+            Text(
+              '“${application.message}”',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                fontStyle: FontStyle.italic,
                 color: AppTheme.secondaryTextColor(context),
               ),
             ),
