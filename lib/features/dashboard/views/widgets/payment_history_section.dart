@@ -20,11 +20,10 @@ class PaymentHistorySection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Payment History',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                style: AppTheme.sectionTitle(
+                  context,
                   color: AppTheme.primaryColor,
                 ),
               ),

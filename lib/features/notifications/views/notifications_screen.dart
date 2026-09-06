@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../auth/controllers/auth_controller.dart';
+import '../../auth/models/user_model.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_shimmer.dart';
 import '../../../core/widgets/landa_state_views.dart';
+import '../../shortlets/views/respond_to_caution_claim_sheet.dart';
 import '../controllers/notification_controller.dart';
 import '../models/notification_model.dart';
+import 'broadcast_composer_sheet.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -15,13 +20,38 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _NotificationsScreenState extends State<NotificationsScreen>
+    with AutoRefreshMixin<NotificationsScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<NotificationController>().loadNotifications(),
-    );
+  Future<void> onAutoRefresh() =>
+      context.read<NotificationController>().loadNotifications();
+
+  /// Marks the row read, and, for the one type that needs it, opens the
+  /// response sheet straight from the notification's own payload.
+  ///
+  /// Only a tenant is ever the one meant to act on a caution-fee-claim
+  /// notification: the same type also announces a host's own claim landing,
+  /// or a tenant's response coming back to them, and neither of those is
+  /// something to respond to a second time.
+  Future<void> _handleTap(NotificationItemModel notification) async {
+    final controller = context.read<NotificationController>();
+    await controller.markRead(notification.id);
+    if (!mounted) return;
+
+    final claimId = notification.cautionClaimId;
+    final isTenant =
+        context.read<AuthController>().currentRole == UserRole.tenant;
+    if (notification.type == NotificationType.shortLetCautionFeeClaim &&
+        isTenant &&
+        claimId != null &&
+        claimId.isNotEmpty) {
+      await openRespondToCautionClaimSheet(
+        context,
+        claimId: claimId,
+        claimedAmount: notification.cautionClaimAmount,
+        hostReason: notification.cautionClaimReason,
+      );
+    }
   }
 
   @override
@@ -44,6 +74,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ),
         actions: [
+          // Announcing is a landlord action, and the notification list is
+          // where the result of it lands, so the way to send one lives here
+          // rather than buried in a settings screen.
+          if (context.watch<AuthController>().currentRole == UserRole.owner)
+            IconButton(
+              tooltip: 'Announce to tenants',
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const BroadcastComposerSheet(),
+              ),
+              icon: const Icon(
+                Icons.campaign_outlined,
+                color: AppTheme.actionColor,
+              ),
+            ),
           if (controller.notifications.any((n) => !n.isRead))
             TextButton(
               onPressed: controller.isLoading
@@ -146,8 +193,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 index: index,
                 child: _NotificationCard(
                   notification: controller.notifications[index],
-                  onTap: () =>
-                      controller.markRead(controller.notifications[index].id),
+                  onTap: () => _handleTap(controller.notifications[index]),
                 ),
               ),
             ),
@@ -281,7 +327,7 @@ class _NotificationCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: type.surfaceColor,
+                  color: type.surfaceColor(context),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(type.icon, size: 20, color: type.accentColor),
@@ -316,6 +362,22 @@ class _NotificationCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
+                    // A broadcast carries a subject of its own; older
+                    // notification types do not, and skip straight to the
+                    // message rather than repeating the category eyebrow.
+                    if (notification.title != null &&
+                        notification.title!.trim().isNotEmpty) ...[
+                      Text(
+                        notification.headline,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                          color: AppTheme.primaryTextColor(context),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                    ],
                     Text(
                       notification.message,
                       style: TextStyle(
@@ -327,6 +389,17 @@ class _NotificationCard extends StatelessWidget {
                         color: AppTheme.primaryTextColor(context),
                       ),
                     ),
+                    if (notification.actorName != null &&
+                        notification.actorName!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'From ${notification.actorName}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.secondaryTextColor(context),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Text(
                       _relativeTime(notification.createdAt),

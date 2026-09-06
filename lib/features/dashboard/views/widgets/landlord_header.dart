@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/landa_pressable.dart';
 import '../../../auth/controllers/auth_controller.dart';
@@ -9,16 +10,7 @@ import 'invite_tenant_modal.dart';
 class LandlordHeader extends StatelessWidget {
   const LandlordHeader({super.key});
 
-  void _showAddProperty(BuildContext context) {
-    final sheetHeight = MediaQuery.sizeOf(context).height * 0.8;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      constraints: BoxConstraints.tightFor(height: sheetHeight),
-      backgroundColor: Colors.transparent,
-      builder: (_) => const AddPropertyModal(),
-    );
-  }
+  void _showAddProperty(BuildContext context) => openAddPropertyFlow(context);
 
   void _showInviteTenant(BuildContext context) {
     showModalBottomSheet(

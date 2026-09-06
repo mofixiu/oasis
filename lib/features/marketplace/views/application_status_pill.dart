@@ -15,19 +15,19 @@ class ApplicationStatusPill extends StatelessWidget {
     final (color, surface) = switch (status) {
       ApplicationStatus.approved => (
         AppTheme.successColor,
-        AppTheme.successSurfaceColor,
+        AppTheme.successSurface(context),
       ),
       ApplicationStatus.rejected || ApplicationStatus.withdrawn => (
         AppTheme.disputeColor,
-        AppTheme.disputeSurfaceColor,
+        AppTheme.disputeSurface(context),
       ),
       ApplicationStatus.pending => (
         AppTheme.primaryColor,
-        AppTheme.vacantSurfaceColor,
+        AppTheme.vacantSurface(context),
       ),
       ApplicationStatus.unknown => (
         AppTheme.profileColor,
-        AppTheme.slateSurfaceColor,
+        AppTheme.slateSurface(context),
       ),
     };
 

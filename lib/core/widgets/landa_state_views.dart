@@ -21,7 +21,7 @@ class LandaErrorState extends StatelessWidget {
   final Future<void> Function()? onRetry;
 
   /// Wraps the state in a scrollable so an enclosing [RefreshIndicator] still
-  /// works — a non-scrollable child silently disables pull-to-refresh.
+  /// works: a non-scrollable child silently disables pull-to-refresh.
   final bool scrollable;
 
   final EdgeInsets padding;

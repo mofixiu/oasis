@@ -9,7 +9,7 @@ class MockDashboardService implements IDashboardService {
   Future<PortfolioSummary> getPortfolioSummary() async {
     // Simulate a 2-second network request delay
     await Future.delayed(const Duration(seconds: 2));
-    
+
     return PortfolioSummary(
       totalRentCollected: 12450000,
       rentGrowthPercentage: 8.5,
@@ -24,7 +24,7 @@ class MockDashboardService implements IDashboardService {
   Future<List<PropertyUnit>> getActiveUnits() async {
     // Simulate a 2-second network request delay
     await Future.delayed(const Duration(seconds: 2));
-    
+
     return [
       PropertyUnit(
         id: '1',
@@ -33,7 +33,8 @@ class MockDashboardService implements IDashboardService {
         rentAmount: 2500000,
         nextDueDate: 'Oct 12, 2024',
         status: UnitStatus.paid,
-        imagePath: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80',
+        imagePath:
+            'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=400&q=80',
       ),
       PropertyUnit(
         id: '2',
@@ -42,7 +43,8 @@ class MockDashboardService implements IDashboardService {
         rentAmount: 4200000,
         nextDueDate: 'Sep 01, 2024',
         status: UnitStatus.pending,
-        imagePath: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&q=80',
+        imagePath:
+            'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&q=80',
       ),
       PropertyUnit(
         id: '3',
@@ -51,7 +53,8 @@ class MockDashboardService implements IDashboardService {
         rentAmount: 6000000,
         nextDueDate: 'Nov 30, 2024',
         status: UnitStatus.paid,
-        imagePath: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80',
+        imagePath:
+            'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80',
       ),
       PropertyUnit(
         id: '4',
@@ -60,7 +63,8 @@ class MockDashboardService implements IDashboardService {
         rentAmount: 12000000,
         nextDueDate: 'Dec 15, 2024',
         status: UnitStatus.pending,
-        imagePath: 'https://images.unsplash.com/photo-1600607687940-4e20035af6e3?auto=format&fit=crop&w=400&q=80',
+        imagePath:
+            'https://images.unsplash.com/photo-1600607687940-4e20035af6e3?auto=format&fit=crop&w=400&q=80',
       ),
       PropertyUnit(
         id: '5',
@@ -69,7 +73,8 @@ class MockDashboardService implements IDashboardService {
         rentAmount: 1200000,
         nextDueDate: 'Jan 01, 2025',
         status: UnitStatus.paid,
-        imagePath: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=400&q=80',
+        imagePath:
+            'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=400&q=80',
       ),
     ];
   }

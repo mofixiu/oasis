@@ -115,12 +115,11 @@ class _ApproveApplicationSheetState extends State<ApproveApplicationSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Approve application',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    style: AppTheme.sectionTitle(
+                      context,
                       color: AppTheme.primaryColor,
                     ),
                   ),

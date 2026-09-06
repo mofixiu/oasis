@@ -10,6 +10,7 @@ import 'identity_verification_screen.dart';
 import 'forgot_password_screen.dart';
 import 'widgets/auth_text_field.dart';
 import 'sign_up_screen.dart';
+import '../../../core/widgets/landa_busy.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -185,13 +186,9 @@ class _SignInScreenState extends State<SignInScreen> {
                                     ),
                                   ),
                                   child: auth.isLoading
-                                      ? const SizedBox(
-                                          height: 24,
-                                          width: 24,
-                                          child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2,
-                                          ),
+                                      ? const LandaBusyDots(
+                                          color: Colors.white,
+                                          size: 7,
                                         )
                                       : const Row(
                                           mainAxisAlignment:

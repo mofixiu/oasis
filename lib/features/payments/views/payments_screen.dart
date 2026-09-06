@@ -2,13 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_app_bar.dart';
 import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_shimmer.dart';
 import '../../../core/widgets/landa_state_views.dart';
+import '../../agreements/controllers/agreement_controller.dart';
+import '../../auth/controllers/auth_controller.dart';
+import '../../auth/models/user_model.dart';
+import '../../vault/controllers/vault_controller.dart';
+import '../../vault/views/widgets/vault_balance_card.dart';
 import '../controllers/payment_controller.dart';
 import '../models/payment_model.dart';
+import '../models/pending_rent.dart';
 import 'payment_receipt_modal.dart';
+import 'widgets/rent_due_card.dart';
 
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({super.key});
@@ -17,20 +25,43 @@ class PaymentsScreen extends StatefulWidget {
   State<PaymentsScreen> createState() => _PaymentsScreenState();
 }
 
-class _PaymentsScreenState extends State<PaymentsScreen> {
+class _PaymentsScreenState extends State<PaymentsScreen>
+    with AutoRefreshMixin<PaymentsScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PaymentController>().loadPayments();
-    });
-  }
+  Future<void> onAutoRefresh() => _reload();
 
-  Future<void> _reload() => context.read<PaymentController>().loadPayments();
+  /// Rent due is derived from agreements as well as payments, and the vault
+  /// balance heads the page, so this screen owns all three fetches.
+  ///
+  /// The vault is fetched for both roles now that tenants have one: a tenant's
+  /// balance decides whether rent can be paid without a card, so the page
+  /// cannot render its main action correctly without it.
+  Future<void> _reload() => Future.wait([
+    context.read<PaymentController>().loadPayments(),
+    context.read<AgreementController>().loadAgreements(),
+    context.read<VaultController>().loadVault(),
+    // Read alongside the balance so the Settings row is accurate and a
+    // withdrawal or vault payment already knows whether it is asking for a PIN
+    // that exists.
+    context.read<VaultController>().loadPinStatus(),
+    // The per-unit savings plan lives on the device and is keyed to
+    // this user, so it loads with everything else the vault needs.
+    context.read<VaultController>().loadAllocations(
+      context.read<AuthController>().currentUser?.id ?? '',
+    ),
+  ]);
 
   @override
   Widget build(BuildContext context) {
     final paymentCtrl = context.watch<PaymentController>();
+    final agreementCtrl = context.watch<AgreementController>();
+    final isLandlord =
+        context.watch<AuthController>().currentRole == UserRole.owner;
+    final rentDue = pendingRentAgreements(
+      agreements: agreementCtrl.agreements,
+      payments: paymentCtrl.payments,
+      isLandlord: isLandlord,
+    );
     final secondaryTextColor = AppTheme.secondaryTextColor(context);
 
     if (paymentCtrl.hasError && paymentCtrl.payments.isEmpty) {
@@ -68,10 +99,44 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Track all rent escrow transactions and settlement statuses.',
+                isLandlord
+                    ? 'Your vault balance, rent in escrow and every settlement.'
+                    : 'Your vault, what rent is due, and every escrow '
+                          'transaction.',
                 style: AppTheme.bodyText(context, color: secondaryTextColor),
               ),
               const SizedBox(height: 20),
+
+              // The vault leads the page for both roles: it is the balance the
+              // rest of the screen explains, and for a tenant it is also what
+              // the rent-due card below is going to spend.
+              const VaultBalanceCard(),
+              const SizedBox(height: 24),
+
+              // Pending payments sit above the ledger: they are the one thing
+              // on this screen that needs an action, and this is now the only
+              // place they appear. The tenant dashboard used to carry a copy,
+              // which meant two screens quietly disagreeing about what was
+              // owed. One card per unit, so a tenant with two homes sees both.
+              if (rentDue.isNotEmpty) ...[
+                Text('PENDING PAYMENTS', style: AppTheme.labelText(context)),
+                const SizedBox(height: 8),
+                for (final (index, agreement) in rentDue.indexed)
+                  LandaEntrance(
+                    index: index,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: RentDueCard(agreement: agreement, onPaid: _reload),
+                    ),
+                  ),
+                const SizedBox(height: 20),
+              ],
+
+              // The vault card now sits above the ledger for both roles, so
+              // the ledger always needs naming to separate the two.
+              Text('LEDGER', style: AppTheme.labelText(context)),
+              const SizedBox(height: 8),
+
               if (paymentCtrl.hasError)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -82,7 +147,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                   ),
                 ),
 
-              if (paymentCtrl.isLoading && paymentCtrl.payments.isEmpty)
+              if (!paymentCtrl.hasLoaded() ||
+                  (paymentCtrl.isLoading && paymentCtrl.payments.isEmpty))
                 const LandaSkeletonList(count: 3, padding: EdgeInsets.zero)
               else if (paymentCtrl.payments.isEmpty)
                 Container(
@@ -91,13 +157,16 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     borderRadius: AppTheme.cornerLg,
                     border: Border.all(color: AppTheme.borderColor(context)),
                   ),
-                  child: const LandaEmptyState(
+                  child: LandaEmptyState(
                     icon: Icons.receipt_long_outlined,
                     title: 'No payment transactions yet',
                     message:
                         'Payments for signed tenancy agreements will appear here.',
                     scrollable: false,
-                    padding: EdgeInsets.fromLTRB(24, 32, 24, 32),
+                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+                    actionLabel: 'Check again',
+                    actionIcon: Icons.refresh_rounded,
+                    onAction: _reload,
                   ),
                 )
               else
@@ -113,10 +182,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     // A disputed payment must never read as a normal escrow
                     // hold, so it gets its own colour and icon.
                     final statusSurface = isDisputed
-                        ? AppTheme.disputeSurfaceColor
+                        ? AppTheme.disputeSurface(context)
                         : isReleased
-                        ? AppTheme.successSurfaceColor
-                        : AppTheme.vacantSurfaceColor;
+                        ? AppTheme.successSurface(context)
+                        : AppTheme.vacantSurface(context);
                     final statusColor = isDisputed
                         ? AppTheme.disputeColor
                         : isReleased
@@ -160,9 +229,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                 children: [
                                   Text(
                                     LandaCurrency.format(p.amount),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                                    style: AppTheme.sectionTitle(
+                                      context,
                                       color: AppTheme.primaryColor,
                                     ),
                                   ),

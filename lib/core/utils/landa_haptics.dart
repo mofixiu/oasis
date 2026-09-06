@@ -24,4 +24,9 @@ class LandaHaptics {
 
   /// A destructive or rejected outcome. Heavy reads as "that mattered".
   static void warning() => HapticFeedback.heavyImpact();
+
+  /// Something arrived that the user did not ask for: a message landing, a
+  /// booking request. Deliberately the lightest tap in the vocabulary: an
+  /// interruption should be noticed, not obeyed.
+  static void arrival() => HapticFeedback.selectionClick();
 }

@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart';
 abstract class SessionScopedController {
   /// Drops all per-user data, returning the controller to its initial state.
   ///
-  /// Must not trigger network calls — it runs during sign-out, when the auth
+  /// Must not trigger network calls: it runs during sign-out, when the auth
   /// token has already been cleared.
   void resetSessionState();
 }
@@ -34,7 +34,7 @@ class SessionScope {
   /// once, and safe to call when nothing is registered (e.g. in tests).
   static void resetAll() {
     debugPrint(
-      '🧹 [SESSION] Clearing cached state in ${_controllers.length} controllers.',
+      '[SESSION] Clearing cached state in ${_controllers.length} controllers.',
     );
     for (final controller in _controllers) {
       controller.resetSessionState();

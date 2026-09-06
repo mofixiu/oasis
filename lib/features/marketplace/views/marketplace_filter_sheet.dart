@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../models/marketplace_models.dart';
@@ -33,6 +34,16 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
   late int? _bathrooms = widget.initial.bathrooms;
 
   @override
+  void initState() {
+    super.initState();
+    // Rebuild as the rent fields change, so the inverted-range warning and
+    // the disabled button track what is actually typed rather than only
+    // what was there when the sheet opened.
+    _minRentController.addListener(() => setState(() {}));
+    _maxRentController.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     _cityController.dispose();
     _stateController.dispose();
@@ -41,7 +52,20 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
     super.dispose();
   }
 
+  int? get _minRent => int.tryParse(_minRentController.text);
+  int? get _maxRent => int.tryParse(_maxRentController.text);
+
+  /// The one thing digit-only fields cannot rule out on their own: a max
+  /// below the min. The backend rejects it outright, so the button that
+  /// would send it is disabled instead.
+  bool get _isInvertedRange {
+    final min = _minRent;
+    final max = _maxRent;
+    return min != null && max != null && max < min;
+  }
+
   void _apply() {
+    if (_isInvertedRange) return;
     Navigator.pop(
       context,
       MarketplaceFilters(
@@ -72,11 +96,10 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Filter listings',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  style: AppTheme.sectionTitle(
+                    context,
                     color: AppTheme.primaryColor,
                   ),
                 ),
@@ -108,6 +131,7 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
             ),
             const SizedBox(height: 16),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: _FilterField(
@@ -124,10 +148,18 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
                     label: 'MAX RENT (₦)',
                     hint: '500000',
                     numeric: true,
+                    hasError: _isInvertedRange,
                   ),
                 ),
               ],
             ),
+            if (_isInvertedRange) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Max rent cannot be lower than min rent.',
+                style: TextStyle(fontSize: 12, color: AppTheme.disputeColor),
+              ),
+            ],
             const SizedBox(height: 20),
             _CountSelector(
               label: 'BEDROOMS',
@@ -145,7 +177,7 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: _apply,
+                onPressed: _isInvertedRange ? null : _apply,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.actionColor,
                   shape: RoundedRectangleBorder(
@@ -182,16 +214,23 @@ class _FilterField extends StatelessWidget {
   final String label;
   final String hint;
   final bool numeric;
+  final bool hasError;
 
   const _FilterField({
     required this.controller,
     required this.label,
     required this.hint,
     this.numeric = false,
+    this.hasError = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final errorBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppTheme.disputeColor, width: 1.5),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -208,6 +247,12 @@ class _FilterField extends StatelessWidget {
         TextField(
           controller: controller,
           keyboardType: numeric ? TextInputType.number : TextInputType.text,
+          // Digits only on a numeric field: it is what stops "cheap" or a
+          // minus sign from ever reaching the query string, rather than
+          // catching either after the fact.
+          inputFormatters: numeric
+              ? [FilteringTextInputFormatter.digitsOnly]
+              : null,
           style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
@@ -218,17 +263,23 @@ class _FilterField extends StatelessWidget {
               horizontal: 12,
               vertical: 14,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppTheme.borderColor(context)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: AppTheme.actionColor,
-                width: 1.5,
-              ),
-            ),
+            enabledBorder: hasError
+                ? errorBorder
+                : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: AppTheme.borderColor(context),
+                    ),
+                  ),
+            focusedBorder: hasError
+                ? errorBorder
+                : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                      color: AppTheme.actionColor,
+                      width: 1.5,
+                    ),
+                  ),
           ),
         ),
       ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../utils/landa_haptics.dart';
+import '../utils/landa_navigator.dart';
 
 enum LandaToastType { success, error, info }
 
@@ -13,7 +14,7 @@ class LandaToast {
     LandaToastType type = LandaToastType.success,
     Duration duration = const Duration(seconds: 3),
   }) {
-    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    final overlay = _resolveOverlay(context);
     if (overlay == null) return;
 
     late OverlayEntry entry;
@@ -55,6 +56,34 @@ class LandaToast {
 
   static void info(BuildContext context, String message) {
     show(context, message: message, type: LandaToastType.info);
+  }
+
+  /// Finds an overlay to put the toast in, preferring one that cannot have
+  /// gone stale.
+  ///
+  /// Almost every toast in the app is shown by a sheet reporting an outcome,
+  /// and the overwhelmingly common shape of that is `Navigator.pop(context)`
+  /// followed by `LandaToast.success(context, ...)`. The context handed in is
+  /// therefore, quite often, one belonging to a widget on its way out of the
+  /// tree, and an ancestor lookup on a deactivated element does not return
+  /// null: it trips an assertion. *"Looking up a deactivated widget's
+  /// ancestor is unsafe"*, which in a debug build takes the whole screen
+  /// down over a confirmation message.
+  ///
+  /// The app's own navigator outlives every screen inside it, so it is asked
+  /// first. The passed context stays as the fallback, because it is the only
+  /// thing that works in a widget test that pumps a bare screen, and it is
+  /// guarded so a stale one degrades to "no toast" rather than a crash.
+  static OverlayState? _resolveOverlay(BuildContext context) {
+    final rootOverlay = landaRootOverlay;
+    if (rootOverlay != null) return rootOverlay;
+    try {
+      return Overlay.maybeOf(context, rootOverlay: true);
+    } catch (_) {
+      // A deactivated context. There is nowhere safe to render, and the
+      // message is a courtesy: never the only record of anything.
+      return null;
+    }
   }
 }
 
@@ -127,11 +156,11 @@ class _LandaToastWidgetState extends State<_LandaToastWidget>
   Color get _backgroundColor {
     switch (widget.type) {
       case LandaToastType.success:
-        return AppTheme.successSurfaceColor;
+        return AppTheme.successSurface(context);
       case LandaToastType.error:
-        return AppTheme.logoutSurfaceColor;
+        return AppTheme.logoutSurface(context);
       case LandaToastType.info:
-        return AppTheme.slateSurfaceColor;
+        return AppTheme.slateSurface(context);
     }
   }
 

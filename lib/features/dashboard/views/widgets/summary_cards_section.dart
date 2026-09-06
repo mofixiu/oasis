@@ -24,6 +24,7 @@ class SummaryCardsSection extends StatelessWidget {
     return Column(
       children: [
         _buildCard(
+          context,
           title: 'TOTAL RENT COLLECTED',
           icon: Icons.trending_up,
           iconColor: AppTheme.secondaryColor,
@@ -33,6 +34,7 @@ class SummaryCardsSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _buildCard(
+          context,
           title: 'ACTIVE LEASES',
           icon: Icons.description_outlined,
           iconColor: AppTheme.actionColor,
@@ -42,6 +44,7 @@ class SummaryCardsSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _buildCard(
+          context,
           title: 'OUTSTANDING DUES',
           icon: Icons.warning_amber_rounded,
           iconColor: AppTheme.warningColor,
@@ -53,7 +56,8 @@ class SummaryCardsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildCard({
+  Widget _buildCard(
+    BuildContext context, {
     required String title,
     required IconData icon,
     required Color iconColor,
@@ -95,11 +99,7 @@ class SummaryCardsSection extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             mainValue,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.primaryColor,
-            ),
+            style: AppTheme.screenTitle(context, color: AppTheme.primaryColor),
           ),
           const SizedBox(height: 4),
           Text(

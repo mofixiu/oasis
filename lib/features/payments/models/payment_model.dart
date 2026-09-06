@@ -57,7 +57,7 @@ enum PaymentStatus {
       case PaymentStatus.escrow:
         return 'In Escrow (48h Lock)';
       case PaymentStatus.disputed:
-        return 'Disputed — Under Review';
+        return 'Disputed: Under Review';
       case PaymentStatus.failed:
         return 'Payment Failed';
       case PaymentStatus.released:
@@ -88,6 +88,7 @@ class PaymentModel {
   final PaymentStatus status;
   final String paidAt;
   final String escrowReleaseAt;
+
   /// Backend-computed countdown to escrow release. Null when the backend did
   /// not supply it (e.g. list payloads); never derive it client-side.
   final int? escrowSecondsRemaining;

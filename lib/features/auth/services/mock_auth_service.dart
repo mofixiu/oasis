@@ -11,6 +11,10 @@ class MockAuthService implements IAuthService {
     required String password,
     required String phone,
     required UserRole role,
+    String? category,
+    String? location,
+    String? bio,
+    int? yearsOfExperience,
   }) async {
     await Future.delayed(const Duration(seconds: 1));
     return UserModel(

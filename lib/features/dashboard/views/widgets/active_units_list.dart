@@ -15,11 +15,10 @@ class ActiveUnitsList extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Active Units',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+              style: AppTheme.sectionTitle(
+                context,
                 color: AppTheme.primaryColor,
               ),
             ),

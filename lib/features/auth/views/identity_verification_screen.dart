@@ -5,10 +5,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/fade_page_route.dart';
+import '../../../core/widgets/landa_entrance.dart';
+import '../../../core/widgets/landa_pressable.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../../../core/widgets/main_scaffold.dart';
 import '../controllers/auth_controller.dart';
 import '../models/user_model.dart';
+import '../../../core/widgets/landa_busy.dart';
 
 class IdentityVerificationScreen extends StatefulWidget {
   const IdentityVerificationScreen({super.key});
@@ -214,296 +217,125 @@ class _IdentityVerificationScreenState
         user?.verificationStatus == VerificationStatus.verified;
     final isPending = user?.verificationStatus == VerificationStatus.pending;
 
+    final accent = isAlreadyVerified
+        ? AppTheme.successColor
+        : AppTheme.actionColor;
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: AppTheme.pageBackground(context),
       appBar: AppBar(
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: AppTheme.pageBackground(context),
         elevation: 0,
-        title: const Text(
-          'Identity Verification',
-          style: TextStyle(
-            color: AppTheme.profileColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        scrolledUnderElevation: 0,
         centerTitle: true,
+        iconTheme: IconThemeData(color: AppTheme.primaryTextColor(context)),
+        title: Text(
+          'Identity Verification',
+          style: AppTheme.cardTitle(context),
+        ),
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 24.0,
-            ),
-            child: Align(
-              alignment: Alignment.center,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isAlreadyVerified
-                            ? AppTheme.successColor
-                            : AppTheme.primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.lock_person_outlined,
-                        color: Colors.white,
-                        size: 32,
-                      ),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  LandaEntrance(
+                    index: 0,
+                    child: _VerificationHeader(
+                      accent: accent,
+                      isVerified: isAlreadyVerified,
+                      isPending: isPending,
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      isAlreadyVerified
-                          ? 'Your Identity is Fully Verified'
-                          : isPending
-                          ? 'Verification Request Pending'
-                          : 'Verify Your Identity',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isAlreadyVerified
-                          ? 'You have earned the VERIFIED status badge.'
-                          : isPending
-                          ? 'We are checking your verification status. This screen will continue automatically once it is complete.'
-                          : 'Upload a selfie and enter your 11-digit NIN to begin verification.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
+                  ),
 
-                    if (isPending) ...[
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 20),
+                  // Polling state. Uses the sand/vacant pair rather than raw
+                  // amber so "waiting" reads as part of the palette instead of
+                  // a stock Material warning.
+                  if (isPending) ...[
+                    const SizedBox(height: 20),
+                    LandaEntrance(
+                      index: 1,
+                      child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.amber.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.amber.shade300),
+                          color: AppTheme.vacantSurface(context),
+                          borderRadius: AppTheme.cornerMd,
+                          border: Border.all(
+                            color: AppTheme.vacantColor.withValues(alpha: 0.7),
+                          ),
                         ),
                         child: Row(
                           children: [
-                            const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
+                            const LandaBusyDots(color: AppTheme.primaryColor),
+                            const SizedBox(width: 14),
+                            Expanded(
                               child: Text(
-                                'Request pending — checking for completion…',
-                                style: TextStyle(fontWeight: FontWeight.w600),
+                                'Checking your verification. This screen '
+                                'continues automatically once it completes.',
+                                style: AppTheme.bodyText(
+                                  context,
+                                  color: AppTheme.primaryColor,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ],
+                    ),
+                  ],
 
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
+                  const SizedBox(height: 24),
+                  LandaEntrance(
+                    index: 2,
+                    child: _StepCard(
+                      step: '1',
+                      title: 'National ID',
+                      subtitle: 'Your 11-digit National Identification Number.',
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Step 1: NIN Field
-                          Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  '1. National ID (NIN)',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.profileColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                TextField(
-                                  controller: _ninController,
-                                  keyboardType: TextInputType.number,
-                                  maxLength: 11,
-                                  decoration: InputDecoration(
-                                    labelText: '11-DIGIT NIN',
-                                    hintText: '12345678901',
-                                    prefixIcon: const Icon(
-                                      Icons.badge_outlined,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          _VerificationField(
+                            controller: _ninController,
+                            hint: '12345678901',
+                            icon: Icons.badge_outlined,
+                            keyboardType: TextInputType.number,
+                            maxLength: 11,
                           ),
-                          const Divider(height: 1),
-
-                          // Optional: names for Smile ID sandbox test identities.
+                          const SizedBox(height: 4),
                           Theme(
                             data: Theme.of(
                               context,
                             ).copyWith(dividerColor: Colors.transparent),
                             child: ExpansionTile(
-                              tilePadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                              ),
-                              childrenPadding: const EdgeInsets.fromLTRB(
-                                20,
-                                0,
-                                20,
-                                20,
-                              ),
-                              title: const Text(
+                              tilePadding: EdgeInsets.zero,
+                              childrenPadding: const EdgeInsets.only(bottom: 4),
+                              expandedCrossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              title: Text(
                                 'Full name (optional)',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.profileColor,
-                                ),
+                                style: AppTheme.bodyText(context),
                               ),
-                              subtitle: const Text(
-                                'Only needed if this doesn\'t match your saved profile.',
-                                style: TextStyle(fontSize: 12),
+                              subtitle: Text(
+                                "Only needed if this doesn't match your saved profile.",
+                                style: AppTheme.labelText(
+                                  context,
+                                ).copyWith(letterSpacing: 0, fontSize: 11.5),
                               ),
                               children: [
-                                TextField(
+                                _VerificationField(
                                   controller: _givenNamesController,
-                                  decoration: InputDecoration(
-                                    labelText: 'GIVEN NAMES',
-                                    hintText: 'Amina Fatou',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
+                                  hint: 'Given names',
+                                  icon: Icons.person_outline,
                                 ),
                                 const SizedBox(height: 12),
-                                TextField(
+                                _VerificationField(
                                   controller: _lastNameController,
-                                  decoration: InputDecoration(
-                                    labelText: 'LAST NAME',
-                                    hintText: 'Clearwater',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 1),
-
-                          // Step 2: Selfie Photo Picker
-                          Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  '2. Verification Selfie',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.profileColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                if (_selfieFile != null)
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Image.file(
-                                      _selfieFile!,
-                                      height: 180,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                else
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 32,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.subtleSurfaceColor(
-                                        context,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.grey.shade300,
-                                        style: BorderStyle.solid,
-                                      ),
-                                    ),
-                                    child: const Column(
-                                      children: [
-                                        Icon(
-                                          Icons.face_retouching_natural,
-                                          size: 48,
-                                          color: AppTheme.profileColor,
-                                        ),
-                                        SizedBox(height: 12),
-                                        Text(
-                                          'No selfie selected yet',
-                                          style: TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: () =>
-                                            _pickSelfie(ImageSource.camera),
-                                        icon: const Icon(
-                                          Icons.camera_alt,
-                                          size: 18,
-                                        ),
-                                        label: const Text('Camera'),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: () =>
-                                            _pickSelfie(ImageSource.gallery),
-                                        icon: const Icon(
-                                          Icons.photo_library,
-                                          size: 18,
-                                        ),
-                                        label: const Text('Gallery'),
-                                      ),
-                                    ),
-                                  ],
+                                  hint: 'Last name',
+                                  icon: Icons.person_outline,
                                 ),
                               ],
                             ),
@@ -511,74 +343,135 @@ class _IdentityVerificationScreenState
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                  ),
 
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: Consumer<AuthController>(
-                        builder: (context, auth, _) {
-                          return ElevatedButton.icon(
-                            onPressed:
-                                auth.isLoading ||
-                                    _isPolling ||
-                                    isAlreadyVerified
-                                ? null
-                                : _submitVerification,
-                            icon: auth.isLoading
-                                ? const SizedBox()
-                                : const Icon(
-                                    Icons.verified,
-                                    color: Colors.white,
+                  const SizedBox(height: 16),
+                  LandaEntrance(
+                    index: 3,
+                    child: _StepCard(
+                      step: '2',
+                      title: 'Verification selfie',
+                      subtitle: 'A clear photo of your face, under 5MB.',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_selfieFile != null)
+                            ClipRRect(
+                              borderRadius: AppTheme.cornerMd,
+                              child: Image.file(
+                                _selfieFile!,
+                                height: 190,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(vertical: 34),
+                              decoration: BoxDecoration(
+                                color: AppTheme.subtleSurfaceColor(context),
+                                borderRadius: AppTheme.cornerMd,
+                                border: Border.all(
+                                  color: AppTheme.borderColor(context),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.face_retouching_natural,
+                                    size: 42,
+                                    color: AppTheme.mutedTextColor(context),
                                   ),
-                            label: auth.isLoading
-                                ? const SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Text(
-                                    isPending
-                                        ? 'Verification Pending'
-                                        : isAlreadyVerified
-                                        ? 'Identity Verified'
-                                        : 'Submit Identity Verification',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'No selfie selected yet',
+                                    style: AppTheme.bodyText(
+                                      context,
+                                      color: AppTheme.mutedTextColor(context),
                                     ),
                                   ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.actionColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                ],
                               ),
                             ),
-                          );
-                        },
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: LandaButton(
+                                  label: 'Camera',
+                                  icon: Icons.camera_alt_outlined,
+                                  outlined: true,
+                                  onPressed: () =>
+                                      _pickSelfie(ImageSource.camera),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: LandaButton(
+                                  label: 'Gallery',
+                                  icon: Icons.photo_library_outlined,
+                                  outlined: true,
+                                  onPressed: () =>
+                                      _pickSelfie(ImageSource.gallery),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                  ),
 
-                    if (isAlreadyVerified)
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              FadePageRoute(page: const MainScaffold()),
-                              (route) => false,
-                            );
-                          },
-                          child: const Text('Continue to Dashboard'),
+                  const SizedBox(height: 28),
+                  LandaEntrance(
+                    index: 4,
+                    child: Consumer<AuthController>(
+                      builder: (context, auth, _) => LandaButton(
+                        label: isPending
+                            ? 'Verification pending'
+                            : isAlreadyVerified
+                            ? 'Identity verified'
+                            : 'Submit identity verification',
+                        icon: isAlreadyVerified
+                            ? Icons.verified_rounded
+                            : Icons.shield_outlined,
+                        isBusy: auth.isLoading,
+                        color: accent,
+                        onPressed:
+                            auth.isLoading || _isPolling || isAlreadyVerified
+                            ? null
+                            : _submitVerification,
+                      ),
+                    ),
+                  ),
+
+                  if (isAlreadyVerified) ...[
+                    const SizedBox(height: 12),
+                    LandaEntrance(
+                      index: 5,
+                      child: LandaButton(
+                        label: 'Continue to dashboard',
+                        outlined: true,
+                        color: AppTheme.profileColor,
+                        onPressed: () => Navigator.pushAndRemoveUntil(
+                          context,
+                          FadePageRoute(page: const MainScaffold()),
+                          (route) => false,
                         ),
                       ),
+                    ),
                   ],
-                ),
+
+                  const SizedBox(height: 20),
+                  Text(
+                    'Your NIN is never stored in full. We keep only a secure '
+                    'fingerprint of it and a reference to this check.',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.labelText(
+                      context,
+                    ).copyWith(letterSpacing: 0, fontSize: 11.5, height: 1.5),
+                  ),
+                ],
               ),
             ),
           ),
@@ -586,6 +479,179 @@ class _IdentityVerificationScreenState
       ),
     );
   }
+}
+
+/// Hero block: state-coloured badge, title and supporting line.
+class _VerificationHeader extends StatelessWidget {
+  final Color accent;
+  final bool isVerified;
+  final bool isPending;
+
+  const _VerificationHeader({
+    required this.accent,
+    required this.isVerified,
+    required this.isPending,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Container(
+        height: 72,
+        width: 72,
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          isVerified ? Icons.verified_user_rounded : Icons.lock_person_outlined,
+          color: accent,
+          size: 32,
+        ),
+      ),
+      SizedBox(height: 16),
+      Text(
+        isVerified
+            ? 'Your identity is verified'
+            : isPending
+            ? 'Verification in progress'
+            : 'Verify your identity',
+        textAlign: TextAlign.center,
+        style: AppTheme.screenTitle(context),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        isVerified
+            ? 'You have full access to Landa.'
+            : isPending
+            ? 'This usually takes a moment.'
+            : 'A one-time check that unlocks properties, agreements and rent payments.',
+        textAlign: TextAlign.center,
+        style: AppTheme.bodyText(
+          context,
+          color: AppTheme.secondaryTextColor(context),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Numbered step container, so the two inputs read as a sequence rather than
+/// a stack of unrelated boxes.
+class _StepCard extends StatelessWidget {
+  final String step;
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  const _StepCard({
+    required this.step,
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: AppTheme.surfaceColor(context),
+      borderRadius: AppTheme.cornerLg,
+      border: Border.all(color: AppTheme.borderColor(context)),
+      boxShadow: AppTheme.cardShadow(context),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              height: 26,
+              width: 26,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppTheme.vacantSurface(context),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                step,
+                style: AppTheme.labelText(
+                  context,
+                  color: AppTheme.primaryColor,
+                ).copyWith(fontSize: 12, letterSpacing: 0),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTheme.cardTitle(context)),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppTheme.labelText(
+                      context,
+                    ).copyWith(letterSpacing: 0, fontSize: 11.5),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        child,
+      ],
+    ),
+  );
+}
+
+/// Field styled to match the rest of the app's inputs.
+class _VerificationField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final int? maxLength;
+
+  const _VerificationField({
+    required this.controller,
+    required this.hint,
+    required this.icon,
+    this.keyboardType,
+    this.maxLength,
+  });
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: controller,
+    keyboardType: keyboardType,
+    maxLength: maxLength,
+    style: AppTheme.bodyText(
+      context,
+      color: AppTheme.primaryTextColor(context),
+    ),
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: AppTheme.bodyText(
+        context,
+        color: AppTheme.mutedTextColor(context),
+      ),
+      prefixIcon: Icon(icon, size: 19, color: AppTheme.mutedTextColor(context)),
+      counterText: '',
+      filled: true,
+      fillColor: AppTheme.inputFillColor(context),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: AppTheme.cornerSm,
+        borderSide: BorderSide(color: AppTheme.borderColor(context)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: AppTheme.cornerSm,
+        borderSide: const BorderSide(color: AppTheme.actionColor, width: 1.5),
+      ),
+    ),
+  );
 }
 
 /// One-time gate before the first `POST /verify/`: the backend rejects
@@ -611,7 +677,7 @@ class _VerificationConsentSheet extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.vacantSurfaceColor,
+                  color: AppTheme.vacantSurface(context),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -620,12 +686,11 @@ class _VerificationConsentSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Verification & Privacy Consent',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  style: AppTheme.sectionTitle(
+                    context,
                     color: AppTheme.primaryColor,
                   ),
                 ),
@@ -635,11 +700,10 @@ class _VerificationConsentSheet extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             'Before we verify your identity, you need to agree to how we handle your data:',
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.4,
-              color: Colors.grey.shade700,
-            ),
+            style: AppTheme.bodyText(
+              context,
+              color: AppTheme.secondaryTextColor(context),
+            ).copyWith(height: 1.4),
           ),
           const SizedBox(height: 12),
           const _ConsentPoint(
@@ -648,7 +712,7 @@ class _VerificationConsentSheet extends StatelessWidget {
           ),
           const _ConsentPoint(
             text:
-                'We never store your raw NIN — only a tokenized fingerprint of it, plus a reference to the verification attempt.',
+                'We never store your raw NIN, only a tokenized fingerprint of it, plus a reference to the verification attempt.',
           ),
           const _ConsentPoint(
             text:
@@ -702,17 +766,20 @@ class _ConsentPoint extends StatelessWidget {
       children: [
         const Padding(
           padding: EdgeInsets.only(top: 3),
-          child: Icon(Icons.check_circle, size: 16, color: AppTheme.successColor),
+          child: Icon(
+            Icons.check_circle,
+            size: 16,
+            color: AppTheme.successColor,
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.4,
-              color: Colors.grey.shade800,
-            ),
+            style: AppTheme.bodyText(
+              context,
+              color: AppTheme.secondaryTextColor(context),
+            ).copyWith(height: 1.4),
           ),
         ),
       ],

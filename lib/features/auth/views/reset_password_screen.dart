@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../controllers/auth_controller.dart';
 import 'widgets/auth_text_field.dart';
+import '../../../core/widgets/landa_busy.dart';
 
 /// Lets a user paste the single-use token from the password-reset email
 /// (or the deep-link token, once linking is wired up) and set a new password.
@@ -38,10 +39,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       return;
     }
     if (newPassword.length < 8) {
-      LandaToast.error(
-        context,
-        'New password must be at least 8 characters.',
-      );
+      LandaToast.error(context, 'New password must be at least 8 characters.');
       return;
     }
     if (newPassword != confirmPassword) {
@@ -102,12 +100,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       color: AppTheme.actionColor,
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Set a new password',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                      style: AppTheme.screenTitle(
+                        context,
                         color: AppTheme.primaryColor,
                       ),
                     ),
@@ -157,13 +154,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             ),
                           ),
                           child: auth.isLoading
-                              ? const SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
+                              ? const LandaBusyDots(
+                                  color: Colors.white,
+                                  size: 7,
                                 )
                               : const Text(
                                   'Reset password',

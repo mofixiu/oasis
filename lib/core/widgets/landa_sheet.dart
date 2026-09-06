@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../utils/landa_haptics.dart';
+import 'landa_busy.dart';
 import 'landa_pressable.dart';
 
 /// Shared chrome for the app's bottom sheets.
@@ -207,7 +209,12 @@ InputDecoration landaInputDecoration(
     filled: true,
     fillColor: AppTheme.subtleSurfaceColor(context),
     isDense: true,
-    contentPadding: EdgeInsets.fromLTRB(prefixIcon == null ? 16 : 4, 16, 16, 16),
+    contentPadding: EdgeInsets.fromLTRB(
+      prefixIcon == null ? 16 : 4,
+      16,
+      16,
+      16,
+    ),
     prefixIcon: prefixIcon == null
         ? null
         : Padding(
@@ -285,32 +292,51 @@ class LandaSheetButton extends StatelessWidget {
       child: LandaPressable(
         onTap: enabled ? onPressed : null,
         pressedScale: 0.985,
-        child: Center(
-          child: isLoading
-              ? SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    color: foreground,
-                    strokeWidth: 2.2,
-                  ),
-                )
-              : Row(
+        // A sheet's primary button is the commit: pay, apply, submit, sign.
+        // The generic tap would understate every one of them.
+        hapticOnTap: false,
+        onTapHaptic: LandaHaptics.commit,
+        child: Stack(
+          children: [
+            // The label stays put while the request runs. Swapping it for a
+            // wheel loses the one thing on screen that says what is
+            // happening, and makes the button visibly change size.
+            Positioned.fill(
+              child: Center(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (icon != null) ...[
-                      Icon(icon, size: 18, color: foreground),
+                      Icon(
+                        icon,
+                        size: 18,
+                        color: foreground.withValues(
+                          alpha: isLoading ? 0.65 : 1,
+                        ),
+                      ),
                       const SizedBox(width: 9),
                     ],
                     Text(
                       label,
                       style: AppTheme.cardTitle(
                         context,
-                        color: foreground,
+                        color: foreground.withValues(
+                          alpha: isLoading ? 0.65 : 1,
+                        ),
                       ).copyWith(fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
+              ),
+            ),
+            if (isLoading)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: LandaBusyBar(color: foreground),
+              ),
+          ],
         ),
       ),
     );
@@ -338,9 +364,7 @@ class LandaSheetChipButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.actionColor.withValues(alpha: 0.07),
         borderRadius: AppTheme.cornerMd,
-        border: Border.all(
-          color: AppTheme.actionColor.withValues(alpha: 0.22),
-        ),
+        border: Border.all(color: AppTheme.actionColor.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

@@ -5,6 +5,8 @@ import '../../../../core/utils/landa_currency.dart';
 import '../../../../core/widgets/landa_sheet.dart';
 import '../../../../core/widgets/landa_toast.dart';
 import '../../../agreements/controllers/agreement_controller.dart';
+import '../../../agreements/models/agreement_model.dart';
+import '../../../agreements/views/widgets/rent_plan_picker.dart';
 import '../../../properties/controllers/landlord_controller.dart';
 import '../../../properties/models/property_model.dart';
 
@@ -23,6 +25,11 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
   final _rulesController = TextEditingController(
     text: 'No noise after 10 PM. Rent due annually.',
   );
+
+  /// Matches the backend's own default, so leaving the picker alone sends the
+  /// tenancy everyone expects.
+  RentPlan _rentPlan = RentPlan.fallback;
+
   bool _isSubmitting = false;
 
   @override
@@ -63,6 +70,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         startDate: startDate,
         endDate: endDate,
         rules: _rulesController.text.trim(),
+        rentPlan: _rentPlan,
       );
 
       if (!mounted) return;
@@ -218,12 +226,20 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
             prefixIcon: Icons.payments_outlined,
             suffix: Padding(
               padding: const EdgeInsets.only(right: 16, left: 8),
-              child: Text(
-                '₦ / year',
-                style: AppTheme.labelText(context),
-              ),
+              child: Text('₦ / year', style: AppTheme.labelText(context)),
             ),
           ),
+        ),
+        const SizedBox(height: 18),
+
+        // Placed under the amount because it reads as a qualifier on it: the
+        // figure above is what the tenant owes for the year, and this is how
+        // they will be asked for it.
+        const LandaFieldLabel('How often rent is due'),
+        RentPlanPicker(
+          selected: _rentPlan,
+          annualRent: _rentController.text.trim(),
+          onChanged: (plan) => setState(() => _rentPlan = plan),
         ),
         const SizedBox(height: 20),
 
@@ -231,6 +247,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
           property: _selectedProperty,
           unit: _selectedUnit,
           rent: _rentController.text.trim(),
+          plan: _rentPlan,
         ),
       ],
     );
@@ -243,11 +260,13 @@ class _InviteSummary extends StatelessWidget {
   final PropertyModel? property;
   final UnitModel? unit;
   final String rent;
+  final RentPlan plan;
 
   const _InviteSummary({
     required this.property,
     required this.unit,
     required this.rent,
+    required this.plan,
   });
 
   @override
@@ -289,7 +308,9 @@ class _InviteSummary extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${LandaCurrency.format(rent)} per year · 12-month bridge agreement starting today.',
+                        '${LandaCurrency.format(rent)} per year, '
+                        '${plan.label.toLowerCase()} · 12-month bridge '
+                        'agreement starting today.',
                         style: AppTheme.bodyText(context),
                       ),
                     ],
@@ -316,9 +337,9 @@ class _NoticeBanner extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     decoration: BoxDecoration(
-      color: AppTheme.vacantSurfaceColor.withValues(
-        alpha: AppTheme.isDarkMode(context) ? 0.14 : 1,
-      ),
+      color: AppTheme.vacantSurface(
+        context,
+      ).withValues(alpha: AppTheme.isDarkMode(context) ? 0.14 : 1),
       borderRadius: AppTheme.cornerMd,
       border: Border.all(color: AppTheme.sandColor.withValues(alpha: 0.5)),
     ),

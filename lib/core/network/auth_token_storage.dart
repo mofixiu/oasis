@@ -9,6 +9,7 @@ class AuthTokenStorage {
   static const String _keyUserRole = 'landa_user_role';
   static const String _keyOnboardingDone = 'landa_onboarding_done';
   static const String _keyUserProfile = 'landa_user_profile';
+
   /// Legacy key from the dismissible "identity verified" banner, which no
   /// longer exists. Retained only so `clear()` cleans it off older installs.
   static const String _keyVerifiedBannerDismissed =
@@ -22,7 +23,10 @@ class AuthTokenStorage {
   static bool _memOnboardingDone = false;
 
   /// Saves access and refresh tokens
-  static Future<void> saveTokens({required String access, required String refresh}) async {
+  static Future<void> saveTokens({
+    required String access,
+    required String refresh,
+  }) async {
     _memAccessToken = access;
     _memRefreshToken = refresh;
     try {
@@ -30,7 +34,9 @@ class AuthTokenStorage {
       await prefs.setString(_keyAccessToken, access);
       await prefs.setString(_keyRefreshToken, refresh);
     } catch (e) {
-      debugPrint('⚠️ [TOKEN STORAGE NOTICE] Could not write to SharedPreferences ($e), using in-memory cache.');
+      debugPrint(
+        '[TOKEN STORAGE NOTICE] Could not write to SharedPreferences ($e), using in-memory cache.',
+      );
     }
   }
 
@@ -41,7 +47,9 @@ class AuthTokenStorage {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyAccessToken, access);
     } catch (e) {
-      debugPrint('⚠️ [TOKEN STORAGE NOTICE] Could not write access token ($e), using in-memory cache.');
+      debugPrint(
+        '[TOKEN STORAGE NOTICE] Could not write access token ($e), using in-memory cache.',
+      );
     }
   }
 
@@ -53,7 +61,9 @@ class AuthTokenStorage {
       _memAccessToken = prefs.getString(_keyAccessToken);
       return _memAccessToken;
     } catch (e) {
-      debugPrint('⚠️ [TOKEN STORAGE NOTICE] Could not read SharedPreferences ($e).');
+      debugPrint(
+        '[TOKEN STORAGE NOTICE] Could not read SharedPreferences ($e).',
+      );
       return _memAccessToken;
     }
   }
@@ -66,7 +76,9 @@ class AuthTokenStorage {
       _memRefreshToken = prefs.getString(_keyRefreshToken);
       return _memRefreshToken;
     } catch (e) {
-      debugPrint('⚠️ [TOKEN STORAGE NOTICE] Could not read SharedPreferences ($e).');
+      debugPrint(
+        '[TOKEN STORAGE NOTICE] Could not read SharedPreferences ($e).',
+      );
       return _memRefreshToken;
     }
   }
@@ -78,7 +90,7 @@ class AuthTokenStorage {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyUserRole, role);
     } catch (e) {
-      debugPrint('⚠️ [TOKEN STORAGE NOTICE] Could not write user role ($e).');
+      debugPrint('[TOKEN STORAGE NOTICE] Could not write user role ($e).');
     }
   }
 
@@ -104,7 +116,7 @@ class AuthTokenStorage {
       await prefs.setString(_keyUserProfile, jsonStr);
       await prefs.setString(_keyUserRole, user.role.toServerString());
     } catch (e) {
-      debugPrint('⚠️ [TOKEN STORAGE NOTICE] Could not write user profile ($e).');
+      debugPrint('[TOKEN STORAGE NOTICE] Could not write user profile ($e).');
     }
   }
 
@@ -122,7 +134,9 @@ class AuthTokenStorage {
         return UserModel.fromJson(map);
       }
     } catch (e) {
-      debugPrint('⚠️ [TOKEN STORAGE NOTICE] Could not read cached user profile ($e).');
+      debugPrint(
+        '[TOKEN STORAGE NOTICE] Could not read cached user profile ($e).',
+      );
     }
     return null;
   }

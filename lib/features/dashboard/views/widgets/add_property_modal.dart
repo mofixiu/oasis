@@ -11,11 +11,242 @@ import '../../../../core/widgets/landa_pressable.dart';
 import '../../../../core/widgets/landa_sheet.dart';
 import '../../../../core/widgets/landa_toast.dart';
 import '../../../properties/controllers/landlord_controller.dart';
+import '../../../properties/views/widgets/add_units_modal.dart';
 import '../../../properties/models/property_model.dart';
 import '../../../properties/views/widgets/property_location_picker.dart';
+import '../../../shortlets/views/create_shortlet_sheet.dart';
+import 'move_in_tenants_modal.dart';
+
+/// Whether the ownership walkthrough may be an existing video file rather
+/// than one recorded on the spot.
+///
+/// **Temporary, and on for simulator testing.** The walkthrough is an
+/// anti-fraud control: recording live is what ties whoever is claiming the
+/// property to standing in front of it, and a file chosen from storage proves
+/// only that somebody once had a video. An iOS simulator has no camera, so
+/// with this off the add-property flow cannot be completed there at all.
+///
+/// Set to `false` before shipping. It is one line here and nothing else: the
+/// record path is untouched and stays the default action on the tile.
+const bool kAllowUploadedWalkthrough = true;
+
+/// Adds a property, then continues straight into its units, then asks who
+/// already lives in them.
+///
+/// One function rather than three call sites each chaining it themselves.
+/// A property created here has no units yet, and the units sheet is also where
+/// a landlord names the artisans they trust on them, so ending the property
+/// form and dropping the landlord back on the dashboard left both undone, with
+/// nothing on screen saying so. That is the bug this exists to prevent
+/// recurring the next time somewhere new opens the property form.
+///
+/// The third step exists because most landlords arriving here are not opening
+/// an empty building: they are moving one they already run onto Landa, with
+/// tenants in it and rent already collected. Left out, their first act would
+/// be to list occupied flats as vacant, and the only way to correct it would
+/// be to invite their own tenants to apply for the homes they live in.
+///
+/// Both steps after the property are normal dismissible sheets: a landlord who
+/// would rather do it later closes them, and reaches them again from My
+/// properties.
+///
+/// ## Why this holds a navigator rather than the caller's context
+///
+/// This is the longest-lived piece of UI in the app: five sheets, each one
+/// awaited, with file uploads between them. It routinely outlives the screen
+/// that started it, and it used to present every one of those sheets from the
+/// dashboard's own `BuildContext`.
+///
+/// The dashboard does not reliably survive the flow. `MainScaffold` swaps its
+/// entire body for the verification screen the moment the profile stops
+/// reading VERIFIED, and every request this flow makes can come back
+/// `403 VERIFICATION_REQUIRED`, which `ApiClient.onVerificationRequired`
+/// routes straight into that swap. The dashboard element goes with it, and
+/// the *next* `showModalBottomSheet` in the chain is handed a context whose
+/// element is no longer in the tree. It dies inside the framework's own
+/// ancestor lookup, before any of this code runs:
+///
+/// ```text
+/// Null check operator used on a null value
+/// #0  Element.widget            (framework.dart)
+/// #1  debugCheckHasMediaQuery   (debug.dart)
+/// #2  showModalBottomSheet      (bottom_sheet.dart)
+/// #3  openAddPropertyFlow
+/// ```
+///
+/// The same cause surfaces as *"Looking up a deactivated widget's ancestor is
+/// unsafe"* when the element has only been deactivated and not yet unmounted.
+/// Either way it lands at the last step, after the landlord has uploaded a
+/// walkthrough and five photos.
+///
+/// Guarding on `context.mounted` does not help, that is what the code used
+/// to do. It is false only once the element is fully unmounted, and the
+/// window between deactivation and that point is where the assertion lives;
+/// worse, the check passes at the top of an `await` and the swap happens
+/// during it.
+///
+/// A [NavigatorState] is not in that subtree. It outlives every screen inside
+/// it, which is exactly the lifetime this flow needs, so it is captured once,
+/// here, and every sheet below is presented from it. Pinned by
+/// `add_property_flow_test.dart`.
+Future<void> openAddPropertyFlow(BuildContext context) async {
+  final navigator = Navigator.of(context);
+
+  // Asked before anything is typed, because it decides what is asked for.
+  // A short-let host is not put through a deed they do not need, and a
+  // landlord letting by the year is not asked for a nightly price.
+  final purpose = await _askPropertyPurpose(navigator);
+  if (purpose == null || !navigator.mounted) return;
+
+  final property = await showModalBottomSheet<PropertyModel>(
+    context: navigator.context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    // Sized inside the builder rather than through `constraints`, so the
+    // measurement is taken against the sheet's own context. Measuring the
+    // caller's would both re-introduce the dependency this flow exists to
+    // avoid and quietly make the *dashboard* rebuild every time the keyboard
+    // moves.
+    builder: (sheetContext) => ConstrainedBox(
+      constraints: BoxConstraints.tightFor(
+        height: MediaQuery.sizeOf(sheetContext).height * 0.8,
+      ),
+      child: AddPropertyModal(purpose: purpose),
+    ),
+  );
+  if (property == null || !navigator.mounted) return;
+
+  final added = await AddUnitsModal.open(
+    navigator.context,
+    property,
+    purpose: purpose,
+  );
+  // Nothing to list or move anyone into, so nothing left to ask about.
+  if (added == null || added.units.isEmpty || !navigator.mounted) return;
+
+  if (purpose.isShortLet) {
+    // The third step for a short let is the listing itself: nightly price,
+    // house rules, how many guests, which dates. Without it the host leaves
+    // this flow with units nobody can book, and nothing on screen says so.
+    await _listCreatedUnitsForShortStays(navigator, property, added);
+    return;
+  }
+
+  final hasTenants = await _askAboutExistingTenants(
+    navigator,
+    added.units.length,
+  );
+  if (hasTenants != true || !navigator.mounted) return;
+  await MoveInTenantsModal.open(navigator.context, property);
+}
+
+/// Yearly rent or short lets: the first question in the flow.
+///
+/// A sheet rather than a toggle inside the form: the answer changes which
+/// fields exist, and a control that rewrites the form under the landlord's
+/// hands halfway through filling it in is worse than one clear question up
+/// front. Returns null when they backed out.
+Future<PropertyPurpose?> _askPropertyPurpose(NavigatorState navigator) =>
+    showModalBottomSheet<PropertyPurpose>(
+      context: navigator.context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => LandaSheet(
+        icon: Icons.help_outline_rounded,
+        title: 'What are you listing this for?',
+        subtitle:
+            'The two work differently, and Landa asks for different things '
+            'for each. You can add another property for the other kind any '
+            'time.',
+        children: [
+          for (final purpose in PropertyPurpose.values) ...[
+            _PurposeTile(
+              purpose: purpose,
+              onTap: () => Navigator.pop(sheetContext, purpose),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+
+/// Walks the host through listing each unit they just created for nightly
+/// stays.
+///
+/// One sheet per unit, in order, and each one is skippable: a host who adds
+/// six flats and lists two of them tonight has done nothing wrong, and the
+/// rest are still reachable from Short lets. The nightly price they typed on
+/// the unit is carried in, so the number is asked for once.
+Future<void> _listCreatedUnitsForShortStays(
+  NavigatorState navigator,
+  PropertyModel property,
+  AddUnitsResult added,
+) async {
+  for (final unit in added.units) {
+    if (!navigator.mounted) return;
+    final listed = await openCreateShortLetSheet(
+      navigator.context,
+      initialProperty: property,
+      initialUnit: unit,
+      initialNightlyPrice: added.nightlyPrices[unit.id],
+    );
+    // Backing out of one unit's listing ends the run rather than asking about
+    // the next five. The host has said what they came to say.
+    if (!listed) return;
+  }
+}
+
+/// Asks whether anybody already lives in the units just created.
+///
+/// A question rather than a fourth form pushed at everyone: a landlord listing
+/// a newly built block would have to dismiss a tenant sheet they never wanted,
+/// and one with a full building would otherwise never learn the step exists.
+Future<bool?> _askAboutExistingTenants(
+  NavigatorState navigator,
+  int unitCount,
+) => showModalBottomSheet<bool>(
+  context: navigator.context,
+  backgroundColor: Colors.transparent,
+  builder: (sheetContext) => LandaSheet(
+    icon: Icons.groups_2_outlined,
+    title: 'Anyone living here already?',
+    subtitle:
+        'You added $unitCount unit${unitCount == 1 ? '' : 's'}. If tenants are '
+        'already in ${unitCount == 1 ? 'it' : 'some of them'}, record them now '
+        'so their agreements start from the day they really moved in.',
+    footer: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LandaSheetButton(
+          label: 'Yes, add my tenants',
+          icon: Icons.person_add_alt_1_rounded,
+          onPressed: () => Navigator.pop(sheetContext, true),
+        ),
+        const SizedBox(height: 10),
+        TextButton(
+          onPressed: () => Navigator.pop(sheetContext, false),
+          child: Text(
+            'No, these are all vacant',
+            style: AppTheme.bodyText(
+              sheetContext,
+              color: AppTheme.secondaryTextColor(sheetContext),
+            ),
+          ),
+        ),
+      ],
+    ),
+    children: const [],
+  ),
+);
 
 class AddPropertyModal extends StatefulWidget {
-  const AddPropertyModal({super.key});
+  /// What the landlord said they are listing for. Decides whether proof of
+  /// ownership is asked for, and what the sheet says it is collecting.
+  final PropertyPurpose purpose;
+
+  const AddPropertyModal({
+    super.key,
+    this.purpose = PropertyPurpose.yearlyRent,
+  });
 
   @override
   State<AddPropertyModal> createState() => _AddPropertyModalState();
@@ -24,15 +255,19 @@ class AddPropertyModal extends StatefulWidget {
 class _AddPropertyModalState extends State<AddPropertyModal> {
   final _nameCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController(text: 'Lagos');
+
+  /// Left blank on purpose. This used to arrive prefilled with 'Lagos', which
+  /// is not a city anybody writes on a Nigerian address: they write Ikeja,
+  /// Lekki, Yaba, so the default was wrong for every landlord including the
+  /// ones in Lagos, and wrong in the quiet way that gets submitted unread.
+  final _cityCtrl = TextEditingController();
+
+  /// The state keeps its default: Lagos genuinely is one, and it is where most
+  /// early landlords are.
   final _stateCtrl = TextEditingController(text: 'Lagos');
   final _picker = ImagePicker();
   final List<File> _photos = [];
   File? _verificationVideo;
-
-  /// Optional public property tour, separate from the private
-  /// [_verificationVideo] used for ownership review.
-  File? _listingVideo;
   File? _deed;
   LatLng? _pin;
   bool _isSubmitting = false;
@@ -77,6 +312,51 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
     }
   }
 
+  /// The walkthrough step. Records live, or, while
+  /// [kAllowUploadedWalkthrough] is on: offers an existing file instead.
+  Future<void> _addVerificationVideo() async {
+    if (!kAllowUploadedWalkthrough) {
+      await _recordVerificationVideo();
+      return;
+    }
+
+    final recordLive = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => LandaSheet(
+        icon: Icons.videocam_outlined,
+        title: 'Add your walkthrough',
+        subtitle:
+            'Recording on the spot is what verification is checking for. '
+            'Choosing a file is for testing on a simulator, which has no '
+            'camera.',
+        children: [
+          LandaSheetChipButton(
+            icon: Icons.fiber_manual_record_rounded,
+            label: 'Record now',
+            onTap: () => Navigator.pop(sheetContext, true),
+          ),
+          const SizedBox(height: 10),
+          LandaSheetChipButton(
+            icon: Icons.folder_open_outlined,
+            label: 'Choose a video file',
+            onTap: () => Navigator.pop(sheetContext, false),
+          ),
+        ],
+      ),
+    );
+    if (recordLive == null || !mounted) return;
+
+    if (recordLive) {
+      await _recordVerificationVideo();
+      return;
+    }
+    final file = await _pickVideoFile();
+    if (file != null && mounted) {
+      setState(() => _verificationVideo = file);
+    }
+  }
+
   Future<void> _recordVerificationVideo() async {
     try {
       final video = await _picker.pickVideo(
@@ -93,30 +373,33 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
     }
   }
 
-  Future<void> _pickListingVideo() async {
+  /// Picks a video off the device, size-checked. Null when the landlord backed
+  /// out or the file was refused: the caller decides what it was for.
+  Future<File?> _pickVideoFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: PropertyMediaLimits.videoExtensions,
       );
       final path = result?.files.single.path;
-      if (path == null || !mounted) return;
+      if (path == null || !mounted) return null;
 
       final file = File(path);
       if (await file.length() > PropertyMediaLimits.maxVideoBytes) {
         if (mounted) {
           LandaToast.error(
             context,
-            'Tour video must not exceed 50MB. Choose a shorter clip.',
+            'Video must not exceed 50MB. Choose a shorter clip.',
           );
         }
-        return;
+        return null;
       }
-      if (mounted) setState(() => _listingVideo = file);
+      return file;
     } catch (error) {
       if (mounted) {
         LandaToast.error(context, 'Unable to select video: $error');
       }
+      return null;
     }
   }
 
@@ -136,36 +419,90 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
     }
   }
 
+  /// Whether enough photos are attached for the listing to be accepted.
+  bool get _hasEnoughPhotos => _photos.length >= PropertyMediaLimits.minPhotos;
+
+  /// Whether this property is being added for nightly stays.
+  bool get _isShortLet => widget.purpose.isShortLet;
+
+  /// Whether proof of ownership is part of this submission.
+  ///
+  /// Only for a yearly let. A deed underwrites a tenancy: a document that
+  /// binds somebody to a home for a year, where a forged claim costs a family
+  /// their savings. A guest booking three nights signs nothing, pays into
+  /// escrow and leaves, and the live walkthrough already ties the host to the
+  /// building. Asking a short-let host for a land title is asking for
+  /// paperwork most of them do not have for a risk their booking does not
+  /// carry.
+  bool get _needsDeed => !_isShortLet;
+
+  /// Whether the ownership evidence for this property is complete.
+  bool get _hasOwnershipEvidence =>
+      _verificationVideo != null && (!_needsDeed || _deed != null);
+
+  /// The address the landlord has already typed, shaped into a single line
+  /// for the pin map's address lookup.
+  String _locationQuery() => [
+    _addressCtrl.text.trim(),
+    _cityCtrl.text.trim(),
+    _stateCtrl.text.trim(),
+  ].where((part) => part.isNotEmpty).join(', ');
+
+  /// The one thing still standing between this form and a submission, or null
+  /// when it is ready.
+  ///
+  /// Read by the footer as well as by [_submitProperty], which is the point:
+  /// this form asks for a pin, five files and a video, and telling somebody
+  /// which field is wrong only *after* they have pressed the button, at the
+  /// end of the longest form in the app, is the least useful moment to say
+  /// it. The blocker is now on screen the whole way down.
+  String? get _problem {
+    if (_nameCtrl.text.trim().isEmpty) return 'Give the property a name.';
+    if (_addressCtrl.text.trim().isEmpty) return 'Enter the street address.';
+    // Both are required by `POST /properties/`. Checked here because the
+    // alternative is uploading five files and a video to be told no: the
+    // request that used to fail on this carried the whole evidence bundle.
+    if (_cityCtrl.text.trim().isEmpty) return 'Enter the city.';
+    if (_stateCtrl.text.trim().isEmpty) return 'Enter the state.';
+    if (_pin == null) return 'Drop a pin on the property location.';
+    if (_photos.length < PropertyMediaLimits.minPhotos) {
+      final need = PropertyMediaLimits.minPhotos - _photos.length;
+      return _photos.isEmpty
+          ? 'Add at least ${PropertyMediaLimits.minPhotos} photos of the '
+                'property.'
+          : '$need more ${need == 1 ? 'photo' : 'photos'} of the property.';
+    }
+    if (_verificationVideo == null) {
+      return 'Record the live walkthrough. It is what verifies the property.';
+    }
+    if (_needsDeed && _deed == null) {
+      return 'Attach the deed or proof of ownership.';
+    }
+    return null;
+  }
+
   Future<void> _submitProperty() async {
+    final problem = _problem;
+    if (problem != null) {
+      LandaToast.error(context, problem);
+      return;
+    }
     final name = _nameCtrl.text.trim();
     final address = _addressCtrl.text.trim();
-    if (name.isEmpty || address.isEmpty) {
-      LandaToast.error(context, 'Enter the property name and street address.');
-      return;
-    }
-    if (_pin == null) {
-      LandaToast.error(context, 'Drop a pin on the property location.');
-      return;
-    }
-    if (_verificationVideo == null || _deed == null) {
-      LandaToast.error(
-        context,
-        'A live verification video and deed are required.',
-      );
-      return;
-    }
+    final city = _cityCtrl.text.trim();
+    final state = _stateCtrl.text.trim();
     setState(() => _isSubmitting = true);
     final property = await context.read<LandlordController>().createProperty(
       name: name,
       address: address,
-      city: _cityCtrl.text.trim(),
-      state: _stateCtrl.text.trim(),
+      city: city,
+      state: state,
       latitude: _pin!.latitude,
       longitude: _pin!.longitude,
       photos: _photos,
       verificationVideo: _verificationVideo!,
-      deedFile: _deed!,
-      listingVideo: _listingVideo,
+      // Null for a short let, and the service leaves the part out entirely.
+      deedFile: _deed,
     );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -177,7 +514,8 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
       );
       return;
     }
-    Navigator.pop(context);
+    // Handed back so the caller can carry straight on into the units sheet.
+    Navigator.pop(context, property);
     LandaToast.success(context, '${property.name} submitted for verification.');
   }
 
@@ -185,22 +523,63 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
   Widget build(BuildContext context) {
     return LandaSheet(
       icon: Icons.add_location_alt_rounded,
-      title: 'Add verified property',
-      subtitle:
-          'Pin the property, record a live walkthrough and attach proof of ownership.',
+      title: _isShortLet ? 'Add a place for stays' : 'Add verified property',
+      subtitle: _isShortLet
+          ? 'Pin the place and record a live walkthrough. You add the units '
+                'next, with photos and a tour video for each, then set your '
+                'nightly price and house rules.'
+          : 'Pin the property, record a live walkthrough and attach proof of '
+                'ownership. You add the units next, with a tour video for '
+                'each.',
       accent: AppTheme.primaryColor,
-      footer: LandaSheetButton(
-        label: 'Submit property for review',
-        icon: Icons.verified_outlined,
-        color: AppTheme.primaryColor,
-        isLoading: _isSubmitting,
-        onPressed: _submitProperty,
+      footer: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Named above the button rather than behind a tap on it, and
+          // updated as they type: the same pattern the units sheet already
+          // uses. A disabled button that will not say why is what this form
+          // used to do.
+          if (_problem case final problem? when !_isSubmitting) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 15,
+                  color: AppTheme.warningColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    problem,
+                    style: AppTheme.labelText(
+                      context,
+                      color: AppTheme.warningColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          LandaSheetButton(
+            label: 'Submit property for review',
+            icon: Icons.verified_outlined,
+            color: AppTheme.primaryColor,
+            isLoading: _isSubmitting,
+            onPressed: _problem == null ? _submitProperty : null,
+          ),
+        ],
       ),
       children: [
         const LandaFieldLabel('Property details'),
         TextField(
           controller: _nameCtrl,
           textCapitalization: TextCapitalization.words,
+          // Rebuilds the footer's blocker line as they type, so it tracks
+          // what is actually filled in rather than what was filled in last
+          // time something else changed.
+          onChanged: (_) => setState(() {}),
           style: AppTheme.cardTitle(context),
           decoration: landaInputDecoration(
             context,
@@ -212,6 +591,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         TextField(
           controller: _addressCtrl,
           textCapitalization: TextCapitalization.words,
+          onChanged: (_) => setState(() {}),
           style: AppTheme.cardTitle(context),
           decoration: landaInputDecoration(
             context,
@@ -226,6 +606,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
               child: TextField(
                 controller: _cityCtrl,
                 textCapitalization: TextCapitalization.words,
+                onChanged: (_) => setState(() {}),
                 style: AppTheme.cardTitle(context),
                 decoration: landaInputDecoration(context, hint: 'City'),
               ),
@@ -235,6 +616,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
               child: TextField(
                 controller: _stateCtrl,
                 textCapitalization: TextCapitalization.words,
+                onChanged: (_) => setState(() {}),
                 style: AppTheme.cardTitle(context),
                 decoration: landaInputDecoration(context, hint: 'State'),
               ),
@@ -243,16 +625,38 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         ),
         const SizedBox(height: 24),
 
-        PropertyLocationPicker(onChanged: (pin) => _pin = pin),
+        PropertyLocationPicker(
+          onChanged: (pin) => setState(() => _pin = pin),
+          addressResolver: _locationQuery,
+        ),
         const SizedBox(height: 24),
 
         LandaFieldLabel(
           'Property photos',
           trailing: _OptionalTag(
-            label: _photos.isEmpty ? 'Optional' : '${_photos.length} added',
-            highlight: _photos.isNotEmpty,
+            label: _hasEnoughPhotos ? '${_photos.length} added' : 'Required',
+            highlight: _hasEnoughPhotos,
+            required: !_hasEnoughPhotos,
           ),
         ),
+        // A listing with nothing to look at is not a listing: the backend
+        // rejects it, and a property with no photos is hidden from the
+        // marketplace. Say so here rather than letting the landlord fill in
+        // the whole sheet and collect a 422 at the end.
+        if (!_hasEnoughPhotos) ...[
+          const SizedBox(height: 6),
+          Text(
+            _photos.isEmpty
+                ? 'Add at least ${PropertyMediaLimits.minPhotos} photos. '
+                      'Listings without them are not shown to tenants.'
+                : 'One more photo needed.',
+            style: AppTheme.labelText(
+              context,
+              color: AppTheme.secondaryTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         if (_photos.isNotEmpty) ...[
           SizedBox(
             height: 88,
@@ -322,63 +726,195 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         LandaFieldLabel(
           'Live ownership check',
           trailing: _OptionalTag(
-            label: (_verificationVideo != null && _deed != null)
-                ? 'Complete'
-                : 'Required',
-            highlight: _verificationVideo != null && _deed != null,
-            required: !(_verificationVideo != null && _deed != null),
+            label: _hasOwnershipEvidence ? 'Complete' : 'Required',
+            highlight: _hasOwnershipEvidence,
+            required: !_hasOwnershipEvidence,
           ),
         ),
         _EvidenceTile(
           icon: Icons.videocam_outlined,
           title: _verificationVideo == null
-              ? 'Record live walkthrough'
-              : 'Live walkthrough recorded',
+              ? (kAllowUploadedWalkthrough
+                    ? 'Add live walkthrough'
+                    : 'Record live walkthrough')
+              : 'Live walkthrough added',
           subtitle: _verificationVideo == null
-              ? 'Record up to 60 seconds showing the exterior and your presence.'
+              ? 'Up to 60 seconds showing the exterior and your presence.'
               : _verificationVideo!.path.split('/').last,
-          action: _verificationVideo == null ? 'Record' : 'Redo',
-          onTap: _recordVerificationVideo,
+          action: _verificationVideo == null
+              ? (kAllowUploadedWalkthrough ? 'Add' : 'Record')
+              : 'Redo',
+          onTap: _addVerificationVideo,
           complete: _verificationVideo != null,
         ),
-        const SizedBox(height: 10),
-        _EvidenceTile(
-          icon: Icons.description_outlined,
-          title: _deed == null
-              ? 'Attach deed or proof of ownership'
-              : 'Proof of ownership attached',
-          subtitle: _deed == null
-              ? 'PDF, JPG or PNG. This is reviewed with the live video.'
-              : _deed!.path.split('/').last,
-          action: _deed == null ? 'Attach' : 'Replace',
-          onTap: _pickDeed,
-          complete: _deed != null,
-        ),
+        // Proof of ownership, for a yearly let only. Said out loud in the
+        // short-let case rather than silently dropped: a host who has read
+        // about the deed elsewhere, or who is adding their second property,
+        // would otherwise be looking for a step that is deliberately not
+        // there.
+        if (_needsDeed) ...[
+          const SizedBox(height: 10),
+          _EvidenceTile(
+            icon: Icons.description_outlined,
+            title: _deed == null
+                ? 'Attach deed or proof of ownership'
+                : 'Proof of ownership attached',
+            subtitle: _deed == null
+                ? 'PDF, JPG or PNG. This is reviewed with the live video.'
+                : _deed!.path.split('/').last,
+            action: _deed == null ? 'Attach' : 'Replace',
+            onTap: _pickDeed,
+            complete: _deed != null,
+          ),
+        ] else ...[
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 15,
+                color: AppTheme.mutedTextColor(context),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'No deed needed for short stays. The live walkthrough is '
+                  'the check. Guests book by the night and sign nothing.',
+                  style: AppTheme.labelText(
+                    context,
+                    color: AppTheme.secondaryTextColor(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 24),
 
-        // Public-facing tour, distinct from the private ownership check
-        // above. Optional, and can also be added later from the property
-        // screen.
-        LandaFieldLabel(
-          'Property tour video',
-          trailing: _OptionalTag(
-            label: _listingVideo == null ? 'Optional' : 'Added',
-            highlight: _listingVideo != null,
+        // Where the property-tour video used to be. It has moved onto each
+        // unit, in the sheet that opens next: a tenant applies for one flat,
+        // and a single walkthrough of the block told them nothing about the
+        // one they would actually live in. Said here rather than left as a
+        // silently missing section, because a landlord who used it before
+        // will come looking for it.
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppTheme.subtleSurfaceColor(context),
+            borderRadius: AppTheme.cornerMd,
+            border: Border.all(color: AppTheme.borderColor(context)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.movie_outlined,
+                size: 19,
+                color: AppTheme.mutedTextColor(context),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tour videos come next',
+                      style: AppTheme.cardTitle(
+                        context,
+                      ).copyWith(fontSize: AppTheme.textSm),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _isShortLet
+                          ? 'Each unit needs its own photos and walkthrough. '
+                                'You add them next, then set the nightly '
+                                'price and house rules for each one.'
+                          : 'Each unit needs its own photos and walkthrough. '
+                                'You will add them on the next step, with '
+                                'the units.',
+                      style: AppTheme.bodyText(
+                        context,
+                        color: AppTheme.mutedTextColor(context),
+                      ).copyWith(fontSize: AppTheme.textXs, height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        _EvidenceTile(
-          icon: Icons.movie_outlined,
-          title: _listingVideo == null
-              ? 'Add a tour video for your listing'
-              : 'Tour video attached',
-          subtitle: _listingVideo == null
-              ? 'MP4 or MOV up to 50MB. Shown to tenants browsing the marketplace.'
-              : _listingVideo!.path.split('/').last,
-          action: _listingVideo == null ? 'Attach' : 'Replace',
-          onTap: _pickListingVideo,
-          complete: _listingVideo != null,
-        ),
       ],
+    );
+  }
+}
+
+/// One answer to the opening question, as a full-width tile.
+///
+/// Tiles rather than a segmented control because each option needs a line of
+/// explanation: a landlord who has only ever let by the year does not know
+/// what Landa means by a short let, and picking the wrong one costs them the
+/// whole form.
+class _PurposeTile extends StatelessWidget {
+  final PropertyPurpose purpose;
+  final VoidCallback onTap;
+
+  const _PurposeTile({required this.purpose, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = purpose.isShortLet
+        ? AppTheme.vacantColor
+        : AppTheme.actionColor;
+    return LandaPressable(
+      onTap: onTap,
+      pressedScale: 0.99,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.subtleSurfaceColor(context),
+          borderRadius: AppTheme.cornerMd,
+          border: Border.all(color: AppTheme.borderColor(context)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: AppTheme.cornerSm,
+              ),
+              child: Icon(
+                purpose.isShortLet
+                    ? Icons.holiday_village_outlined
+                    : Icons.calendar_month_outlined,
+                size: 20,
+                color: accent,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(purpose.label, style: AppTheme.cardTitle(context)),
+                  const SizedBox(height: 3),
+                  Text(
+                    purpose.blurb,
+                    style: AppTheme.bodyText(
+                      context,
+                      color: AppTheme.secondaryTextColor(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded, size: 20, color: accent),
+          ],
+        ),
+      ),
     );
   }
 }

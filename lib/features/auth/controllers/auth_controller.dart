@@ -63,7 +63,7 @@ class AuthController extends ChangeNotifier with LoadFailureState {
   Future<bool> login(String email, String password) async {
     _setLoading(true);
     clearFailure();
-    // A session can end without `logout()` running — an expired refresh token
+    // A session can end without `logout()` running: an expired refresh token
     // clears storage from inside ApiClient and drops the user here. Clearing
     // on the way in guarantees a signed-in user never inherits cached data,
     // however the previous session ended.
@@ -121,11 +121,19 @@ class AuthController extends ChangeNotifier with LoadFailureState {
   }
 
   /// User Registration
+  ///
+  /// The trade fields are artisan-only and are forwarded as given; the service
+  /// decides whether they reach the wire, so this never has to know the shape
+  /// of the registration body.
   Future<bool> register({
     required String email,
     required String password,
     required String phone,
     required UserRole role,
+    String? category,
+    String? location,
+    String? bio,
+    int? yearsOfExperience,
   }) async {
     _setLoading(true);
     clearFailure();
@@ -137,6 +145,10 @@ class AuthController extends ChangeNotifier with LoadFailureState {
         password: password,
         phone: phone,
         role: role,
+        category: category,
+        location: location,
+        bio: bio,
+        yearsOfExperience: yearsOfExperience,
       );
       _isAuthenticated = true;
       notifyListeners();
@@ -258,6 +270,25 @@ class AuthController extends ChangeNotifier with LoadFailureState {
   /// redirect back to the verification flow automatically.
   Future<void> handleVerificationRequiredSignal() async {
     await checkVerificationStatus(reportErrors: false);
+  }
+
+  /// The session ended without anybody pressing sign out.
+  ///
+  /// Fired by [ApiClient] when a refresh token is rejected. Tokens are already
+  /// gone by then; what is left is to stop the app claiming to be signed in
+  /// and to wipe the previous user's data out of the process-lifetime
+  /// controllers, exactly as [logout] does.
+  ///
+  /// No network call: the server has already told us the credentials are
+  /// dead, and posting a logout with them would only fail.
+  void handleSessionExpired() {
+    if (!_isAuthenticated && _currentUser == null) return;
+    _currentUser = null;
+    _isAuthenticated = false;
+    _consentRequired = false;
+    clearFailure();
+    SessionScope.resetAll();
+    notifyListeners();
   }
 
   /// Refresh user profile

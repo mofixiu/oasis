@@ -3,10 +3,23 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 /// Smooth left-to-right sweeping Shimmer effect widget for loading states
+/// Sweeps a highlight across whatever is inside it.
+///
+/// **Wrap the bars, never the card.** `BlendMode.srcATop` paints the gradient
+/// over every opaque pixel it is given, so a shimmer placed around a whole
+/// skeleton card paints the card's own surface and border the same grey as
+/// the bars inside it, and the silhouette it was carefully given disappears.
+/// The result is one featureless slab, which is precisely what a skeleton
+/// exists not to be, and is what the dashboard's loading state looked like
+/// for a long time before anyone worked out why.
+///
+/// So the card is built outside this, and only its bars are handed in: the
+/// gaps between them are transparent, the shader has nothing to paint there,
+/// and the shape reads through.
 class LandaShimmer extends StatefulWidget {
   final Widget child;
 
-  /// Defaults follow the theme — the old hard-coded light greys glowed
+  /// Defaults follow the theme: the old hard-coded light greys glowed
   /// against the dark background.
   final Color? baseColor;
   final Color? highlightColor;
@@ -91,69 +104,11 @@ class ShimmerBox extends StatelessWidget {
       height: height,
       width: width,
       decoration: BoxDecoration(
-        // Painted over by the shimmer shader; opaque white keeps the sweep
-        // even in dark mode instead of muddying it.
+        // Any opaque colour works, the shader replaces it entirely, but
+        // white keeps the sweep even rather than muddying it in dark mode.
         color: Colors.white,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-    );
-  }
-}
-
-/// Skeleton for Dashboard Cards (Properties, Agreements, Units)
-class ShimmerCardSkeleton extends StatelessWidget {
-  const ShimmerCardSkeleton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return LandaShimmer(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ShimmerBox(height: 18, width: 140),
-                ShimmerBox(height: 24, width: 70, borderRadius: 16),
-              ],
-            ),
-            SizedBox(height: 8),
-            ShimmerBox(height: 12, width: 200),
-            Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ShimmerBox(height: 14, width: 100),
-                ShimmerBox(height: 14, width: 80),
-              ],
-            ),
-            SizedBox(height: 12),
-            ShimmerBox(height: 48, width: double.infinity, borderRadius: 10),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Skeleton List Loader
-class ShimmerListSkeleton extends StatelessWidget {
-  final int count;
-
-  const ShimmerListSkeleton({super.key, this.count = 3});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(count, (_) => const ShimmerCardSkeleton()),
     );
   }
 }
@@ -187,14 +142,16 @@ class LandaCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LandaShimmer(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor(context),
-          borderRadius: AppTheme.cornerLg,
-          border: Border.all(color: AppTheme.borderColor(context)),
-        ),
+    // The card is a real card: its own surface, its own border, outside the
+    // shimmer. Only the bars are swept.
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: AppTheme.cornerLg,
+        border: Border.all(color: AppTheme.borderColor(context)),
+      ),
+      child: LandaShimmer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -263,7 +220,7 @@ class LandaSkeletonList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       // Never scrolls on its own, and is routinely dropped into a Column
-      // inside a page-level scroll view — without shrinkWrap that is an
+      // inside a page-level scroll view: without shrinkWrap that is an
       // unbounded-height viewport, and the skeleton fails to render at all.
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -287,14 +244,14 @@ class LandaListingSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LandaShimmer(
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor(context),
-          borderRadius: AppTheme.cornerLg,
-          border: Border.all(color: AppTheme.borderColor(context)),
-        ),
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: AppTheme.cornerLg,
+        border: Border.all(color: AppTheme.borderColor(context)),
+      ),
+      child: LandaShimmer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

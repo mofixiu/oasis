@@ -13,16 +13,14 @@ class PropertyService {
   /// List landlord properties
   Future<List<PropertyModel>> getProperties() async {
     debugPrint(
-      '🏢 [PROPERTY SERVICE] Fetching landlord properties GET ${ApiConstants.propertiesEndpoint}',
+      '[PROPERTY SERVICE] Fetching landlord properties GET ${ApiConstants.propertiesEndpoint}',
     );
     final response = await _apiClient.get(ApiConstants.propertiesEndpoint);
     if (response is List) {
       final properties = response
           .map((item) => PropertyModel.fromJson(item))
           .toList();
-      debugPrint(
-        '🏢 [PROPERTY SERVICE] Loaded ${properties.length} properties',
-      );
+      debugPrint('[PROPERTY SERVICE] Loaded ${properties.length} properties');
       return properties;
     }
     return [];
@@ -31,7 +29,7 @@ class PropertyService {
   /// Get single property detail with nested units
   Future<PropertyDetail> getPropertyDetail(String propertyId) async {
     final endpoint = ApiConstants.propertyDetailEndpoint(propertyId);
-    debugPrint('🏢 [PROPERTY SERVICE] Fetching property detail GET $endpoint');
+    debugPrint('[PROPERTY SERVICE] Fetching property detail GET $endpoint');
     final response = await _apiClient.get(endpoint);
     if (response is Map<String, dynamic>) {
       final property = PropertyModel.fromJson(response);
@@ -41,7 +39,7 @@ class PropertyService {
                 .toList()
           : <UnitModel>[];
       debugPrint(
-        '🏢 [PROPERTY SERVICE] Property detail loaded: ID=${property.id}, Units=${units.length}',
+        '[PROPERTY SERVICE] Property detail loaded: ID=${property.id}, Units=${units.length}',
       );
       return PropertyDetail(property: property, units: units);
     }
@@ -57,12 +55,11 @@ class PropertyService {
     required double latitude,
     required double longitude,
     required File verificationVideo,
-    required File deedFile,
+    File? deedFile,
     List<File> photos = const [],
-    File? listingVideo,
   }) async {
     debugPrint(
-      '🏢 [PROPERTY SERVICE] Creating verified property POST ${ApiConstants.propertiesEndpoint} (Name: $name)',
+      '[PROPERTY SERVICE] Creating verified property POST ${ApiConstants.propertiesEndpoint} (Name: $name)',
     );
     final response = await _apiClient.postMultipartFiles(
       ApiConstants.propertiesEndpoint,
@@ -71,9 +68,21 @@ class PropertyService {
         'address': address,
         'city': city,
         'state': state,
-        'latitude': latitude.toString(),
-        'longitude': longitude.toString(),
-        'verification_method': 'LIVE_VIDEO_AND_DEED',
+        // Six places, matching the field the backend declares and what Stays
+        // and the marketplace already send. A pin dropped on a map is a raw
+        // double: `toString()` on it yields 6.428055123456789, and a
+        // DecimalField with six places rejects the extra precision, which
+        // reads at this end as a plain "some details are missing or invalid"
+        // after the whole evidence bundle has finished uploading.
+        'latitude': latitude.toStringAsFixed(6),
+        'longitude': longitude.toStringAsFixed(6),
+        // Names what is actually attached. A short let is let by the night
+        // and never signs a tenancy, so its host is not asked for a deed:
+        // saying LIVE_VIDEO_AND_DEED anyway would describe evidence that is
+        // not in the request.
+        'verification_method': deedFile == null
+            ? 'LIVE_VIDEO'
+            : 'LIVE_VIDEO_AND_DEED',
       },
       files: [
         ...photos.map(
@@ -83,16 +92,16 @@ class PropertyService {
           fieldName: 'verification_video',
           file: verificationVideo,
         ),
-        MultipartUpload(fieldName: 'deed', file: deedFile),
-        // Optional public property tour, distinct from the private
-        // verification_video used for ownership review.
-        if (listingVideo != null)
-          MultipartUpload(fieldName: 'listing_video', file: listingVideo),
+        if (deedFile != null)
+          MultipartUpload(fieldName: 'deed', file: deedFile),
+        // No listing video here any more. The public walkthrough moved onto
+        // the unit, where it belongs: a tenant applies for a flat, and one
+        // video of a block told them nothing about the one they would live in.
       ],
     );
     final prop = PropertyModel.fromJson(response);
     debugPrint(
-      '🏢 [PROPERTY SERVICE] Property created: ID=${prop.id}, Name=${prop.name}',
+      '[PROPERTY SERVICE] Property created: ID=${prop.id}, Name=${prop.name}',
     );
     return prop;
   }
@@ -102,7 +111,7 @@ class PropertyService {
   /// List a property's listing photos.
   Future<List<PropertyPhoto>> getPropertyPhotos(String propertyId) async {
     final endpoint = ApiConstants.propertyPhotosEndpoint(propertyId);
-    debugPrint('🖼️ [PROPERTY SERVICE] Fetching listing photos GET $endpoint');
+    debugPrint('[PROPERTY SERVICE] Fetching listing photos GET $endpoint');
     final response = await _apiClient.get(endpoint);
     if (response is List) {
       return response
@@ -120,7 +129,7 @@ class PropertyService {
   }) async {
     final endpoint = ApiConstants.propertyPhotosEndpoint(propertyId);
     debugPrint(
-      '🖼️ [PROPERTY SERVICE] Uploading ${photos.length} listing photos POST $endpoint',
+      '[PROPERTY SERVICE] Uploading ${photos.length} listing photos POST $endpoint',
     );
     final response = await _apiClient.postMultipartFiles(
       endpoint,
@@ -151,16 +160,14 @@ class PropertyService {
       propertyId,
       photoId,
     );
-    debugPrint(
-      '🗑️ [PROPERTY SERVICE] Deleting listing photo DELETE $endpoint',
-    );
+    debugPrint('[PROPERTY SERVICE] Deleting listing photo DELETE $endpoint');
     await _apiClient.delete(endpoint);
   }
 
   /// Current listing video URL, or null when the property has none.
   Future<String?> getPropertyVideo(String propertyId) async {
     final endpoint = ApiConstants.propertyVideoEndpoint(propertyId);
-    debugPrint('🎬 [PROPERTY SERVICE] Fetching listing video GET $endpoint');
+    debugPrint('[PROPERTY SERVICE] Fetching listing video GET $endpoint');
     final response = await _apiClient.get(endpoint);
     if (response is Map<String, dynamic>) {
       final url = response['video_url']?.toString();
@@ -175,7 +182,7 @@ class PropertyService {
     required File video,
   }) async {
     final endpoint = ApiConstants.propertyVideoEndpoint(propertyId);
-    debugPrint('🎬 [PROPERTY SERVICE] Uploading listing video POST $endpoint');
+    debugPrint('[PROPERTY SERVICE] Uploading listing video POST $endpoint');
     final response = await _apiClient.postMultipartFiles(
       endpoint,
       fields: const {},
@@ -191,9 +198,91 @@ class PropertyService {
   /// Delete the listing video.
   Future<void> deletePropertyVideo(String propertyId) async {
     final endpoint = ApiConstants.propertyVideoEndpoint(propertyId);
+    debugPrint('[PROPERTY SERVICE] Deleting listing video DELETE $endpoint');
+    await _apiClient.delete(endpoint);
+  }
+
+  // ---------------------------------------------------------- unit media
+
+  /// List one unit's photos.
+  Future<List<PropertyPhoto>> getUnitPhotos(String unitId) async {
+    final endpoint = ApiConstants.unitPhotosEndpoint(unitId);
+    debugPrint('[PROPERTY SERVICE] Fetching unit photos GET $endpoint');
+    final response = await _apiClient.get(endpoint);
+    if (response is List) {
+      return response
+          .whereType<Map<String, dynamic>>()
+          .map(PropertyPhoto.fromJson)
+          .toList();
+    }
+    return const [];
+  }
+
+  /// Upload photos of one unit. Returns the created records.
+  Future<List<PropertyPhoto>> uploadUnitPhotos({
+    required String unitId,
+    required List<File> photos,
+  }) async {
+    final endpoint = ApiConstants.unitPhotosEndpoint(unitId);
     debugPrint(
-      '🗑️ [PROPERTY SERVICE] Deleting listing video DELETE $endpoint',
+      '[PROPERTY SERVICE] Uploading ${photos.length} unit photos POST $endpoint',
     );
+    final response = await _apiClient.postMultipartFiles(
+      endpoint,
+      fields: const {},
+      files: photos
+          .map((photo) => MultipartUpload(fieldName: 'photos', file: photo))
+          .toList(),
+    );
+    if (response is List) {
+      return response
+          .whereType<Map<String, dynamic>>()
+          .map(PropertyPhoto.fromJson)
+          .toList();
+    }
+    if (response is Map<String, dynamic>) {
+      return [PropertyPhoto.fromJson(response)];
+    }
+    return const [];
+  }
+
+  /// Delete one unit photo.
+  Future<void> deleteUnitPhoto({
+    required String unitId,
+    required String photoId,
+  }) async {
+    final endpoint = ApiConstants.unitPhotoDetailEndpoint(unitId, photoId);
+    debugPrint('[PROPERTY SERVICE] Deleting unit photo DELETE $endpoint');
+    await _apiClient.delete(endpoint);
+  }
+
+  /// Upload or replace a unit's single tour video. Returns the new URL.
+  ///
+  /// One per unit, replaced rather than appended: a tenant deciding whether to
+  /// apply wants the walkthrough, not a playlist, and a second video would
+  /// only ever raise the question of which one is current.
+  Future<String?> uploadUnitVideo({
+    required String unitId,
+    required File video,
+  }) async {
+    final endpoint = ApiConstants.unitVideoEndpoint(unitId);
+    debugPrint('[PROPERTY SERVICE] Uploading unit video POST $endpoint');
+    final response = await _apiClient.postMultipartFiles(
+      endpoint,
+      fields: const {},
+      files: [MultipartUpload(fieldName: 'video', file: video)],
+    );
+    if (response is Map<String, dynamic>) {
+      final url = response['video_url']?.toString();
+      return (url == null || url.isEmpty) ? null : url;
+    }
+    return null;
+  }
+
+  /// Delete a unit's tour video.
+  Future<void> deleteUnitVideo(String unitId) async {
+    final endpoint = ApiConstants.unitVideoEndpoint(unitId);
+    debugPrint('[PROPERTY SERVICE] Deleting unit video DELETE $endpoint');
     await _apiClient.delete(endpoint);
   }
 
@@ -204,7 +293,7 @@ class PropertyService {
   }) async {
     final endpoint = ApiConstants.propertyUnitsBatchEndpoint(propertyId);
     debugPrint(
-      '🏠 [PROPERTY SERVICE] Creating ${units.length} units POST $endpoint',
+      '[PROPERTY SERVICE] Creating ${units.length} units POST $endpoint',
     );
     final response = await _apiClient.post(endpoint, body: {'units': units});
     if (response is List) {
@@ -222,13 +311,13 @@ class PropertyService {
   Future<List<UnitModel>> getUnits(String propertyId) async {
     final endpoint = ApiConstants.propertyUnitsEndpoint(propertyId);
     debugPrint(
-      '🏠 [PROPERTY SERVICE] Fetching units for property ID $propertyId GET $endpoint',
+      '[PROPERTY SERVICE] Fetching units for property ID $propertyId GET $endpoint',
     );
     final response = await _apiClient.get(endpoint);
     if (response is List) {
       final units = response.map((item) => UnitModel.fromJson(item)).toList();
       debugPrint(
-        '🏠 [PROPERTY SERVICE] Loaded ${units.length} units for property $propertyId',
+        '[PROPERTY SERVICE] Loaded ${units.length} units for property $propertyId',
       );
       return units;
     }
@@ -245,7 +334,7 @@ class PropertyService {
   }) async {
     final endpoint = ApiConstants.propertyUnitsEndpoint(propertyId);
     debugPrint(
-      '🏠 [PROPERTY SERVICE] Creating unit for property $propertyId POST $endpoint (Unit: $unitNumber, Rent: $rentAmount)',
+      '[PROPERTY SERVICE] Creating unit for property $propertyId POST $endpoint (Unit: $unitNumber, Rent: $rentAmount)',
     );
     final response = await _apiClient.post(
       endpoint,
@@ -258,9 +347,38 @@ class PropertyService {
     );
     final unit = UnitModel.fromJson(response);
     debugPrint(
-      '🏠 [PROPERTY SERVICE] Unit created: ID=${unit.id}, Unit=${unit.unitNumber}',
+      '[PROPERTY SERVICE] Unit created: ID=${unit.id}, Unit=${unit.unitNumber}',
     );
     return unit;
+  }
+
+  /// Changes what a unit costs.
+  ///
+  /// Rent only. A unit's number, its bedroom count and its photos describe
+  /// what the flat *is* and are fixed once tenants are looking at it; the
+  /// price is the one thing a landlord legitimately changes week to week, and
+  /// keeping the PATCH to that one field means a mis-wired call can never
+  /// silently rewrite the rest of the listing.
+  ///
+  /// [rentAmount] is a year's rent as a decimal string, the same figure
+  /// `POST /properties/{id}/units/` takes: the app converts a monthly quote
+  /// before it gets here, because the backend stores one number.
+  Future<UnitModel> updateUnitRent({
+    required String unitId,
+    required String rentAmount,
+  }) async {
+    final endpoint = ApiConstants.unitDetailEndpoint(unitId);
+    debugPrint(
+      '[PROPERTY SERVICE] Updating rent for unit $unitId PATCH $endpoint '
+      '(Rent: $rentAmount)',
+    );
+    final response = await _apiClient.patch(
+      endpoint,
+      body: {'rent_amount': rentAmount},
+    );
+    return UnitModel.fromJson(
+      response is Map<String, dynamic> ? response : const {},
+    );
   }
 
   /// Assign tenant to unit
@@ -270,7 +388,7 @@ class PropertyService {
   }) async {
     final endpoint = ApiConstants.assignTenantEndpoint(unitId);
     debugPrint(
-      '👤 [PROPERTY SERVICE] Assigning tenant $tenantId to unit $unitId PATCH $endpoint',
+      '[PROPERTY SERVICE] Assigning tenant $tenantId to unit $unitId PATCH $endpoint',
     );
     final response = await _apiClient.patch(
       endpoint,
@@ -278,7 +396,7 @@ class PropertyService {
     );
     final unit = UnitModel.fromJson(response);
     debugPrint(
-      '👤 [PROPERTY SERVICE] Tenant assigned successfully to unit ${unit.unitNumber}',
+      '[PROPERTY SERVICE] Tenant assigned successfully to unit ${unit.unitNumber}',
     );
     return unit;
   }
@@ -286,7 +404,7 @@ class PropertyService {
   /// Get assigned unit for tenant
   Future<UnitModel?> getTenantAssignedUnit() async {
     debugPrint(
-      '🏠 [PROPERTY SERVICE] Fetching tenant assigned unit GET ${ApiConstants.tenantAssignedUnitEndpoint}',
+      '[PROPERTY SERVICE] Fetching tenant assigned unit GET ${ApiConstants.tenantAssignedUnitEndpoint}',
     );
     try {
       final response = await _apiClient.get(
@@ -295,7 +413,7 @@ class PropertyService {
       if (response is Map<String, dynamic>) {
         final unit = UnitModel.fromJson(response);
         debugPrint(
-          '🏠 [PROPERTY SERVICE] Tenant assigned unit found: Unit ${unit.unitNumber} at ${unit.property?.name}',
+          '[PROPERTY SERVICE] Tenant assigned unit found: Unit ${unit.unitNumber} at ${unit.property?.name}',
         );
         return unit;
       }
@@ -303,7 +421,7 @@ class PropertyService {
     } on ApiException catch (e) {
       if (e.statusCode == 404) {
         debugPrint(
-          'ℹ️ [PROPERTY SERVICE] No assigned unit found for tenant (404 Not Found)',
+          'ℹ [PROPERTY SERVICE] No assigned unit found for tenant (404 Not Found)',
         );
         return null;
       }

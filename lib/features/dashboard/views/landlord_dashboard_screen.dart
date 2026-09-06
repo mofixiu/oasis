@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/network/load_failure.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_pressable.dart';
 import '../../../core/widgets/landa_shimmer.dart';
 import '../../../core/widgets/landa_state_views.dart';
@@ -15,14 +14,17 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/views/identity_verification_screen.dart';
 import '../../marketplace/controllers/marketplace_controller.dart';
+import '../../messaging/controllers/messaging_controller.dart';
 import '../../notifications/controllers/notification_controller.dart';
 import '../../payments/controllers/payment_controller.dart';
+import '../../payouts/controllers/payout_controller.dart';
+import '../../vault/controllers/vault_controller.dart';
 import '../../properties/controllers/landlord_controller.dart';
 import '../../properties/models/property_model.dart';
-import '../../properties/views/property_detail_screen.dart';
-import '../../properties/views/widgets/add_units_modal.dart';
+import '../../properties/views/my_properties_screen.dart';
 import 'widgets/add_property_modal.dart';
 import 'widgets/landlord_header.dart';
+import '../../../core/utils/fade_page_route.dart';
 
 class LandlordDashboardScreen extends StatefulWidget {
   const LandlordDashboardScreen({super.key});
@@ -32,12 +34,10 @@ class LandlordDashboardScreen extends StatefulWidget {
       _LandlordDashboardScreenState();
 }
 
-class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
+class _LandlordDashboardScreenState extends State<LandlordDashboardScreen>
+    with AutoRefreshMixin<LandlordDashboardScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAllData());
-  }
+  Future<void> onAutoRefresh() => _loadAllData();
 
   /// Awaited so pull-to-refresh and the retry button both finish when the
   /// data actually has.
@@ -48,35 +48,23 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
       context.read<PaymentController>().loadPayments(),
       context.read<AuthController>().refreshProfile(),
       context.read<NotificationController>().loadNotifications(),
+      // Drives the dot on the Messages button in the app bar. Without it the
+      // count is only known once the inbox has been opened, which is exactly
+      // the case the dot exists to cover.
+      context.read<MessagingController>().refreshUnreadCount(),
       // Drives the pending-applications dot on the bottom nav, so it must be
       // fresh on landing rather than only after visiting that tab.
       context.read<MarketplaceController>().loadLandlordApplications(),
+      // Keeps the Settings payout row accurate without waiting for the
+      // landlord to be blocked at execution time.
+      context.read<PayoutController>().loadPayoutAccount(),
+      // Same reason: the Settings row should say whether a vault PIN exists
+      // before the landlord is stopped at a withdrawal.
+      context.read<VaultController>().loadPinStatus(),
     ]);
   }
 
-  void _showAddPropertyModal() {
-    final sheetHeight = MediaQuery.sizeOf(context).height * 0.8;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      constraints: BoxConstraints.tightFor(height: sheetHeight),
-      backgroundColor: Colors.transparent,
-      builder: (_) => const AddPropertyModal(),
-    );
-  }
-
-  void _showAddUnitModal(PropertyModel property) {
-    final sheetHeight = MediaQuery.sizeOf(context).height * 0.8;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      constraints: BoxConstraints.tightFor(height: sheetHeight),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => AddUnitsModal(property: property),
-    );
-  }
+  void _showAddPropertyModal() => openAddPropertyFlow(context);
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +77,9 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
     final pendingCounterSignatures = agreementCtrl.agreements
         .where((a) => a.awaitingLandlordSignature)
         .toList();
-    final secondaryTextColor = AppTheme.secondaryTextColor(context);
+    // Only agreements still waiting on a signature belong here. Signed ones
+    // are a record and live in the profile: see [AgreementBucket].
+    final openAgreements = agreementCtrl.actionRequiredAgreements;
 
     // Same rule as the tenant dashboard: nothing loaded at all is a dead page
     // and earns the full retry state, a partial failure only earns a banner.
@@ -140,7 +130,7 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
                     onRetry: _loadAllData,
                   ),
                 ),
-              // Verification prompt. Only shown while unverified — once the
+              // Verification prompt. Only shown while unverified, once the
               // user is verified there is nothing to act on, so we don't
               // occupy the top of the dashboard with a status badge.
               if (!isVerified) ...[
@@ -151,7 +141,7 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.vacantSurfaceColor,
+                    color: AppTheme.vacantSurface(context),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: AppTheme.vacantColor.withValues(alpha: 0.8),
@@ -165,9 +155,8 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
                         child: GestureDetector(
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const IdentityVerificationScreen(),
+                            FadePageRoute(
+                              page: const IdentityVerificationScreen(),
                             ),
                           ),
                           child: const Column(
@@ -305,9 +294,9 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
                 const SizedBox(height: 16),
               ],
 
-              if (agreementCtrl.agreements.isNotEmpty) ...[
+              if (openAgreements.isNotEmpty) ...[
                 const Text(
-                  'AGREEMENTS',
+                  'AGREEMENTS TO SIGN',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -317,7 +306,7 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
                 ),
                 const SizedBox(height: 8),
                 Column(
-                  children: agreementCtrl.agreements.map((agreement) {
+                  children: openAgreements.map((agreement) {
                     final isExecuted = agreement.isExecuted;
                     return Container(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -365,15 +354,17 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // Properties List Section
+              // Properties Summary Box
+              //
+              // A box rather than the full list: the portfolio grows without
+              // limit, and an unbounded list here buries the things that
+              // actually need acting on. The numbers are the part a landlord
+              // scans on landing; the properties themselves are one tap away.
               Text('MY PROPERTIES', style: AppTheme.labelText(context)),
               const SizedBox(height: 12),
-              if (landlordCtrl.isLoading && landlordCtrl.properties.isEmpty)
-                const LandaSkeletonList(
-                  count: 2,
-                  hasThumbnail: true,
-                  padding: EdgeInsets.zero,
-                )
+              if (!landlordCtrl.hasLoaded(LandlordController.kPropertiesKey) ||
+                  (landlordCtrl.isLoading && landlordCtrl.properties.isEmpty))
+                const LandaCardSkeleton()
               else if (landlordCtrl.properties.isEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -395,144 +386,133 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen> {
                   ),
                 )
               else
-                Column(
-                  children: landlordCtrl.properties.indexed.map((entry) {
-                    final (index, prop) = entry;
-                    final units = landlordCtrl.propertyUnits[prop.id] ?? [];
-                    return LandaEntrance(
-                      index: index,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: LandaPressable(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ManagedPropertyDetailScreen(
-                                property: prop,
-                                units: units,
-                                onAddUnits: () => _showAddUnitModal(prop),
-                              ),
-                            ),
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceColor(context),
-                              borderRadius: AppTheme.cornerLg,
-                              border: Border.all(
-                                color: AppTheme.borderColor(context),
-                              ),
-                              boxShadow: AppTheme.cardShadow(context),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          prop.name,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.primaryColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${prop.address}, ${prop.city}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: secondaryTextColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.add_home_outlined,
-                                        color: AppTheme.actionColor,
-                                      ),
-                                      onPressed: () => _showAddUnitModal(prop),
-                                      tooltip: 'Add units in batch',
-                                    ),
-                                  ],
-                                ),
-                                const Divider(height: 24),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Units: ${units.length}',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppTheme.primaryColor,
-                                      ),
-                                    ),
-                                    Text(
-                                      units.any((u) => u.isOccupied)
-                                          ? 'Occupied'
-                                          : 'Vacant',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: units.any((u) => u.isOccupied)
-                                            ? AppTheme.successColor
-                                            : AppTheme.vacantColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (units.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: units.map((u) {
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: u.isOccupied
-                                              ? AppTheme.successSurfaceColor
-                                              : AppTheme.vacantSurfaceColor,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          'Unit ${u.unitNumber} (${LandaCurrency.format(u.rentAmount)})',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: u.isOccupied
-                                                ? AppTheme.successColor
-                                                : AppTheme.primaryColor,
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                _PortfolioBox(
+                  properties: landlordCtrl.properties,
+                  unitsByProperty: landlordCtrl.propertyUnits,
+                  onTap: () => Navigator.push(
+                    context,
+                    FadePageRoute(page: const MyPropertiesScreen()),
+                  ),
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The portfolio at a glance: how much there is, and how much of it is let.
+///
+/// Occupancy is the number a landlord actually wants on landing: an empty
+/// unit is money not being made, so it leads, and the property count sits
+/// beside it as context rather than the headline.
+class _PortfolioBox extends StatelessWidget {
+  final List<PropertyModel> properties;
+  final Map<String, List<UnitModel>> unitsByProperty;
+  final VoidCallback onTap;
+
+  const _PortfolioBox({
+    required this.properties,
+    required this.unitsByProperty,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final units = properties
+        .expand((p) => unitsByProperty[p.id] ?? const <UnitModel>[])
+        .toList();
+    final occupied = units.where((u) => u.isOccupied).length;
+    final needingPhotos = properties.where((p) => p.needsPhotos).length;
+
+    return LandaPressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor(context),
+          borderRadius: AppTheme.cornerLg,
+          border: Border.all(color: AppTheme.borderColor(context)),
+          boxShadow: AppTheme.cardShadow(context),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: AppTheme.cornerMd,
+                  ),
+                  child: const Icon(
+                    Icons.apartment_rounded,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${properties.length} '
+                        '${properties.length == 1 ? 'property' : 'properties'}',
+                        style: AppTheme.sectionTitle(context),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        units.isEmpty
+                            ? 'No units added yet'
+                            : '$occupied of ${units.length} '
+                                  '${units.length == 1 ? 'unit' : 'units'} let',
+                        style: AppTheme.labelText(
+                          context,
+                          color: AppTheme.secondaryTextColor(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.mutedTextColor(context),
+                ),
+              ],
+            ),
+            // The one thing in here that needs fixing, surfaced on the box so
+            // it is not hidden a tap away: a listing with no photos never
+            // reaches the marketplace at all.
+            if (needingPhotos > 0) ...[
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.photo_camera_outlined,
+                    size: 15,
+                    color: AppTheme.warningColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      needingPhotos == 1
+                          ? '1 property needs photos before it can be listed.'
+                          : '$needingPhotos properties need photos before they '
+                                'can be listed.',
+                      style: AppTheme.labelText(
+                        context,
+                        color: AppTheme.warningColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
         ),
       ),
     );

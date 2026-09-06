@@ -6,6 +6,8 @@ import '../../../core/widgets/landa_toast.dart';
 import '../controllers/auth_controller.dart';
 import 'reset_password_screen.dart';
 import 'widgets/auth_text_field.dart';
+import '../../../core/utils/fade_page_route.dart';
+import '../../../core/widgets/landa_busy.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -86,9 +88,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     Text(
                       _sent ? 'Check your inbox' : 'Forgot your password?',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                      style: AppTheme.screenTitle(
+                        context,
                         color: AppTheme.primaryColor,
                       ),
                     ),
@@ -126,13 +127,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ),
                             ),
                             child: auth.isLoading
-                                ? const SizedBox(
-                                    height: 22,
-                                    width: 22,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
+                                ? const LandaBusyDots(
+                                    color: Colors.white,
+                                    size: 7,
                                   )
                                 : const Text(
                                     'Send reset link',
@@ -150,9 +147,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       TextButton(
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const ResetPasswordScreen(),
-                          ),
+                          FadePageRoute(page: const ResetPasswordScreen()),
                         ),
                         child: const Text('I have a reset token'),
                       ),

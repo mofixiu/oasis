@@ -61,12 +61,11 @@ class _ApplyForUnitSheetState extends State<ApplyForUnitSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Apply for this unit',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    style: AppTheme.sectionTitle(
+                      context,
                       color: AppTheme.primaryColor,
                     ),
                   ),
@@ -82,7 +81,7 @@ class _ApplyForUnitSheetState extends State<ApplyForUnitSheet> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.vacantSurfaceColor,
+                color: AppTheme.vacantSurface(context),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -99,7 +98,10 @@ class _ApplyForUnitSheetState extends State<ApplyForUnitSheet> {
                   const SizedBox(height: 4),
                   Text(
                     '${LandaCurrency.perYear(unit.rentAmount)} · ${unit.bedrooms} bed · ${unit.bathrooms} bath',
-                    style: const TextStyle(fontSize: 13),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.readingTextColor(context),
+                    ),
                   ),
                 ],
               ),
@@ -126,8 +128,15 @@ class _ApplyForUnitSheetState extends State<ApplyForUnitSheet> {
               maxLength: _maxMessageLength,
               style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
+                // Names an inspection date on purpose. The note is the only
+                // thing a landlord reads before deciding, and the question
+                // they answer first is when the tenant wants to see the
+                // place: left to a blank box, most applications arrive
+                // without it and the conversation starts a day later.
                 hintText:
-                    'e.g. I am interested in this unit and can move in soon.',
+                    'e.g. I am interested in this unit. Could I come for an '
+                    'inspection on Saturday the 12th? I can move in from '
+                    'the 1st.',
                 hintStyle: TextStyle(
                   fontSize: 13,
                   color: AppTheme.mutedTextColor(context),
