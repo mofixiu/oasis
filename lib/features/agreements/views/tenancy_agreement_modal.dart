@@ -9,8 +9,13 @@ import '../../auth/models/user_model.dart';
 import '../../payments/controllers/payment_controller.dart';
 import '../../payments/models/payment_model.dart';
 import '../../payments/views/payment_receipt_modal.dart';
+import '../../payouts/views/payout_account_screen.dart';
 import '../controllers/agreement_controller.dart';
 import '../models/agreement_model.dart';
+import 'widgets/rent_plan_picker.dart';
+import '../../../core/utils/fade_page_route.dart';
+import '../../../core/widgets/landa_busy.dart';
+import '../../../core/utils/landa_input_formatters.dart';
 
 class CreateAgreementModal extends StatefulWidget {
   final String unitId;
@@ -37,6 +42,10 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
     text: 'No illegal activity. Keep shared areas clean.',
   );
 
+  /// Matches the backend's own default, so leaving the picker alone sends the
+  /// tenancy everyone expects.
+  RentPlan _rentPlan = RentPlan.fallback;
+
   @override
   void initState() {
     super.initState();
@@ -57,7 +66,10 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
 
   void _submit() async {
     final tenantId = _tenantIdController.text.trim();
-    final rent = _rentAmountController.text.trim();
+    // Stripped of the separators the field shows: the API takes a decimal
+    // string, and `double.tryParse('450,000')` is null, so an ungrouped read
+    // here would reject every rent the landlord typed.
+    final rent = LandaThousandsFormatter.digitsOf(_rentAmountController.text);
     final startDate = _startDateController.text.trim();
     final endDate = _endDateController.text.trim();
     final rules = _rulesController.text.trim();
@@ -95,6 +107,7 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
       startDate: startDate,
       endDate: endDate,
       rules: rules,
+      rentPlan: _rentPlan,
     );
 
     if (!mounted) return;
@@ -133,9 +146,8 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
               children: [
                 Text(
                   'Create Agreement (${widget.unitNumber})',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  style: AppTheme.sectionTitle(
+                    context,
                     color: AppTheme.primaryColor,
                   ),
                 ),
@@ -157,16 +169,33 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
             const SizedBox(height: 12),
             TextField(
               controller: _rentAmountController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: const [LandaThousandsFormatter()],
+              // Redraws the plan picker's instalment preview as the annual
+              // figure is typed.
+              onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
-                labelText: 'RENT AMOUNT (₦)',
-                hintText: '450000.00',
+                labelText: 'RENT AMOUNT (₦ / YEAR)',
+                hintText: '450,000',
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            // Directly under the amount: the figure above is the year's rent,
+            // and this decides how the tenant is asked for it.
+            Text(
+              'HOW OFTEN RENT IS DUE',
+              style: AppTheme.labelText(context).copyWith(letterSpacing: 0.9),
+            ),
+            const SizedBox(height: 10),
+            RentPlanPicker(
+              selected: _rentPlan,
+              annualRent: LandaThousandsFormatter.digitsOf(
+                _rentAmountController.text,
+              ),
+              onChanged: (plan) => setState(() => _rentPlan = plan),
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -213,7 +242,7 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
                       backgroundColor: AppTheme.primaryColor,
                     ),
                     child: controller.isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const LandaBusyDots(color: Colors.white, size: 6)
                         : const Text(
                             'Send Tenancy Agreement',
                             style: TextStyle(fontSize: 16, color: Colors.white),
@@ -403,7 +432,7 @@ class ViewAgreementModal extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Row(
+                        Row(
                           children: [
                             Icon(
                               Icons.shield_outlined,
@@ -412,9 +441,8 @@ class ViewAgreementModal extends StatelessWidget {
                             SizedBox(width: 8),
                             Text(
                               'Landa Escrow Payment',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                              style: AppTheme.sectionTitle(
+                                context,
                                 color: AppTheme.primaryColor,
                               ),
                             ),
@@ -431,7 +459,7 @@ class ViewAgreementModal extends StatelessWidget {
                       'Pay securely with Paystack. Confirmed rent is held in 48-hour escrow.',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey.shade600,
+                        color: AppTheme.secondaryTextColor(context),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -440,17 +468,19 @@ class ViewAgreementModal extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppTheme.subtleSurfaceColor(context),
                         borderRadius: AppTheme.cornerMd,
-                        border: Border.all(color: AppTheme.borderColor(context)),
+                        border: Border.all(
+                          color: AppTheme.borderColor(context),
+                        ),
                       ),
                       child: Column(
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
+                              Text(
                                 'Property Unit:',
                                 style: TextStyle(
-                                  color: Colors.grey,
+                                  color: AppTheme.secondaryTextColor(context),
                                   fontSize: 13,
                                 ),
                               ),
@@ -467,15 +497,17 @@ class ViewAgreementModal extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                'Rent Amount:',
+                              Text(
+                                agreement.plan == RentPlan.unknown
+                                    ? 'Rent Amount:'
+                                    : 'Rent (${agreement.plan.label.toLowerCase()}):',
                                 style: TextStyle(
-                                  color: Colors.grey,
+                                  color: AppTheme.secondaryTextColor(context),
                                   fontSize: 13,
                                 ),
                               ),
                               Text(
-                                LandaCurrency.format(agreement.rentAmount),
+                                LandaCurrency.perYear(agreement.rentAmount),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -488,10 +520,10 @@ class ViewAgreementModal extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
+                              Text(
                                 'Escrow Release Period:',
                                 style: TextStyle(
-                                  color: Colors.grey,
+                                  color: AppTheme.secondaryTextColor(context),
                                   fontSize: 13,
                                 ),
                               ),
@@ -564,14 +596,7 @@ class ViewAgreementModal extends StatelessWidget {
                                 size: 18,
                               ),
                         label: isBusy
-                            ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
+                            ? const LandaBusyDots(color: Colors.white, size: 6)
                             : Text(
                                 payment == null
                                     ? 'Continue to Paystack'
@@ -597,7 +622,7 @@ class ViewAgreementModal extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade700,
+                          color: AppTheme.secondaryTextColor(context),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -608,7 +633,7 @@ class ViewAgreementModal extends StatelessWidget {
                           onPressed: isBusy ? null : verifyCheckout,
                           icon: const Icon(Icons.verified_outlined),
                           label: const Text(
-                            'I completed checkout — Verify payment',
+                            'I completed checkout, verify payment',
                           ),
                         ),
                       ),
@@ -621,6 +646,57 @@ class ViewAgreementModal extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Signs, and handles the landlord payout gate.
+  ///
+  /// A landlord can reach final signing without payout details: the backend
+  /// deliberately allows everything up to execution, so a `403
+  /// PAYOUT_ACCOUNT_REQUIRED` here is a prompt, not an error. Offer setup,
+  /// then retry the same call once the account verifies.
+  Future<void> _signAgreement(
+    BuildContext context,
+    AgreementController controller, {
+    required bool isTenantSigning,
+  }) async {
+    final success = await controller.signAgreement(agreement.id);
+    if (!context.mounted) return;
+
+    if (success) {
+      LandaToast.success(
+        context,
+        isTenantSigning
+            ? 'Agreement signed. Waiting for your landlord to counter-sign.'
+            : 'Agreement executed. Rent payment is now unlocked.',
+      );
+      Navigator.pop(context);
+      return;
+    }
+
+    if (controller.errorNeedsPayoutAccount) {
+      final verified = await Navigator.push<bool>(
+        context,
+        FadePageRoute(
+          page: PayoutAccountScreen(
+            blockedReason:
+                'Add and verify your payout account to execute this agreement. '
+                'Rent released from escrow is paid into this account.',
+          ),
+        ),
+      );
+      if (!context.mounted || verified != true) return;
+      // Payout verified: retry the exact action that was blocked.
+      await _signAgreement(
+        context,
+        controller,
+        isTenantSigning: isTenantSigning,
+      );
+      return;
+    }
+
+    if (controller.errorMessage != null) {
+      LandaToast.error(context, controller.errorMessage!);
+    }
   }
 
   Widget _paymentSummaryRow(
@@ -667,11 +743,10 @@ class ViewAgreementModal extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Tenancy Bridge Agreement',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  style: AppTheme.sectionTitle(
+                    context,
                     color: AppTheme.primaryColor,
                   ),
                 ),
@@ -705,54 +780,62 @@ class ViewAgreementModal extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 12),
             _infoRow(
+              context,
               'Property Unit:',
               '${agreement.property?.name ?? "Property"} - Unit ${agreement.unitNumber}',
             ),
-            _infoRow('Landlord:', agreement.landlordEmail),
-            _infoRow('Tenant:', agreement.tenantEmail),
+            _infoRow(context, 'Landlord:', agreement.landlordEmail),
+            _infoRow(context, 'Tenant:', agreement.tenantEmail),
             _infoRow(
+              context,
               'Rent Amount:',
-              LandaCurrency.format(agreement.rentAmount),
+              LandaCurrency.perYear(agreement.rentAmount),
             ),
+            if (agreement.plan != RentPlan.unknown)
+              _infoRow(context, 'Paid:', agreement.plan.label),
             _infoRow(
+              context,
               'Lease Term:',
               '${agreement.startDate} to ${agreement.endDate}',
             ),
             _infoRow(
+              context,
               'Tenant signature:',
               agreement.hasTenantSigned ? 'Signed' : 'Awaiting tenant',
             ),
             _infoRow(
+              context,
               'Landlord signature:',
               agreement.hasLandlordSigned ? 'Signed' : 'Awaiting landlord',
             ),
             _infoRow(
+              context,
               'Rent payment:',
               agreement.canPayRent ? 'Unlocked' : 'Locked until execution',
             ),
             const SizedBox(height: 16),
-            const Text(
-              'AGREEMENT RULES & TERMS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
+            Text('AGREEMENT RULES & TERMS', style: AppTheme.labelText(context)),
             const SizedBox(height: 6),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade200),
+                // Themed rather than a fixed near-white: this panel used to be
+                // grey.shade50 with default-coloured text on it, which in dark
+                // mode is white on near-white, leaving the terms of the
+                // agreement invisible.
+                color: AppTheme.subtleSurfaceColor(context),
+                borderRadius: AppTheme.cornerSm,
+                border: Border.all(color: AppTheme.borderColor(context)),
               ),
               child: Text(
                 agreement.rules.isNotEmpty
                     ? agreement.rules
                     : 'Standard terms apply.',
-                style: const TextStyle(fontSize: 13, height: 1.4),
+                style: AppTheme.bodyText(
+                  context,
+                  color: AppTheme.readingTextColor(context),
+                ).copyWith(height: 1.4),
               ),
             ),
             const SizedBox(height: 24),
@@ -776,8 +859,8 @@ class ViewAgreementModal extends StatelessWidget {
                             // Popping this bottom sheet deactivates `context`
                             // shortly after this callback returns. Capture
                             // the Navigator's own (stable, still-mounted)
-                            // context first so the Paystack modal — and the
-                            // Provider reads inside its async callbacks —
+                            // context first so the Paystack modal (and the
+                            // Provider reads inside its async callbacks)
                             // keep working after the pop finishes.
                             final navigatorContext = Navigator.of(
                               context,
@@ -836,31 +919,16 @@ class ViewAgreementModal extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: controller.isLoading
                         ? null
-                        : () async {
-                            final success = await controller.signAgreement(
-                              agreement.id,
-                            );
-                            if (!context.mounted) return;
-                            if (success) {
-                              LandaToast.success(
-                                context,
-                                isTenantSigning
-                                    ? 'Agreement signed. Waiting for your landlord to counter-sign.'
-                                    : 'Agreement executed. Rent payment is now unlocked.',
-                              );
-                              Navigator.pop(context);
-                            } else if (controller.errorMessage != null) {
-                              LandaToast.error(
-                                context,
-                                controller.errorMessage!,
-                              );
-                            }
-                          },
+                        : () => _signAgreement(
+                            context,
+                            controller,
+                            isTenantSigning: isTenantSigning,
+                          ),
                     icon: controller.isLoading
                         ? const SizedBox()
                         : const Icon(Icons.draw, color: Colors.white),
                     label: controller.isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const LandaBusyDots(color: Colors.white, size: 6)
                         : Text(
                             isTenantSigning
                                 ? 'Sign Tenancy Agreement'
@@ -910,16 +978,29 @@ class ViewAgreementModal extends StatelessWidget {
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _infoRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
           Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            label,
+            style: TextStyle(
+              color: AppTheme.secondaryTextColor(context),
+              fontSize: 13,
+            ),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: AppTheme.primaryTextColor(context),
+              ),
+            ),
           ),
         ],
       ),

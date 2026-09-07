@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class PendingAgreementBanner extends StatelessWidget {
   const PendingAgreementBanner({super.key});
@@ -11,25 +12,30 @@ class PendingAgreementBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFFBEB), // Very light yellow/amber
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFDE68A)), // Light amber border
+        border: Border.all(
+          color: const Color(0xFFFDE68A),
+        ), // Light amber border
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 24),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Color(0xFFD97706),
+            size: 24,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Action Required:\nSign Tenancy\nAgreement in Settings',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF92400E), // Dark Amber text
-                    height: 1.2,
-                  ),
+                  style: AppTheme.sectionTitle(
+                    context,
+                    // Dark amber, for the warning surface this sits on.
+                    color: const Color(0xFF92400E),
+                  ).copyWith(height: 1.2),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -56,7 +62,10 @@ class PendingAgreementBanner extends StatelessWidget {
               ),
               elevation: 0,
             ),
-            child: const Text('Review', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Review',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

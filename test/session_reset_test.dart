@@ -135,22 +135,24 @@ void main() {
     expect(auth.isAuthenticated, isFalse);
   });
 
-  test('signing in clears state left by a session that never logged out',
-      () async {
-    // An expired refresh token clears storage from inside ApiClient without
-    // ever calling logout(), so login() must clear on the way in too.
-    final notifications = NotificationController();
-    final marketplace = MarketplaceController();
-    SessionScope.register([notifications, marketplace]);
+  test(
+    'signing in clears state left by a session that never logged out',
+    () async {
+      // An expired refresh token clears storage from inside ApiClient without
+      // ever calling logout(), so login() must clear on the way in too.
+      final notifications = NotificationController();
+      final marketplace = MarketplaceController();
+      SessionScope.register([notifications, marketplace]);
 
-    final auth = AuthController(authService: _FakeAuthService());
-    await auth.login('user-b@example.com', 'password');
+      final auth = AuthController(authService: _FakeAuthService());
+      await auth.login('user-b@example.com', 'password');
 
-    expect(auth.isAuthenticated, isTrue);
-    expect(notifications.notifications, isEmpty);
-    expect(notifications.unreadCount, 0);
-    expect(marketplace.listings, isEmpty);
-  });
+      expect(auth.isAuthenticated, isTrue);
+      expect(notifications.notifications, isEmpty);
+      expect(notifications.unreadCount, 0);
+      expect(marketplace.listings, isEmpty);
+    },
+  );
 
   test(
     'a reset controller reports "not loaded", not "loaded and empty"',
@@ -219,11 +221,12 @@ void main() {
   });
 }
 
-http.Response _json(List<dynamic> body, [int statusCode = 200]) => http.Response(
-  jsonEncode(body),
-  statusCode,
-  headers: const {'content-type': 'application/json'},
-);
+http.Response _json(List<dynamic> body, [int statusCode = 200]) =>
+    http.Response(
+      jsonEncode(body),
+      statusCode,
+      headers: const {'content-type': 'application/json'},
+    );
 
 class _FakeAuthService implements IAuthService {
   @override
@@ -254,6 +257,10 @@ class _FakeAuthService implements IAuthService {
     required String password,
     required String phone,
     required UserRole role,
+    String? category,
+    String? location,
+    String? bio,
+    int? yearsOfExperience,
   }) => throw UnimplementedError();
 
   @override

@@ -7,8 +7,11 @@ import '../../../core/utils/landa_currency.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
+import '../../payouts/views/payout_account_screen.dart';
 import '../controllers/payment_controller.dart';
 import '../models/payment_model.dart';
+import '../../../core/utils/fade_page_route.dart';
+import '../../../core/widgets/landa_busy.dart';
 
 class PaymentReceiptModal extends StatefulWidget {
   final PaymentModel payment;
@@ -24,7 +27,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
 
   /// Local mirror of the backend countdown, ticked down for a smooth display.
   /// The backend remains the source of truth for whether a dispute is still
-  /// allowed — this only drives the visible timer.
+  /// allowed: this only drives the visible timer.
   int? _secondsRemaining;
   Timer? _ticker;
 
@@ -51,7 +54,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
       if (remaining == null || remaining <= 0) return;
       if (!mounted) return;
       setState(() => _secondsRemaining = remaining - 1);
-      // Window just elapsed — re-sync so can_dispute/is_ready_for_release
+      // Window just elapsed: re-sync so can_dispute/is_ready_for_release
       // reflect the backend rather than our local guess.
       if (remaining - 1 <= 0) _refreshReceipt();
     });
@@ -101,14 +104,39 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
     }
   }
 
+  /// Releases escrow, handling the landlord payout gate.
+  ///
+  /// The backend initiates the provider transfer before marking the payment
+  /// released, so it rejects this outright without verified payout details.
+  /// Treat that as a prompt and retry once the account verifies.
   Future<void> _releaseEscrow() async {
     final controller = context.read<PaymentController>();
     final success = await controller.releaseEscrow(_payment.id);
     if (!mounted) return;
+
     if (success) {
       LandaToast.success(context, 'Escrow released successfully!');
       Navigator.pop(context);
-    } else if (controller.errorMessage != null) {
+      return;
+    }
+
+    if (controller.errorNeedsPayoutAccount) {
+      final verified = await Navigator.push<bool>(
+        context,
+        FadePageRoute(
+          page: const PayoutAccountScreen(
+            blockedReason:
+                'Add and verify your payout account before releasing escrow. '
+                'This is the account the rent is transferred into.',
+          ),
+        ),
+      );
+      if (!mounted || verified != true) return;
+      await _releaseEscrow();
+      return;
+    }
+
+    if (controller.errorMessage != null) {
       LandaToast.error(context, controller.errorMessage!);
     }
   }
@@ -134,12 +162,12 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
         : AppTheme.primaryColor;
 
     final statusSurface = isDisputed
-        ? AppTheme.disputeSurfaceColor
+        ? AppTheme.disputeSurface(context)
         : isReleased || isEscrow
-        ? AppTheme.successSurfaceColor
+        ? AppTheme.successSurface(context)
         : isFailed
         ? Colors.red.shade50
-        : AppTheme.vacantSurfaceColor;
+        : AppTheme.vacantSurface(context);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -170,9 +198,8 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
                     const SizedBox(width: 8),
                     Text(
                       'Payment Receipt',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                      style: AppTheme.sectionTitle(
+                        context,
                         color: primaryTextColor,
                       ),
                     ),
@@ -339,7 +366,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
                           ? const SizedBox()
                           : const Icon(Icons.key, color: Colors.white),
                       label: controller.isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const LandaBusyDots(color: Colors.white, size: 6)
                           : const Text(
                               'Release Escrow (Demo Override)',
                               style: TextStyle(
@@ -406,7 +433,7 @@ class _EscrowCountdownCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.successSurfaceColor,
+        color: AppTheme.successSurface(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -473,7 +500,7 @@ class _DisputeNoticeCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.disputeSurfaceColor,
+        color: AppTheme.disputeSurface(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: AppTheme.disputeColor.withValues(alpha: 0.25),
@@ -585,8 +612,8 @@ class _DisputeReasonDialogState extends State<_DisputeReasonDialog> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: AppTheme.disputeSurfaceColor,
+            decoration: BoxDecoration(
+              color: AppTheme.disputeSurface(context),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -596,13 +623,9 @@ class _DisputeReasonDialogState extends State<_DisputeReasonDialog> {
             ),
           ),
           const SizedBox(width: 12),
-          const Text(
+          Text(
             'Raise a dispute',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryColor,
-            ),
+            style: AppTheme.sectionTitle(context, color: AppTheme.primaryColor),
           ),
         ],
       ),

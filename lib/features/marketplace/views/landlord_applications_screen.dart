@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/landa_currency.dart';
 import '../../../core/utils/landa_haptics.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_app_bar.dart';
 import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_pressable.dart';
@@ -11,6 +12,7 @@ import '../../../core/widgets/landa_shimmer.dart';
 import '../../../core/widgets/landa_state_views.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../../agreements/controllers/agreement_controller.dart';
+import '../../messaging/views/widgets/message_action_button.dart';
 import '../../properties/controllers/landlord_controller.dart';
 import '../controllers/marketplace_controller.dart';
 import '../models/marketplace_models.dart';
@@ -26,15 +28,16 @@ class LandlordApplicationsScreen extends StatefulWidget {
       _LandlordApplicationsScreenState();
 }
 
-class _LandlordApplicationsScreenState
-    extends State<LandlordApplicationsScreen> {
+class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
+    with AutoRefreshMixin<LandlordApplicationsScreen> {
+  /// Polls while open. Applications land here from tenants at any hour, and
+  /// an applicant is waiting on the landlord for every one of them.
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<MarketplaceController>().loadLandlordApplications(),
-    );
-  }
+  Duration? get autoRefreshInterval => kLandaPollInterval;
+
+  @override
+  Future<void> onAutoRefresh() =>
+      context.read<MarketplaceController>().loadLandlordApplications();
 
   Future<void> _approve(RentalApplication application) async {
     final controller = context.read<MarketplaceController>();
@@ -62,7 +65,10 @@ class _LandlordApplicationsScreenState
         'Application approved. A pending tenancy agreement has been sent to the tenant.',
       );
       // Approval creates an agreement and occupies the unit server-side, so
-      // refresh the screens that render those.
+      // refresh the screens that render those, and this list, whose row is
+      // now in a different state than the one the decision echoed back.
+      await refreshNow();
+      if (!mounted) return;
       context.read<AgreementController>().loadAgreements();
       context.read<LandlordController>().loadLandlordProperties();
     } else if (controller.errorMessage != null) {
@@ -76,13 +82,9 @@ class _LandlordApplicationsScreenState
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor(dialogContext),
         shape: const StadiumBorder(),
-        title: const Text(
+        title: Text(
           'Reject application?',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
-          ),
+          style: AppTheme.sectionTitle(context, color: AppTheme.primaryColor),
         ),
         content: Text(
           'This will decline ${application.tenantEmail ?? 'this tenant'}\'s '
@@ -122,6 +124,7 @@ class _LandlordApplicationsScreenState
 
     if (success) {
       LandaToast.success(context, 'Application rejected.');
+      await refreshNow();
     } else if (controller.errorMessage != null) {
       LandaToast.error(context, controller.errorMessage!);
     }
@@ -175,7 +178,7 @@ class _LandlordApplicationsScreenState
   Widget _buildBody(BuildContext context, MarketplaceController controller) {
     final applications = controller.landlordApplications;
 
-    // Skeleton until the first fetch settles — including the window between
+    // Skeleton until the first fetch settles: including the window between
     // mount and the post-frame callback that starts it.
     if (!controller.hasLoadedLandlordApplications ||
         (controller.isLoading && applications.isEmpty)) {
@@ -400,7 +403,7 @@ class _LandlordApplicationCard extends StatelessWidget {
   final RentalApplication application;
   final bool isBusy;
 
-  /// This card's approval is in flight — its Approve button shows a spinner.
+  /// This card's approval is in flight: its Approve button shows a spinner.
   final bool isApproving;
 
   /// This card's rejection is in flight.
@@ -506,7 +509,7 @@ class _LandlordApplicationCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.vacantSurfaceColor,
+                color: AppTheme.vacantSurface(context),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -521,15 +524,34 @@ class _LandlordApplicationCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       application.message,
-                      style: const TextStyle(
+                      // Explicit rather than inherited: this is a stranger's
+                      // words, and the landlord is deciding a tenancy on
+                      // them. It does not get to depend on whatever
+                      // DefaultTextStyle happens to be overhead.
+                      style: TextStyle(
                         fontSize: 13,
                         height: 1.4,
                         fontStyle: FontStyle.italic,
+                        color: AppTheme.readingTextColor(context),
                       ),
                     ),
                   ),
                 ],
               ),
+            ),
+          ],
+
+          // Open from the application, not from the approval, and in both
+          // directions. A landlord deciding on an applicant usually wants to
+          // ask them something first (when they want to move in, whether
+          // they have seen the flat), and having to approve them to do it is
+          // the wrong way round.
+          if (application.status.canMessage) ...[
+            const SizedBox(height: 14),
+            MessageActionButton(
+              applicationId: application.id,
+              label: 'Message tenant',
+              expanded: true,
             ),
           ],
 

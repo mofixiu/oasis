@@ -3,12 +3,17 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/landa_refresh.dart';
+import '../../../core/widgets/landa_media_hero.dart';
+import '../../../core/widgets/landa_media_viewer.dart';
+import '../../../core/widgets/landa_network_image.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../../../core/widgets/landa_video_player.dart';
 import '../../properties/models/property_model.dart';
 import '../controllers/marketplace_controller.dart';
 import '../models/marketplace_models.dart';
 import 'apply_for_unit_sheet.dart';
+import '../../../core/widgets/landa_busy.dart';
 
 /// Tenant-facing property detail: photo gallery, tour video, and every
 /// available unit with its own apply action.
@@ -22,15 +27,21 @@ class MarketplacePropertyScreen extends StatefulWidget {
       _MarketplacePropertyScreenState();
 }
 
-class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen> {
-  final _galleryController = PageController();
-  int _galleryIndex = 0;
+class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen>
+    with AutoRefreshMixin<MarketplacePropertyScreen> {
+  /// A landlord can approve or reject while the tenant is on this page, and
+  /// another tenant can take the flat. The per-unit status pills read from
+  /// the application list, so it is that list, not the listing, that has to
+  /// be re-read for them to mean anything.
+  ///
+  /// Polled, unlike most detail pages: this is one of the few screens in the
+  /// app where the user is waiting for somebody else to act.
+  @override
+  Future<void> onAutoRefresh() =>
+      context.read<MarketplaceController>().loadTenantApplications();
 
   @override
-  void dispose() {
-    _galleryController.dispose();
-    super.dispose();
-  }
+  Duration? get autoRefreshInterval => kLandaPollInterval;
 
   /// Photos to show: the cover first, then any others, de-duplicated so a
   /// cover that also appears in `photo_urls` isn't shown twice.
@@ -58,6 +69,10 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen> {
     final application = await controller.applyForUnit(
       unit.id,
       message: result.message,
+      // Carried so the provisional row reads properly on My applications in
+      // the seconds before the real record lands.
+      unitNumber: unit.unitNumber,
+      rentAmount: unit.rentAmount,
     );
     if (!mounted) return;
 
@@ -84,16 +99,32 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 280,
+            expandedHeight: 320,
             pinned: true,
             backgroundColor: AppTheme.pageBackground(context),
-            iconTheme: const IconThemeData(color: Colors.white),
+            automaticallyImplyLeading: false,
+            // A frosted circle rather than a bare white arrow. The old one
+            // was invisible against a photo of a white wall, which is most
+            // photos of a Lagos building.
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 12, top: 4),
+              child: LandaMediaCircleButton(
+                icon: Icons.arrow_back_rounded,
+                tooltip: 'Back',
+                onTap: () => Navigator.of(context).maybePop(),
+              ),
+            ),
             flexibleSpace: FlexibleSpaceBar(
-              background: _Gallery(
-                images: images,
-                controller: _galleryController,
-                currentIndex: _galleryIndex,
-                onPageChanged: (index) => setState(() => _galleryIndex = index),
+              // Photos only. The building's walkthrough keeps its own
+              // labelled section below: a tenant applies for a flat, and a
+              // clip of the compound is context rather than the thing being
+              // decided on. Carrying it in the header as well would show the
+              // same video twice on one screen.
+              background: LandaMediaHero(
+                photoUrls: images,
+                title: property.name,
+                height: 320,
+                heroTag: landaMediaHeroTag('property', property.id),
               ),
             ),
           ),
@@ -108,9 +139,8 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen> {
                       Expanded(
                         child: Text(
                           property.name,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                          style: AppTheme.screenTitle(
+                            context,
                             color: AppTheme.primaryColor,
                           ),
                         ),
@@ -122,7 +152,7 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen> {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.successSurfaceColor,
+                            color: AppTheme.successSurface(context),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Row(
@@ -172,14 +202,14 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen> {
                     ],
                   ),
 
+                  // Kept for properties that still have one from before the
+                  // walkthrough moved onto units. New listings will not have
+                  // it, and the per-unit tours below are the ones that matter.
                   if (property.hasVideo) ...[
                     const SizedBox(height: 24),
-                    const _SectionLabel('PROPERTY TOUR'),
+                    const _SectionLabel('AROUND THE BUILDING'),
                     const SizedBox(height: 10),
-                    LandaVideoPlayer(
-                      url: property.videoUrl!,
-                      thumbnailUrl: property.displayImageUrl,
-                    ),
+                    LandaVideoPlayer(url: property.videoUrl!),
                   ],
 
                   const SizedBox(height: 28),
@@ -206,104 +236,6 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen> {
   }
 }
 
-class _Gallery extends StatelessWidget {
-  final List<String> images;
-  final PageController controller;
-  final int currentIndex;
-  final ValueChanged<int> onPageChanged;
-
-  const _Gallery({
-    required this.images,
-    required this.controller,
-    required this.currentIndex,
-    required this.onPageChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (images.isEmpty) {
-      return Container(
-        color: AppTheme.primaryColor.withValues(alpha: .12),
-        child: const Center(
-          child: Icon(
-            Icons.home_work_outlined,
-            size: 72,
-            color: AppTheme.primaryColor,
-          ),
-        ),
-      );
-    }
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        PageView.builder(
-          controller: controller,
-          onPageChanged: onPageChanged,
-          itemCount: images.length,
-          itemBuilder: (context, index) => Image.network(
-            images[index],
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              color: AppTheme.primaryColor.withValues(alpha: .12),
-              child: const Center(
-                child: Icon(
-                  Icons.broken_image_outlined,
-                  size: 48,
-                  color: AppTheme.primaryColor,
-                ),
-              ),
-            ),
-          ),
-        ),
-        // Scrim so the back button stays legible over bright photos.
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 110,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.45),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (images.length > 1)
-          Positioned(
-            bottom: 14,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                images.length,
-                (index) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: index == currentIndex ? 18 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: index == currentIndex
-                        ? Colors.white
-                        : Colors.white54,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 class _SectionLabel extends StatelessWidget {
   final String text;
 
@@ -321,6 +253,12 @@ class _SectionLabel extends StatelessWidget {
   );
 }
 
+/// One available unit, with its own walkthrough.
+///
+/// The video is inside the unit card rather than at the top of the screen,
+/// because that is the question a tenant is actually asking: not "what is
+/// this building like" but "what is *this flat* like". A block of eight
+/// answers that eight different ways.
 class _UnitCard extends StatelessWidget {
   final UnitModel unit;
   final bool hasApplied;
@@ -344,94 +282,133 @@ class _UnitCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.borderColor(context)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Unit ${unit.unitNumber}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
+          if (unit.hasVideo) ...[
+            // Poster left unprepared: every unit card on this screen is
+            // built in one pass, so preparing them all would open a stream
+            // per flat the moment the property opened. The tap that asks for
+            // a walkthrough is what fetches it.
+            LandaVideoPlayer(url: unit.videoUrl!, preparePoster: false),
+            const SizedBox(height: 12),
+          ],
+          // Photos of the flat itself, shown whether or not there is a
+          // walkthrough: a tenant applies for one unit, and the building's
+          // cover shot tells them nothing about it. Tapping opens the set
+          // full screen, which is where the decision actually gets made.
+          if (unit.photoUrls.isNotEmpty) ...[
+            SizedBox(
+              height: 92,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: unit.photoUrls.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, index) => GestureDetector(
+                  onTap: () => openLandaMediaViewer(
+                    context,
+                    photoUrls: unit.photoUrls,
+                    initialIndex: index,
+                    title: 'Unit ${unit.unitNumber}',
+                  ),
+                  child: LandaNetworkImage(
+                    url: unit.photoUrls[index],
+                    width: 122,
+                    height: 92,
+                    borderRadius: AppTheme.cornerSm,
+                    placeholderIcon: Icons.meeting_room_outlined,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  LandaCurrency.perYear(unit.rentAmount),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${unit.bedrooms} bed · ${unit.bathrooms} bath',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.secondaryTextColor(context),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          if (hasApplied)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: AppTheme.successSurfaceColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check, size: 14, color: AppTheme.successColor),
-                  SizedBox(width: 4),
-                  Text(
-                    'Applied',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.successColor,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            ElevatedButton(
-              onPressed: isApplying ? null : onApply,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.actionColor,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: isApplying
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Text(
-                      'Apply',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
+            const SizedBox(height: 12),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Unit ${unit.unitNumber}',
+                      style: const TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
                       ),
                     ),
-            ),
+                    const SizedBox(height: 4),
+                    Text(
+                      LandaCurrency.perYear(unit.rentAmount),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${unit.bedrooms} bed · ${unit.bathrooms} bath',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.secondaryTextColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (hasApplied)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.successSurface(context),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check, size: 14, color: AppTheme.successColor),
+                      SizedBox(width: 4),
+                      Text(
+                        'Applied',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.successColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ElevatedButton(
+                  onPressed: isApplying ? null : onApply,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.actionColor,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: isApplying
+                      ? const LandaBusyDots(color: Colors.white)
+                      : const Text(
+                          'Apply',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+            ],
+          ),
         ],
       ),
     );

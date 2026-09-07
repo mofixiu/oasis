@@ -14,8 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Regression cover for the landlord inbox's Approve/Reject buttons.
 ///
 /// They used to be bound to the controller's shared `isLoading`, so any
-/// background list refresh — and the dashboard preloads this list, so there is
-/// always one right after signing in — greyed them out until it finished.
+/// background list refresh, and the dashboard preloads this list, so there is
+/// always one right after signing in: greyed them out until it finished.
 void main() {
   late String originalBaseUrl;
 

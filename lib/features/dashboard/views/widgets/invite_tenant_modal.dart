@@ -5,8 +5,11 @@ import '../../../../core/utils/landa_currency.dart';
 import '../../../../core/widgets/landa_sheet.dart';
 import '../../../../core/widgets/landa_toast.dart';
 import '../../../agreements/controllers/agreement_controller.dart';
+import '../../../agreements/models/agreement_model.dart';
+import '../../../agreements/views/widgets/rent_plan_picker.dart';
 import '../../../properties/controllers/landlord_controller.dart';
 import '../../../properties/models/property_model.dart';
+import '../../../../core/utils/landa_input_formatters.dart';
 
 class InviteTenantModal extends StatefulWidget {
   const InviteTenantModal({super.key});
@@ -23,6 +26,11 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
   final _rulesController = TextEditingController(
     text: 'No noise after 10 PM. Rent due annually.',
   );
+
+  /// Matches the backend's own default, so leaving the picker alone sends the
+  /// tenancy everyone expects.
+  RentPlan _rentPlan = RentPlan.fallback;
+
   bool _isSubmitting = false;
 
   @override
@@ -59,10 +67,11 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
       final agreement = await agreementController.createAgreement(
         unitId: _selectedUnit!.id,
         tenantId: contact,
-        rentAmount: _rentController.text.trim(),
+        rentAmount: LandaThousandsFormatter.digitsOf(_rentController.text),
         startDate: startDate,
         endDate: endDate,
         rules: _rulesController.text.trim(),
+        rentPlan: _rentPlan,
       );
 
       if (!mounted) return;
@@ -185,7 +194,9 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
                 setState(() {
                   _selectedUnit = val;
                   if (val != null && val.rentAmount.isNotEmpty) {
-                    _rentController.text = val.rentAmount;
+                    _rentController.text = LandaThousandsFormatter.groupAmount(
+                      val.rentAmount,
+                    );
                   }
                 });
               },
@@ -209,28 +220,38 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         const LandaFieldLabel('Agreed rent amount'),
         TextField(
           controller: _rentController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: TextInputType.number,
+          inputFormatters: const [LandaThousandsFormatter()],
           style: AppTheme.cardTitle(context),
           onChanged: (_) => setState(() {}),
           decoration: landaInputDecoration(
             context,
-            hint: '450000.00',
+            hint: '450,000',
             prefixIcon: Icons.payments_outlined,
             suffix: Padding(
               padding: const EdgeInsets.only(right: 16, left: 8),
-              child: Text(
-                '₦ / year',
-                style: AppTheme.labelText(context),
-              ),
+              child: Text('₦ / year', style: AppTheme.labelText(context)),
             ),
           ),
+        ),
+        const SizedBox(height: 18),
+
+        // Placed under the amount because it reads as a qualifier on it: the
+        // figure above is what the tenant owes for the year, and this is how
+        // they will be asked for it.
+        const LandaFieldLabel('How often rent is due'),
+        RentPlanPicker(
+          selected: _rentPlan,
+          annualRent: LandaThousandsFormatter.digitsOf(_rentController.text),
+          onChanged: (plan) => setState(() => _rentPlan = plan),
         ),
         const SizedBox(height: 20),
 
         _InviteSummary(
           property: _selectedProperty,
           unit: _selectedUnit,
-          rent: _rentController.text.trim(),
+          rent: LandaThousandsFormatter.digitsOf(_rentController.text),
+          plan: _rentPlan,
         ),
       ],
     );
@@ -243,11 +264,13 @@ class _InviteSummary extends StatelessWidget {
   final PropertyModel? property;
   final UnitModel? unit;
   final String rent;
+  final RentPlan plan;
 
   const _InviteSummary({
     required this.property,
     required this.unit,
     required this.rent,
+    required this.plan,
   });
 
   @override
@@ -289,7 +312,9 @@ class _InviteSummary extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${LandaCurrency.format(rent)} per year · 12-month bridge agreement starting today.',
+                        '${LandaCurrency.format(rent)} per year, '
+                        '${plan.label.toLowerCase()} · 12-month bridge '
+                        'agreement starting today.',
                         style: AppTheme.bodyText(context),
                       ),
                     ],
@@ -316,9 +341,9 @@ class _NoticeBanner extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     decoration: BoxDecoration(
-      color: AppTheme.vacantSurfaceColor.withValues(
-        alpha: AppTheme.isDarkMode(context) ? 0.14 : 1,
-      ),
+      color: AppTheme.vacantSurface(
+        context,
+      ).withValues(alpha: AppTheme.isDarkMode(context) ? 0.14 : 1),
       borderRadius: AppTheme.cornerMd,
       border: Border.all(color: AppTheme.sandColor.withValues(alpha: 0.5)),
     ),

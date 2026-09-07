@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/landa_network_image.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_shimmer.dart';
 import '../../../core/widgets/landa_state_views.dart';
 import '../../dashboard/controllers/landlord_dashboard_controller.dart';
 import '../../dashboard/models/property_unit.dart';
 import '../../profile/views/profile_screen.dart';
+import '../../../core/utils/fade_page_route.dart';
 
 class UnitsScreen extends StatefulWidget {
   const UnitsScreen({super.key});
@@ -15,17 +18,11 @@ class UnitsScreen extends StatefulWidget {
   State<UnitsScreen> createState() => _UnitsScreenState();
 }
 
-class _UnitsScreenState extends State<UnitsScreen> {
+class _UnitsScreenState extends State<UnitsScreen>
+    with AutoRefreshMixin<UnitsScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final controller = context.read<LandlordDashboardController>();
-      if (controller.activeUnits == null) {
-        controller.loadDashboardData();
-      }
-    });
-  }
+  Future<void> onAutoRefresh() =>
+      context.read<LandlordDashboardController>().loadDashboardData();
 
   @override
   Widget build(BuildContext context) {
@@ -36,20 +33,13 @@ class _UnitsScreenState extends State<UnitsScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.pageBackground(context),
         elevation: 0,
-        title: Text(
-          'Landa OS',
-          style: TextStyle(
-            color: AppTheme.primaryTextColor(context),
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+        title: Text('Landa OS', style: AppTheme.sectionTitle(context)),
         centerTitle: true,
         actions: [
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              FadePageRoute(page: const ProfileScreen()),
             ),
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
@@ -227,7 +217,7 @@ class _PortfolioHealthSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppTheme.slateSurfaceColor,
+        color: AppTheme.slateSurface(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: AppTheme.profileColor.withValues(alpha: 0.15),
@@ -251,7 +241,7 @@ class _PortfolioHealthSection extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.successSurfaceColor,
+                  color: AppTheme.successSurface(context),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
@@ -279,9 +269,10 @@ class _PortfolioHealthSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildHealthStat('TOTAL UNITS', '$totalUnits'),
-              _buildHealthStat('OCCUPANCY', '100%'),
+              _buildHealthStat(context, 'TOTAL UNITS', '$totalUnits'),
+              _buildHealthStat(context, 'OCCUPANCY', '100%'),
               _buildHealthStat(
+                context,
                 'COLLECTION',
                 '${collectionRate.toStringAsFixed(0)}%',
               ),
@@ -313,7 +304,7 @@ class _PortfolioHealthSection extends StatelessWidget {
     );
   }
 
-  Widget _buildHealthStat(String label, String value) {
+  Widget _buildHealthStat(BuildContext context, String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -328,11 +319,7 @@ class _PortfolioHealthSection extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
-          ),
+          style: AppTheme.sectionTitle(context, color: AppTheme.primaryColor),
         ),
       ],
     );
@@ -357,20 +344,12 @@ class _UnitCard extends StatelessWidget {
       child: Row(
         children: [
           // Unit Image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              unit.imagePath,
-              width: 70,
-              height: 70,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                width: 70,
-                height: 70,
-                color: Colors.grey.shade100,
-                child: const Icon(Icons.home_outlined, color: Colors.grey),
-              ),
-            ),
+          LandaNetworkImage(
+            url: unit.imagePath,
+            width: 70,
+            height: 70,
+            borderRadius: AppTheme.cornerMd,
+            placeholderIcon: Icons.home_outlined,
           ),
           const SizedBox(width: 16),
 

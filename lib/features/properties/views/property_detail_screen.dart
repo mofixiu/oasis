@@ -2,13 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/landa_network_image.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_pressable.dart';
 import '../../../core/widgets/landa_state_views.dart';
 import '../../../core/utils/landa_currency.dart';
+import '../../agreements/controllers/agreement_controller.dart';
+import '../../agreements/models/agreement_model.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
+import '../../dashboard/views/widgets/move_in_tenants_modal.dart';
+import '../../fix/views/unit_recommendations_sheet.dart';
+import '../../messaging/views/widgets/message_action_button.dart';
 import '../controllers/landlord_controller.dart';
 import '../models/property_model.dart';
+import 'widgets/edit_unit_rent_sheet.dart';
 import 'widgets/property_media_manager.dart';
+import 'widgets/unit_media_sheet.dart';
 
 class ManagedPropertyDetailScreen extends StatefulWidget {
   final PropertyModel property;
@@ -28,16 +37,24 @@ class ManagedPropertyDetailScreen extends StatefulWidget {
 }
 
 class _ManagedPropertyDetailScreenState
-    extends State<ManagedPropertyDetailScreen> {
+    extends State<ManagedPropertyDetailScreen>
+    with AutoRefreshMixin<ManagedPropertyDetailScreen> {
+  /// Re-read on return as well as on mount: units are added, tenants moved
+  /// in and media uploaded from sheets pushed over this screen, and every one
+  /// of them leaves the page behind describing the property as it was.
+  ///
+  /// Agreements come along because the unit sheet's "Message tenant" button
+  /// is keyed on the tenancy: a landlord who reaches this page without
+  /// passing the dashboard (deep link, or straight from My properties after a
+  /// session reset) would otherwise find the button missing on units that
+  /// plainly have somebody living in them.
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<LandlordController>().refreshPropertyDetail(
-        widget.property.id,
-      ),
-    );
-  }
+  Future<void> onAutoRefresh() => Future.wait([
+    context.read<LandlordController>().refreshPropertyDetail(
+      widget.property.id,
+    ),
+    context.read<AgreementController>().loadAgreements(),
+  ]);
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -67,7 +84,7 @@ class _ManagedPropertyDetailScreenState
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
               // The property itself was passed in, so a failed detail refresh
-              // never blanks the page — it reports itself over the stale copy.
+              // never blanks the page: it reports itself over the stale copy.
               if (controller.hasError)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -108,6 +125,31 @@ class _ManagedPropertyDetailScreenState
                   ),
                 ],
               ),
+              // Offered for as long as there is somewhere to put somebody. A
+              // landlord rarely finishes moving their building across in one
+              // sitting: they add the property, get through four flats, and
+              // come back, so the step cannot only exist inside the
+              // add-property flow they have already left.
+              if (currentUnits.any((unit) => !unit.isOccupied)) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        MoveInTenantsModal.open(context, currentProperty),
+                    icon: const Icon(Icons.groups_2_outlined, size: 18),
+                    label: const Text('Move in existing tenants'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.actionColor,
+                      side: const BorderSide(color: AppTheme.actionColor),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppTheme.cornerMd,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               if (currentUnits.isEmpty)
                 Container(
@@ -129,7 +171,7 @@ class _ManagedPropertyDetailScreenState
                   ),
                 ),
               ...currentUnits.map(
-                (unit) => _UnitCard(unit: unit, pageContext: context),
+                (unit) => _UnitCard(unit: unit, propertyId: widget.property.id),
               ),
             ],
           ),
@@ -156,13 +198,10 @@ class _PropertyHero extends StatelessWidget {
         SizedBox(
           height: 190,
           width: double.infinity,
-          child: property.displayImageUrl != null
-              ? Image.network(
-                  property.displayImageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _fallback(),
-                )
-              : _fallback(),
+          child: LandaNetworkImage(
+            url: property.displayImageUrl,
+            placeholderIcon: Icons.home_work_outlined,
+          ),
         ),
         Padding(
           padding: const EdgeInsets.all(16),
@@ -174,9 +213,8 @@ class _PropertyHero extends StatelessWidget {
                   Expanded(
                     child: Text(
                       property.name,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                      style: AppTheme.sectionTitle(
+                        context,
                         color: AppTheme.primaryColor,
                       ),
                     ),
@@ -212,17 +250,6 @@ class _PropertyHero extends StatelessWidget {
       ],
     ),
   );
-
-  Widget _fallback() => Container(
-    color: AppTheme.primaryColor.withValues(alpha: .08),
-    child: const Center(
-      child: Icon(
-        Icons.home_work_outlined,
-        size: 64,
-        color: AppTheme.primaryColor,
-      ),
-    ),
-  );
 }
 
 class _StatusPill extends StatelessWidget {
@@ -235,8 +262,8 @@ class _StatusPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: verified
-            ? AppTheme.successSurfaceColor
-            : AppTheme.vacantSurfaceColor,
+            ? AppTheme.successSurface(context)
+            : AppTheme.vacantSurface(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
@@ -253,9 +280,9 @@ class _StatusPill extends StatelessWidget {
 
 class _UnitCard extends StatelessWidget {
   final UnitModel unit;
-  final BuildContext pageContext;
+  final String propertyId;
 
-  const _UnitCard({required this.unit, required this.pageContext});
+  const _UnitCard({required this.unit, required this.propertyId});
 
   @override
   Widget build(BuildContext context) => Card(
@@ -270,7 +297,7 @@ class _UnitCard extends StatelessWidget {
       onTap: () => showModalBottomSheet(
         context: context,
         showDragHandle: true,
-        builder: (_) => _UnitInfoSheet(unit: unit, pageContext: pageContext),
+        builder: (_) => _UnitInfoSheet(unit: unit, propertyId: propertyId),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -319,10 +346,50 @@ class _UnitCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  // Only when something is missing. A unit with its media in
+                  // order says nothing here: the landlord does not need a
+                  // green tick on every row to know the block is fine.
+                  if (unit.needsTourVideo) ...[
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.videocam_off_outlined,
+                          size: 13,
+                          color: AppTheme.actionColor,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'No tour video',
+                          style: AppTheme.labelText(
+                            context,
+                            color: AppTheme.actionColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
+            // A direct route to the media, so fixing a missing walkthrough is
+            // one tap from the warning that named it rather than three.
+            IconButton(
+              onPressed: () => openUnitMediaSheet(
+                context,
+                unit: unit,
+                propertyId: propertyId,
+              ),
+              icon: const Icon(Icons.perm_media_outlined, size: 20),
+              color: unit.needsTourVideo
+                  ? AppTheme.actionColor
+                  : AppTheme.mutedTextColor(context),
+              tooltip: 'Photos and tour video',
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: AppTheme.mutedTextColor(context),
+            ),
           ],
         ),
       ),
@@ -332,13 +399,33 @@ class _UnitCard extends StatelessWidget {
 
 class _UnitInfoSheet extends StatelessWidget {
   final UnitModel unit;
-  final BuildContext pageContext;
+  final String propertyId;
 
-  const _UnitInfoSheet({required this.unit, required this.pageContext});
+  const _UnitInfoSheet({required this.unit, required this.propertyId});
 
-  Future<void> _openCreateAgreement() async {
+  /// Both buttons here close this sheet and then open another one, and that
+  /// is the whole difficulty: by the time the second sheet is asked for, the
+  /// context that asked for it belongs to a widget being torn down. An
+  /// ancestor lookup on one of those does not fail politely: it trips
+  /// *"Looking up a deactivated widget's ancestor is unsafe"* and takes the
+  /// screen with it.
+  ///
+  /// This used to be worked around by passing the property page's own
+  /// `BuildContext` down through two widgets and using that instead, which
+  /// moved the problem rather than removing it: that context is only valid
+  /// while the page behind the sheet is still on the stack, and nothing
+  /// checked that it was.
+  ///
+  /// What is captured instead is a [NavigatorState] and the controller:
+  /// plain objects, both of which outlive every sheet in this file. The
+  /// navigator's own context is the one used to present, and it is alive for
+  /// as long as the app is.
+  Future<void> _openCreateAgreement(
+    NavigatorState navigator,
+    LandlordController controller,
+  ) async {
     final created = await showModalBottomSheet<bool>(
-      context: pageContext,
+      context: navigator.context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -350,9 +437,65 @@ class _UnitInfoSheet extends StatelessWidget {
       ),
     );
 
-    if (created == true && pageContext.mounted) {
-      await pageContext.read<LandlordController>().loadLandlordProperties();
-    }
+    if (created == true) await controller.loadLandlordProperties();
+  }
+
+  /// Opens the rent editor over this sheet.
+  ///
+  /// Layered rather than swapped: a landlord changing a price wants to see
+  /// the unit they are pricing, and popping back to the property page first
+  /// would lose the row they were reading. The navigator is captured before
+  /// anything is awaited, for the reason set out in [openAddPropertyFlow].
+  Future<void> _openRentEditor(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final changed = await openEditUnitRentSheet(
+      context,
+      unit: unit,
+      propertyId: propertyId,
+    );
+    // The sheet behind this one is rendering the old rent from the copy it
+    // was handed, and it has no way to hear about the change. Closing it
+    // sends the landlord back to the property page, which reads the unit
+    // from the controller and is already correct.
+    if (changed && navigator.mounted) navigator.pop();
+  }
+
+  /// Names the artisans this landlord trusts on this unit.
+  ///
+  /// Lives on the unit rather than the property because that is what the
+  /// backend keys recommendations on, and because a tenant's repair happens in
+  /// one flat, not across a block.
+  Future<void> _openRecommendations(NavigatorState navigator) =>
+      openUnitRecommendationsSheet(
+        navigator.context,
+        unitId: unit.id,
+        unitLabel: 'Unit ${unit.unitNumber}',
+      );
+
+  /// The live tenancy on this unit, or null when there is not one yet.
+  ///
+  /// A landlord cannot open a conversation from a unit id: `POST
+  /// /conversations/` refuses it, because a unit can have several applicants
+  /// and the backend will not guess which of them is meant. It *will* take an
+  /// agreement, which names exactly one tenant, so that is what the button
+  /// hangs off.
+  ///
+  /// Newest first, and only agreements that are still real: an expired or
+  /// voided tenancy is a record, not somebody to message. A renewal chain
+  /// leaves several agreements on one unit, and the current one is the one
+  /// with the latest start date.
+  TenancyAgreementModel? _liveTenancy(List<TenancyAgreementModel> all) {
+    final onThisUnit =
+        all
+            .where(
+              (agreement) =>
+                  agreement.unit == unit.id &&
+                  agreement.status != AgreementStatus.expired &&
+                  agreement.status != AgreementStatus.voided,
+            )
+            .toList()
+          ..sort((a, b) => b.startDate.compareTo(a.startDate));
+    return onThisUnit.isEmpty ? null : onThisUnit.first;
   }
 
   @override
@@ -364,31 +507,88 @@ class _UnitInfoSheet extends StatelessWidget {
       children: [
         Text(
           'Unit ${unit.unitNumber}',
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
-          ),
+          style: AppTheme.sectionTitle(context, color: AppTheme.primaryColor),
         ),
         const SizedBox(height: 16),
         _InfoRow(
           'Layout',
           '${unit.bedrooms} bedroom · ${unit.bathrooms} bathroom',
         ),
-        _InfoRow('Annual rent', LandaCurrency.format(unit.rentAmount)),
-        _InfoRow('Occupancy', unit.isOccupied ? 'Occupied' : 'Vacant'),
+        // The one row here that is a decision rather than a fact. A flat
+        // sitting empty is usually a flat priced for a market that has
+        // moved, and the landlord looking at this sheet is the person who
+        // can fix that, so the way to do it is on the number itself rather
+        // than somewhere they would have to know to look.
+        _InfoRow(
+          'Annual rent',
+          LandaCurrency.format(unit.rentAmount),
+          onEdit: () => _openRentEditor(context),
+          editTooltip: 'Change the rent',
+        ),
+        // "Occupied" is the backend's word for a unit with a tenant attached,
+        // and it starts saying so the moment an application is approved —
+        // before the agreement is signed and before any rent has moved. A
+        // landlord reading "Occupied" on a flat nobody has paid for is being
+        // told their money is on the way when it is not, so the row says
+        // which of the two it is.
+        Builder(
+          builder: (context) {
+            if (!unit.isOccupied) return const _InfoRow('Occupancy', 'Vacant');
+            final tenancy = _liveTenancy(
+              context.watch<AgreementController>().agreements,
+            );
+            return _InfoRow(
+              'Occupancy',
+              tenancy?.awaitingFirstRent == true
+                  ? 'Reserved · first rent not paid'
+                  : 'Occupied',
+            );
+          },
+        ),
         if (unit.isOccupied) ...[
           _InfoRow('Tenant', unit.tenant ?? 'Tenant assigned'),
           if (unit.tenantEmail != null) _InfoRow('Email', unit.tenantEmail!),
           if (unit.tenantPhone != null) _InfoRow('Phone', unit.tenantPhone!),
+          const SizedBox(height: 14),
+          // Messaging used to be reachable only from an application, which
+          // meant a landlord could talk to somebody applying for a flat and
+          // then lose the thread the moment they became the tenant of it.
+          // Testers hit exactly that. The tenancy is the relationship the
+          // backend will open a conversation against, so the button lives on
+          // the unit the tenancy is for.
+          Builder(
+            builder: (context) {
+              final tenancy = _liveTenancy(
+                context.watch<AgreementController>().agreements,
+              );
+              if (tenancy == null) {
+                return Text(
+                  'You can message this tenant once their tenancy agreement '
+                  'exists. Create it below.',
+                  style: AppTheme.labelText(
+                    context,
+                    color: AppTheme.secondaryTextColor(context),
+                  ),
+                );
+              }
+              return MessageActionButton(
+                agreementId: tenancy.id,
+                label: 'Message ${unit.tenant ?? 'tenant'}',
+                expanded: true,
+              );
+            },
+          ),
         ],
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: () {
-              Navigator.pop(context);
-              Future<void>.delayed(Duration.zero, _openCreateAgreement);
+              // Resolved before the pop, while this context is still active.
+              final navigator = Navigator.of(context);
+              final controller = context.read<LandlordController>();
+              navigator.pop();
+              _openCreateAgreement(navigator, controller);
             },
             icon: const Icon(Icons.description_outlined, color: Colors.white),
             label: const Text(
@@ -400,6 +600,28 @@ class _UnitInfoSheet extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              final navigator = Navigator.of(context);
+              navigator.pop();
+              _openRecommendations(navigator);
+            },
+            icon: const Icon(
+              Icons.handshake_outlined,
+              color: AppTheme.primaryColor,
+            ),
+            label: const Text(
+              'Recommended artisans',
+              style: TextStyle(color: AppTheme.primaryColor),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppTheme.primaryColor),
+            ),
+          ),
+        ),
       ],
     ),
   );
@@ -408,10 +630,18 @@ class _UnitInfoSheet extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
-  const _InfoRow(this.label, this.value);
+
+  /// Optional trailing action. Only the rows that describe a *choice* get
+  /// one (a rent is set, a bedroom count is measured) so the presence of
+  /// the pencil is itself the signal for which is which.
+  final VoidCallback? onEdit;
+  final String? editTooltip;
+
+  const _InfoRow(this.label, this.value, {this.onEdit, this.editTooltip});
+
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
+    padding: EdgeInsets.only(bottom: onEdit == null ? 12 : 4),
     child: Row(
       children: [
         SizedBox(
@@ -427,6 +657,19 @@ class _InfoRow extends StatelessWidget {
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ),
+        if (onEdit != null)
+          IconButton(
+            onPressed: onEdit,
+            tooltip: editTooltip,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            icon: const Icon(
+              Icons.edit_outlined,
+              size: 17,
+              color: AppTheme.actionColor,
+            ),
+          ),
       ],
     ),
   );

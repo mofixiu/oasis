@@ -123,6 +123,10 @@ class _VerificationFakeAuthService implements IAuthService {
     required String password,
     required String phone,
     required UserRole role,
+    String? category,
+    String? location,
+    String? bio,
+    int? yearsOfExperience,
   }) => throw UnimplementedError();
 
   @override

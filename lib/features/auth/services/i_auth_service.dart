@@ -3,12 +3,21 @@ import '../models/consent_model.dart';
 import '../models/user_model.dart';
 
 abstract class IAuthService {
-  /// Registers a new user (OWNER or TENANT)
+  /// Registers a new user.
+  ///
+  /// [category], [location], [bio] and [yearsOfExperience] describe the trade
+  /// an artisan works in and are only sent for [UserRole.artisan]: the
+  /// backend rejects them on an owner or tenant registration, and an owner has
+  /// no trade to describe.
   Future<UserModel> register({
     required String email,
     required String password,
     required String phone,
     required UserRole role,
+    String? category,
+    String? location,
+    String? bio,
+    int? yearsOfExperience,
   });
 
   /// Logs in a user and stores JWT tokens

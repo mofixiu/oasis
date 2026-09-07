@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/utils/nigeria_locations.dart';
+import '../../../core/widgets/landa_place_picker.dart';
 import '../models/marketplace_models.dart';
 
 /// Collects the `city`, `state`, `min_rent`, `max_rent`, `bedrooms`, and
@@ -17,38 +20,91 @@ class MarketplaceFilterSheet extends StatefulWidget {
 }
 
 class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
-  late final _cityController = TextEditingController(
-    text: widget.initial.city ?? '',
-  );
-  late final _stateController = TextEditingController(
-    text: widget.initial.state ?? '',
-  );
+  // City and state are picked, not typed. Both sides of this search are
+  // strings the backend compares: a landlord whose property says "Lagos" and
+  // a tenant who types "lagos state" never meet, and neither of them ever
+  // finds out why. One list on both sides is the fix — see
+  // [NigeriaLocations].
+  late String? _city = widget.initial.city?.trim().isEmpty == true
+      ? null
+      : widget.initial.city;
+  late String? _state = NigeriaLocations.canonicalState(widget.initial.state);
+
   late final _minRentController = TextEditingController(
-    text: widget.initial.minRent ?? '',
+    text: LandaThousandsFormatter.groupAmount(widget.initial.minRent),
   );
   late final _maxRentController = TextEditingController(
-    text: widget.initial.maxRent ?? '',
+    text: LandaThousandsFormatter.groupAmount(widget.initial.maxRent),
   );
   late int? _bedrooms = widget.initial.bedrooms;
   late int? _bathrooms = widget.initial.bathrooms;
 
   @override
+  void initState() {
+    super.initState();
+    // Rebuild as the rent fields change, so the inverted-range warning and
+    // the disabled button track what is actually typed rather than only
+    // what was there when the sheet opened.
+    _minRentController.addListener(() => setState(() {}));
+    _maxRentController.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
-    _cityController.dispose();
-    _stateController.dispose();
     _minRentController.dispose();
     _maxRentController.dispose();
     super.dispose();
   }
 
+  // Read through the digit strip: the fields now show grouped amounts, and
+  // `int.tryParse('450,000')` is null, which would quietly disable the
+  // inverted-range check rather than failing loudly.
+  int? get _minRent =>
+      int.tryParse(LandaThousandsFormatter.digitsOf(_minRentController.text));
+  int? get _maxRent =>
+      int.tryParse(LandaThousandsFormatter.digitsOf(_maxRentController.text));
+
+  Future<void> _pickState() async {
+    final picked = await openStatePicker(context, selected: _state);
+    if (picked == null || !mounted) return;
+    setState(() {
+      _state = picked;
+      // A city from the old state would filter to nothing in the new one.
+      if (_city != null &&
+          NigeriaLocations.canonicalCity(state: picked, city: _city) == null) {
+        _city = null;
+      }
+    });
+  }
+
+  Future<void> _pickCity() async {
+    final picked = await openCityPicker(
+      context,
+      state: _state,
+      selected: _city,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _city = picked);
+  }
+
+  /// The one thing digit-only fields cannot rule out on their own: a max
+  /// below the min. The backend rejects it outright, so the button that
+  /// would send it is disabled instead.
+  bool get _isInvertedRange {
+    final min = _minRent;
+    final max = _maxRent;
+    return min != null && max != null && max < min;
+  }
+
   void _apply() {
+    if (_isInvertedRange) return;
     Navigator.pop(
       context,
       MarketplaceFilters(
-        city: _cityController.text.trim(),
-        state: _stateController.text.trim(),
-        minRent: _minRentController.text.trim(),
-        maxRent: _maxRentController.text.trim(),
+        city: _city?.trim() ?? '',
+        state: _state?.trim() ?? '',
+        minRent: LandaThousandsFormatter.digitsOf(_minRentController.text),
+        maxRent: LandaThousandsFormatter.digitsOf(_maxRentController.text),
         bedrooms: _bedrooms,
         bathrooms: _bathrooms,
       ),
@@ -72,11 +128,10 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Filter listings',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  style: AppTheme.sectionTitle(
+                    context,
                     color: AppTheme.primaryColor,
                   ),
                 ),
@@ -90,24 +145,27 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
             Row(
               children: [
                 Expanded(
-                  child: _FilterField(
-                    controller: _cityController,
-                    label: 'CITY',
-                    hint: 'Lagos',
+                  child: _PickerFilter(
+                    label: 'STATE',
+                    value: _state,
+                    hint: 'Any state',
+                    onTap: _pickState,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _FilterField(
-                    controller: _stateController,
-                    label: 'STATE',
-                    hint: 'Lagos',
+                  child: _PickerFilter(
+                    label: 'CITY',
+                    value: _city,
+                    hint: 'Any area',
+                    onTap: _pickCity,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: _FilterField(
@@ -124,10 +182,18 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
                     label: 'MAX RENT (₦)',
                     hint: '500000',
                     numeric: true,
+                    hasError: _isInvertedRange,
                   ),
                 ),
               ],
             ),
+            if (_isInvertedRange) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Max rent cannot be lower than min rent.',
+                style: TextStyle(fontSize: 12, color: AppTheme.disputeColor),
+              ),
+            ],
             const SizedBox(height: 20),
             _CountSelector(
               label: 'BEDROOMS',
@@ -145,7 +211,7 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: _apply,
+                onPressed: _isInvertedRange ? null : _apply,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.actionColor,
                   shape: RoundedRectangleBorder(
@@ -182,16 +248,23 @@ class _FilterField extends StatelessWidget {
   final String label;
   final String hint;
   final bool numeric;
+  final bool hasError;
 
   const _FilterField({
     required this.controller,
     required this.label,
     required this.hint,
     this.numeric = false,
+    this.hasError = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final errorBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppTheme.disputeColor, width: 1.5),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -208,6 +281,12 @@ class _FilterField extends StatelessWidget {
         TextField(
           controller: controller,
           keyboardType: numeric ? TextInputType.number : TextInputType.text,
+          // Digits only on a numeric field: it is what stops "cheap" or a
+          // minus sign from ever reaching the query string, rather than
+          // catching either after the fact.
+          inputFormatters: numeric
+              ? const [LandaThousandsFormatter()]
+              : null,
           style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
@@ -218,17 +297,23 @@ class _FilterField extends StatelessWidget {
               horizontal: 12,
               vertical: 14,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppTheme.borderColor(context)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: AppTheme.actionColor,
-                width: 1.5,
-              ),
-            ),
+            enabledBorder: hasError
+                ? errorBorder
+                : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: AppTheme.borderColor(context),
+                    ),
+                  ),
+            focusedBorder: hasError
+                ? errorBorder
+                : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                      color: AppTheme.actionColor,
+                      width: 1.5,
+                    ),
+                  ),
           ),
         ),
       ],
@@ -298,4 +383,38 @@ class _CountSelector extends StatelessWidget {
       ],
     );
   }
+}
+
+/// A labelled picker that sits beside the typed filters without looking
+/// like one of them: same label ramp, same box, a chevron instead of a caret.
+class _PickerFilter extends StatelessWidget {
+  final String label;
+  final String? value;
+  final String hint;
+  final VoidCallback onTap;
+
+  const _PickerFilter({
+    required this.label,
+    required this.value,
+    required this.hint,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.1,
+          color: AppTheme.mutedTextColor(context),
+        ),
+      ),
+      const SizedBox(height: 6),
+      LandaPickerField(value: value, hint: hint, onTap: onTap),
+    ],
+  );
 }

@@ -1,3 +1,4 @@
+import '../../../core/utils/geo_distance.dart';
 import '../../properties/models/property_model.dart';
 
 /// A property surfaced in the tenant marketplace, together with the units
@@ -10,12 +11,46 @@ class MarketplaceProperty {
   final PropertyModel property;
   final List<UnitModel> availableUnits;
 
+  /// How far this property is from the tenant, when the list was asked for
+  /// with coordinates. Null on every other search.
+  ///
+  /// Read from `distance_km` where the backend sends one: it does for Stays
+  /// and not yet for the marketplace, and otherwise computed by the
+  /// controller from the property's own pin. Either way the card shows one
+  /// number from one field, so the day the backend starts answering, nothing
+  /// on screen changes shape.
+  final double? distanceKm;
+
   const MarketplaceProperty({
     required this.property,
     required this.availableUnits,
+    this.distanceKm,
   });
 
   String get id => property.id;
+
+  /// "1.2 km away", or null when this was not a nearby search.
+  String? get distanceLabel => GeoDistance.label(distanceKm);
+
+  /// The same listing with [distanceKm] measured from the tenant's position.
+  ///
+  /// Server-sent distance is left alone: it is computed against whatever the
+  /// backend holds as the property's location, which is the authority.
+  MarketplaceProperty withDistanceFrom({
+    required double latitude,
+    required double longitude,
+  }) => MarketplaceProperty(
+    property: property,
+    availableUnits: availableUnits,
+    distanceKm:
+        distanceKm ??
+        GeoDistance.betweenOrNull(
+          fromLatitude: latitude,
+          fromLongitude: longitude,
+          toLatitude: property.latitude,
+          toLongitude: property.longitude,
+        ),
+  );
 
   /// Lowest advertised rent across available units, used for the card summary.
   /// Returns null when no unit carries a parseable amount.
@@ -44,8 +79,17 @@ class MarketplaceProperty {
                 .map(UnitModel.fromJson)
                 .toList()
           : const <UnitModel>[],
+      distanceKm: _asDouble(json['distance_km']),
     );
   }
+}
+
+/// Tolerant number read, for a field the marketplace serializer does not send
+/// today and may send as either a number or a decimal string when it does.
+double? _asDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
 }
 
 enum ApplicationStatus {
@@ -66,7 +110,7 @@ enum ApplicationStatus {
       case 'WITHDRAWN':
         return ApplicationStatus.withdrawn;
       default:
-        // Never assume PENDING for an unrecognised status — that would offer
+        // Never assume PENDING for an unrecognised status, that would offer
         // approve/reject actions on an application the backend considers
         // already settled.
         return ApplicationStatus.unknown;
@@ -105,6 +149,27 @@ enum ApplicationStatus {
   }
 
   bool get isPending => this == ApplicationStatus.pending;
+
+  /// Whether this application has earned a conversation.
+  ///
+  /// Applying is the relationship, not approval and not payment. A tenant
+  /// deciding whether to apply for somewhere to live has questions:
+  /// inspection dates, what the service charge covers, whether the landlord
+  /// takes the rent monthly, and answering them after the decision has been
+  /// made is answering them too late. So the thread opens as soon as an
+  /// application exists, and it opens for both sides: a landlord can ask an
+  /// applicant about their move-in date without approving them first.
+  ///
+  /// Settled applications are excluded. A rejected or withdrawn application
+  /// is not a live relationship, and re-opening a channel on one would let a
+  /// declined applicant keep writing.
+  ///
+  /// The backend has the final word, where it still answers
+  /// `403 NO_RELATIONSHIP` for a pending application, its own sentence is
+  /// what the tenant sees, rather than the button being hidden and the
+  /// question going unasked.
+  bool get canMessage =>
+      this == ApplicationStatus.approved || this == ApplicationStatus.pending;
 }
 
 /// A tenant's application for an available unit.
@@ -125,7 +190,7 @@ class RentalApplication {
   final String message;
   final String? rentAmount;
 
-  /// Set once approved — the tenancy agreement the approval created.
+  /// Set once approved: the tenancy agreement the approval created.
   final String? agreementId;
   final String? decidedAt;
   final PropertyModel? property;
@@ -146,6 +211,55 @@ class RentalApplication {
     this.decidedAt,
     this.property,
   });
+
+  /// Prefix on the id of an application the app has drawn before the backend
+  /// has confirmed it. Never sent anywhere: it exists so the optimistic row
+  /// can be found again and replaced or removed.
+  static const String optimisticIdPrefix = 'optimistic:';
+
+  /// A pending application drawn the instant Apply is tapped.
+  ///
+  /// Waiting on a round trip to redraw a button is what makes an app feel
+  /// remote: the tenant has decided, the outcome is not in doubt, and the
+  /// screen should say so immediately. The real record replaces this one when
+  /// it lands, and [MarketplaceController] removes it if the request fails.
+  factory RentalApplication.optimistic({
+    required String unitId,
+    required String unitNumber,
+    String? rentAmount,
+    String message = '',
+  }) => RentalApplication(
+    id: '$optimisticIdPrefix$unitId',
+    unitId: unitId,
+    unitNumber: unitNumber,
+    status: ApplicationStatus.pending,
+    createdAt: DateTime.now().toIso8601String(),
+    rentAmount: rentAmount,
+    message: message,
+  );
+
+  /// Whether this row is the app's own guess rather than the backend's
+  /// record. Screens use it to hold back actions that need a real id.
+  bool get isOptimistic => id.startsWith(optimisticIdPrefix);
+
+  /// The same application with a different status, for a decision the app has
+  /// drawn before the server has confirmed it.
+  RentalApplication withStatus(ApplicationStatus next) => RentalApplication(
+    id: id,
+    unitId: unitId,
+    unitNumber: unitNumber,
+    status: next,
+    createdAt: createdAt,
+    tenantName: tenantName,
+    tenantEmail: tenantEmail,
+    tenantPhone: tenantPhone,
+    tenantVerificationStatus: tenantVerificationStatus,
+    message: message,
+    rentAmount: rentAmount,
+    agreementId: agreementId,
+    decidedAt: decidedAt,
+    property: property,
+  );
 
   bool get hasMessage => message.trim().isNotEmpty;
 
@@ -250,8 +364,11 @@ class MarketplaceFilters {
   Map<String, String?> toQueryParameters() => {
     'city': (city?.isEmpty ?? true) ? null : city,
     'state': (state?.isEmpty ?? true) ? null : state,
-    'min_rent': (minRent?.isEmpty ?? true) ? null : minRent,
-    'max_rent': (maxRent?.isEmpty ?? true) ? null : maxRent,
+    // min_price/max_price per the 2026-09-03 search update: the shared
+    // param name across rentals and short lets. The backend still accepts
+    // the older min_rent/max_rent, but there is no reason to send both.
+    'min_price': (minRent?.isEmpty ?? true) ? null : minRent,
+    'max_price': (maxRent?.isEmpty ?? true) ? null : maxRent,
     'bedrooms': bedrooms?.toString(),
     'bathrooms': bathrooms?.toString(),
   };

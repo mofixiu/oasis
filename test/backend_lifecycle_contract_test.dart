@@ -229,7 +229,7 @@ void main() {
     'verifyIdentity retries automatically after accepting required consent',
     () async {
       // MultipartFile.fromPath reads the file from disk, so this needs to
-      // actually exist — content is irrelevant since the backend is mocked.
+      // actually exist: content is irrelevant since the backend is mocked.
       final selfieFile = File(
         '${Directory.systemTemp.path}/landa_consent_test_selfie.jpg',
       )..writeAsBytesSync(const [0xFF, 0xD8, 0xFF, 0xE0]);
@@ -319,6 +319,107 @@ void main() {
     },
   );
 
+  test('creating an agreement sends the chosen rent plan', () async {
+    Map<String, dynamic>? sentBody;
+    final service = AgreementService(
+      apiClient: ApiClient(
+        client: MockClient((request) async {
+          sentBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return _jsonResponse({
+            'id': 'agreement-1',
+            'status': 'PENDING',
+            'rent_amount': '450000.00',
+            'rent_plan': 'MONTHLY',
+            'rent_schedule': null,
+          }, 201);
+        }),
+      ),
+    );
+
+    final agreement = await service.createAgreement(
+      unitId: 'unit-1',
+      tenantId: 'tenant@example.com',
+      rentAmount: '450000.00',
+      startDate: '2026-09-01',
+      endDate: '2027-08-31',
+      rules: 'Standard tenancy rules apply.',
+      rentPlan: RentPlan.monthly,
+    );
+
+    // The canonical value, never an alias, and rent_amount stays the annual
+    // figure, which the backend splits into instalments itself.
+    expect(sentBody?['rent_plan'], 'MONTHLY');
+    expect(sentBody?['rent_amount'], '450000.00');
+    expect(agreement.rentPlan, RentPlan.monthly);
+    // Null until the agreement is payable, exactly as documented.
+    expect(agreement.rentSchedule, isNull);
+    expect(agreement.plan, RentPlan.monthly);
+  });
+
+  test(
+    'an agreement created without a plan lets the backend default',
+    () async {
+      Map<String, dynamic>? sentBody;
+      final service = AgreementService(
+        apiClient: ApiClient(
+          client: MockClient((request) async {
+            sentBody = jsonDecode(request.body) as Map<String, dynamic>;
+            return _jsonResponse({
+              'id': 'agreement-1',
+              'status': 'PENDING',
+              'rent_plan': 'ANNUAL',
+            }, 201);
+          }),
+        ),
+      );
+
+      await service.createAgreement(
+        unitId: 'unit-1',
+        tenantId: 'tenant@example.com',
+        rentAmount: '450000.00',
+        startDate: '2026-09-01',
+        endDate: '2027-08-31',
+        rules: '',
+      );
+
+      // Sending nothing is not the same as sending a guess: the backend owns
+      // the default, and this keeps it that way.
+      expect(sentBody?.containsKey('rent_plan'), isFalse);
+    },
+  );
+
+  test('the documented rent schedule parses field for field', () async {
+    // Verbatim from the guide's rent_schedule example.
+    final agreement = TenancyAgreementModel.fromJson({
+      'id': 'agreement-1',
+      'status': 'EXECUTED',
+      'rent_amount': '1260000.00',
+      'rent_plan': 'MONTHLY',
+      'pay_rent_unlocked': true,
+      'rent_schedule': {
+        'plan': 'MONTHLY',
+        'next_due_date': '2026-09-01',
+        'next_amount_due': '105000.00',
+        'days_until_due': 2,
+        'is_overdue': false,
+        'instalments_paid': 0,
+        'instalments_total': 12,
+      },
+    });
+
+    final schedule = agreement.upcomingRent!;
+    expect(schedule.plan, RentPlan.monthly);
+    expect(schedule.nextDueDate, '2026-09-01');
+    // Already fee-inclusive per the guide, so nothing is added to it here.
+    expect(schedule.nextAmountDue, '105000.00');
+    expect(schedule.daysUntilDue, 2);
+    expect(schedule.isOverdue, isFalse);
+    expect(schedule.isDueNow, isFalse);
+    expect(schedule.isDueSoon, isTrue);
+    expect(schedule.instalmentsPaid, 0);
+    expect(schedule.instalmentsTotal, 12);
+  });
+
   test('marketplace filters map to backend query parameters', () async {
     final captured = <String, String>{};
     final service = MarketplaceService(
@@ -363,7 +464,9 @@ void main() {
         bedrooms: 2,
       ),
     );
-    expect(captured, {'city': 'Lagos', 'max_rent': '300000', 'bedrooms': '2'});
+    // max_price, not max_rent: the 2026-09-03 search update's shared param
+    // name across rentals and short lets.
+    expect(captured, {'city': 'Lagos', 'max_price': '300000', 'bedrooms': '2'});
     expect(listings.single.property.name, 'Sunset House');
     expect(listings.single.availableUnits.single.unitNumber, 'A1');
     expect(listings.single.lowestRent, 450000.00);

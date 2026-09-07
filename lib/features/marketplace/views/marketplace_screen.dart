@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/landa_network_image.dart';
 import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/landa_refresh.dart';
+import '../../../core/utils/nearby_search.dart';
+import '../../../core/widgets/custom_bottom_navbar.dart';
 import '../../../core/widgets/landa_app_bar.dart';
 import '../../../core/widgets/landa_entrance.dart';
+import '../../../core/widgets/landa_near_me.dart';
+import '../../../core/widgets/landa_search_field.dart';
 import '../../../core/widgets/landa_shimmer.dart';
 import '../../../core/widgets/landa_state_views.dart';
 import '../../../core/widgets/landa_toast.dart';
@@ -15,9 +21,17 @@ import 'apply_for_unit_sheet.dart';
 import 'marketplace_filter_sheet.dart';
 import 'marketplace_property_screen.dart';
 import 'my_applications_screen.dart';
+import '../../../core/utils/fade_page_route.dart';
+import '../../../core/utils/landa_prefetch.dart';
+import '../../../core/widgets/landa_busy.dart';
 
 /// Tenant-facing marketplace: browse properties with available units and
 /// apply in one tap.
+///
+/// The Discover tab, and a tab root rather than a pushed route: finding a
+/// home is the reason a tenant installs this, and it spent a release as a
+/// compass in the app bar competing with the notification bell for a 26px tap
+/// target.
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({super.key});
 
@@ -25,14 +39,89 @@ class MarketplaceScreen extends StatefulWidget {
   State<MarketplaceScreen> createState() => _MarketplaceScreenState();
 }
 
-class _MarketplaceScreenState extends State<MarketplaceScreen> {
+class _MarketplaceScreenState extends State<MarketplaceScreen>
+    with NearbySearchMixin, AutoRefreshMixin<MarketplaceScreen> {
+  /// The first fetch is driven by [initState], because it has to finish
+  /// before the location prompt decides whether to offer nearby sorting.
+  @override
+  bool get refreshOnMount => false;
+
+  @override
+  Future<void> onAutoRefresh() =>
+      context.read<MarketplaceController>().loadMarketplace();
+
+  /// Whether Discover has already offered to use location this app session.
+  ///
+  /// Static, because the bottom bar builds this tab from scratch every time
+  /// the tenant switches back to it. As instance state it would re-prompt on
+  /// every visit, and would quietly switch distance ordering back on for
+  /// someone who had just tapped "See all" to turn it off.
+  static bool _hasOfferedLocation = false;
+
+  /// Owned here rather than by the search field, so the empty state's "Clear
+  /// search" can empty the box as well as the query behind it.
+  late final TextEditingController _searchController;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<MarketplaceController>().loadMarketplace(),
+    // Seeded from the controller: it survives leaving and re-entering this
+    // screen, so the box should not come back blank over filtered results.
+    _searchController = TextEditingController(
+      text: context.read<MarketplaceController>().searchQuery,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await refreshNow();
+      if (mounted) await _requestLocationOnce();
+    });
   }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Drops the search box, the filter sheet, and the text on screen together.
+  Future<void> _clearSearchAndFilters() async {
+    _searchController.clear();
+    await context.read<MarketplaceController>().clearSearchAndFilters();
+  }
+
+  /// Back to everywhere, keeping the filters. What the Near me toggle undoes
+  /// itself with: a tenant turning distance off is not asking to have their
+  /// rent range widened at the same time.
+  Future<void> _clearLocationSearch() async {
+    _searchController.clear();
+    await context.read<MarketplaceController>().clearLocationSearch();
+  }
+
+  /// Offers distance ordering the first time the tenant opens Discover.
+  ///
+  /// Silent on refusal: see [NearbySearchMixin.useNearby]. Skipped entirely
+  /// when something is already narrowing the list: the controller outlives
+  /// this screen, so returning to the tab can find a search already running,
+  /// and replacing it would throw away a choice the tenant made.
+  Future<void> _requestLocationOnce() async {
+    if (_hasOfferedLocation) return;
+    _hasOfferedLocation = true;
+    if (context.read<MarketplaceController>().isNarrowed) return;
+    await _useNearby(explain: false);
+  }
+
+  Future<void> _useNearby({bool explain = true}) => useNearby(
+    explain: explain,
+    onLocated: (latitude, longitude) async {
+      // Coordinates replace the typed query rather than combining with it, so
+      // the box empties to match what is actually being searched.
+      _searchController.clear();
+      if (!mounted) return;
+      await context.read<MarketplaceController>().searchNearby(
+        latitude: latitude,
+        longitude: longitude,
+      );
+    },
+  );
 
   Future<void> _openFilters() async {
     final controller = context.read<MarketplaceController>();
@@ -63,6 +152,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final application = await controller.applyForUnit(
       unit.id,
       message: result.message,
+      // Carried so the provisional row reads properly on My applications in
+      // the seconds before the real record lands.
+      unitNumber: unit.unitNumber,
+      rentAmount: unit.rentAmount,
     );
     if (!mounted) return;
 
@@ -82,6 +175,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
+      // A tab root now, so no back arrow: there is nothing behind it.
       appBar: const LandaAppBar(),
       body: RefreshIndicator(
         onRefresh: controller.loadMarketplace,
@@ -94,11 +188,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Find your next home',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
+                      style: AppTheme.screenTitle(
+                        context,
                         color: AppTheme.primaryColor,
                       ),
                     ),
@@ -111,6 +204,27 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    LandaSearchField(
+                      controller: _searchController,
+                      hintText: 'Search by area, city or address',
+                      onChanged: controller.search,
+                      trailing: NearMeButton(
+                        isActive: controller.isSearchingNearby,
+                        isLoading: isLocating,
+                        onPressed: controller.isSearchingNearby
+                            ? _clearLocationSearch
+                            : _useNearby,
+                        activeHint: 'Show homes everywhere',
+                      ),
+                    ),
+                    if (controller.isSearchingNearby) ...[
+                      const SizedBox(height: 10),
+                      NearbyNotice(
+                        message: 'Showing homes near you, closest first.',
+                        onClear: _clearLocationSearch,
+                      ),
+                    ],
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
@@ -143,9 +257,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                           child: OutlinedButton.icon(
                             onPressed: () => Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (_) => const MyApplicationsScreen(),
-                              ),
+                              FadePageRoute(page: const MyApplicationsScreen()),
                             ),
                             icon: const Icon(
                               Icons.description_outlined,
@@ -196,7 +308,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               ),
             ),
             ..._buildBody(context, controller),
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            // Clears the floating bottom bar, which overlays this screen
+            // rather than insetting it.
+            const SliverToBoxAdapter(
+              child: SizedBox(height: CustomBottomNavbar.reservedHeight + 16),
+            ),
           ],
         ),
       ),
@@ -236,27 +352,31 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     }
 
     if (controller.listings.isEmpty) {
+      // A search and a filter narrow the list the same way, so they get the
+      // same empty state, and the one button clears both, because clearing
+      // only half of what is hiding the listings leaves the tenant staring at
+      // the same empty screen.
+      final narrowed = controller.isNarrowed;
       return [
         SliverToBoxAdapter(
           child: LandaEmptyState(
-            icon: controller.filters.isEmpty
-                ? Icons.home_work_outlined
-                : Icons.filter_alt_off_outlined,
-            title: controller.filters.isEmpty
-                ? 'No listings available yet'
-                : 'Nothing matches those filters',
-            message: controller.filters.isEmpty
-                ? 'Available units will appear here as landlords list them.'
-                : 'Try widening your search to see more homes.',
-            actionLabel: controller.filters.isEmpty
-                ? 'Refresh listings'
-                : 'Clear filters',
-            actionIcon: controller.filters.isEmpty
-                ? Icons.refresh_rounded
-                : Icons.filter_alt_off_rounded,
-            onAction: controller.filters.isEmpty
-                ? controller.loadMarketplace
-                : controller.clearFilters,
+            icon: narrowed
+                ? Icons.search_off_rounded
+                : Icons.home_work_outlined,
+            title: narrowed
+                ? 'Nothing matches that search'
+                : 'No listings available yet',
+            message: narrowed
+                ? 'Try a different area, or widen your search to see more '
+                      'homes.'
+                : 'Available units will appear here as landlords list them.',
+            actionLabel: narrowed ? 'Clear search' : 'Refresh listings',
+            actionIcon: narrowed
+                ? Icons.filter_alt_off_rounded
+                : Icons.refresh_rounded,
+            onAction: narrowed
+                ? _clearSearchAndFilters
+                : controller.loadMarketplace,
             scrollable: false,
             padding: const EdgeInsets.fromLTRB(32, 40, 32, 32),
           ),
@@ -280,12 +400,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 appliedUnitIds: appliedUnitIds,
                 applyingUnitId: controller.applyingUnitId,
                 onApply: (unit) => _apply(unit, listing),
-                onOpen: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MarketplacePropertyScreen(listing: listing),
-                  ),
-                ),
+                onOpen: () {
+                  LandaPrefetch.images(context, [
+                    listing.property.displayImageUrl,
+                    ...listing.property.photoUrls,
+                  ]);
+                  Navigator.push(
+                    context,
+                    FadePageRoute(
+                      page: MarketplacePropertyScreen(listing: listing),
+                    ),
+                  );
+                },
               ),
             );
           },
@@ -339,13 +465,15 @@ class _MarketplaceCard extends StatelessWidget {
                       width: double.infinity,
                       // Backend picks the cover (first uploaded photo); fall back to
                       // the first in the list for payloads without cover_photo_url.
-                      child: property.displayImageUrl != null
-                          ? Image.network(
-                              property.displayImageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _fallbackImage(),
-                            )
-                          : _fallbackImage(),
+                      //
+                      // A grid of these used to pop in one by one as each
+                      // decoded. They now fade onto a block of the right
+                      // shape, so a scroll settles instead of flickering.
+                      child: LandaNetworkImage(
+                        url: property.displayImageUrl,
+                        placeholderIcon: Icons.home_work_outlined,
+                        heroTag: landaMediaHeroTag('property', property.id),
+                      ),
                     ),
                     if (property.hasVideo)
                       Positioned(
@@ -425,9 +553,8 @@ class _MarketplaceCard extends StatelessWidget {
                     children: [
                       Text(
                         property.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        style: AppTheme.sectionTitle(
+                          context,
                           color: AppTheme.primaryColor,
                         ),
                       ),
@@ -455,6 +582,24 @@ class _MarketplaceCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          // Only ever present on a nearby search, so it never
+                          // has to explain what it is measured from.
+                          if (listing.distanceLabel != null) ...[
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.near_me_rounded,
+                              size: 12,
+                              color: AppTheme.actionColor,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              listing.distanceLabel!,
+                              style: AppTheme.labelText(
+                                context,
+                                color: AppTheme.actionColor,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -505,17 +650,6 @@ class _MarketplaceCard extends StatelessWidget {
       ),
     );
   }
-
-  Widget _fallbackImage() => Container(
-    color: AppTheme.primaryColor.withValues(alpha: .08),
-    child: const Center(
-      child: Icon(
-        Icons.home_work_outlined,
-        size: 56,
-        color: AppTheme.primaryColor,
-      ),
-    ),
-  );
 }
 
 class _UnitRow extends StatelessWidget {
@@ -564,7 +698,7 @@ class _UnitRow extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppTheme.successSurfaceColor,
+                color: AppTheme.successSurface(context),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
@@ -597,14 +731,7 @@ class _UnitRow extends StatelessWidget {
                 ),
               ),
               child: isApplying
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
+                  ? const LandaBusyDots(color: Colors.white)
                   : const Text(
                       'Apply',
                       style: TextStyle(

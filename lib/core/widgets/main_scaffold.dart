@@ -5,14 +5,14 @@ import '../../features/auth/models/user_model.dart';
 import '../../features/auth/views/identity_verification_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
 import '../../features/dashboard/views/landlord_dashboard_screen.dart';
+import '../../features/fix/views/artisan_home_screen.dart';
 import '../../features/marketplace/views/landlord_applications_screen.dart';
 import '../../features/marketplace/views/marketplace_screen.dart';
 import '../../features/payments/views/payments_screen.dart';
+import '../../features/shortlets/views/landlord_shortlets_screen.dart';
+import '../../features/shortlets/views/shortlet_browse_screen.dart';
 
-// NON-MVP FEATURES (Commented out for 30-day MVP phase):
-// import '../../features/maintenance/views/fixes_screen.dart';
-// import '../../features/vault/views/vault_screen.dart';
-
+import '../utils/landa_refresh.dart';
 import 'custom_bottom_navbar.dart';
 
 /// Wrapper scaffold that maintains the bottom navigation state and switches
@@ -27,6 +27,30 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
 
+  /// The visible tab, as something the tabs themselves can listen to.
+  ///
+  /// A notifier rather than only `setState`, because the point is to reach
+  /// each tab's [AutoRefreshMixin] *without* rebuilding the whole stack: the
+  /// screens live in an `IndexedStack` precisely so they are not rebuilt, and
+  /// a rebuild is not what they need anyway. They need to be told.
+  final ValueNotifier<int> _activeTab = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _activeTab.dispose();
+    super.dispose();
+  }
+
+  void _selectTab(int index) {
+    if (index == _currentIndex) return;
+    setState(() => _currentIndex = index);
+    // After the frame, so a tab waking up and calling `notifyListeners()` on
+    // a controller cannot do it during this build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _activeTab.value = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final authController = context.watch<AuthController>();
@@ -39,46 +63,97 @@ class _MainScaffoldState extends State<MainScaffold> {
       return const IdentityVerificationScreen();
     }
 
-    final isLandlord = authController.currentRole == UserRole.owner;
+    final role = authController.currentRole;
 
     // MVP Active Navigation Screens. Order must stay in step with the items
-    // in CustomBottomNavbar.
-    final List<Widget> screens = [
-      isLandlord ? const LandlordDashboardScreen() : const DashboardScreen(),
-      isLandlord
-          ? const LandlordApplicationsScreen()
-          : const MarketplaceScreen(),
-      const PaymentsScreen(),
+    // in CustomBottomNavbar. The second slot is the one each renting role
+    // uses differently: a landlord decides on applications there, a tenant
+    // browses the listings they can apply through.
+    //
+    // Short lets get a tab of their own for both renting roles. They are a
+    // second business running on the same units: nightly rather than yearly,
+    // with their own inbox and their own money, so burying them under
+    // Discover or behind a dashboard button made them read as a footnote to
+    // renting.
+    //
+    // An artisan gets neither, and now gets no tab bar at all. They hold no
+    // unit, sign no agreement and pay no rent; since API guide 18 removed the
+    // Fix job workflow they take no jobs through Landa and are paid no money
+    // through it either. What is left for them is one screen: the listing
+    // landlords and tenants find them by, so a bottom bar would be a row of
+    // one. Fix itself is not a tab for the other two roles: a tenant reaches
+    // it from a card on their dashboard, and a landlord from the unit they
+    // want cover on.
+    final List<Widget> screens = switch (role) {
+      UserRole.owner => const [
+        LandlordDashboardScreen(),
+        LandlordApplicationsScreen(),
+        LandlordShortLetsScreen(),
+        PaymentsScreen(),
+      ],
+      UserRole.tenant => const [
+        DashboardScreen(),
+        MarketplaceScreen(),
+        ShortLetBrowseScreen(),
+        PaymentsScreen(),
+      ],
+      UserRole.artisan => const [ArtisanHomeScreen()],
+    };
 
-      // NON-MVP SCREENS (Commented out):
-      // const FixesScreen(),
-      // const VaultScreen(),
-    ];
-
-    // Safety check for index out of bounds
+    // Safety check for index out of bounds. A role switch can leave the
+    // index pointing past the end of the new role's shorter list.
     if (_currentIndex >= screens.length) {
       _currentIndex = 0;
+      _activeTab.value = 0;
     }
 
     return Scaffold(
       body: Stack(
         children: [
-          screens[_currentIndex],
-
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: CustomBottomNavbar(
-              currentIndex: _currentIndex,
-              isLandlord: isLandlord,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-            ),
+          // An IndexedStack, not `screens[_currentIndex]`.
+          //
+          // Switching tabs used to destroy the outgoing screen and build the
+          // incoming one from nothing: scroll position lost, every controller
+          // refetched, skeletons on a tab that was fully loaded ten seconds
+          // ago. Dashboard → Stays → Dashboard should put you back exactly
+          // where you were, because that is what the phone does everywhere
+          // else.
+          //
+          // The cost is that every tab stays alive once visited. That is the
+          // point: the controllers are process-wide singletons anyway, so
+          // the state was already in memory; the widgets were the only thing
+          // being thrown away.
+          //
+          // Each child is wrapped so it knows which tab it is and which tab
+          // is showing. Without that, switching tabs is invisible to the
+          // screens themselves: nothing mounts, nothing pops, and a tab that
+          // has been sitting behind another for ten minutes comes back
+          // showing what it loaded then. See [LandaTabVisibility].
+          IndexedStack(
+            index: _currentIndex,
+            children: [
+              for (var i = 0; i < screens.length; i++)
+                LandaTabVisibility(
+                  activeIndex: _activeTab,
+                  index: i,
+                  child: screens[i],
+                ),
+            ],
           ),
+
+          // Hidden for a role with one destination. A bar with a single item
+          // is chrome that does nothing but take a thumb's worth of screen.
+          if (screens.length > 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: CustomBottomNavbar(
+                currentIndex: _currentIndex,
+                role: role,
+                onTap: _selectTab,
+              ),
+            ),
         ],
       ),
     );

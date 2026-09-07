@@ -1,20 +1,27 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/landa_video_player.dart';
+import '../../../../core/widgets/landa_network_image.dart';
 import '../../../../core/widgets/landa_toast.dart';
 import '../../controllers/landlord_controller.dart';
 import '../../models/property_model.dart';
+import '../../../../core/widgets/landa_busy.dart';
+import '../../../../core/widgets/landa_shimmer.dart';
 
-/// Landlord-facing manager for a property's listing photos and tour video.
+/// Landlord-facing manager for a property's listing photos.
 ///
 /// The first photo becomes the marketplace cover image, so it is badged as
-/// such — landlords need to know which one tenants will actually see.
+/// such: landlords need to know which one tenants will actually see.
+///
+/// Photos here are of the *building*: the gate, the compound, the street. The
+/// tour video that used to sit alongside them now belongs to each unit, since
+/// a tenant applies for one flat and a single video of a block told them
+/// nothing about it. What remains of it here is a count of which units still
+/// need one.
 class PropertyMediaManager extends StatefulWidget {
   final PropertyModel property;
 
@@ -97,13 +104,9 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor(dialogContext),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
+        title: Text(
           'Remove this photo?',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
-          ),
+          style: AppTheme.sectionTitle(context, color: AppTheme.primaryColor),
         ),
         content: Text(
           isCover
@@ -150,109 +153,40 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
     }
   }
 
-  Future<void> _uploadVideo({required bool replacing}) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: PropertyMediaLimits.videoExtensions,
-    );
-    final path = result?.files.single.path;
-    if (path == null || !mounted) return;
-
-    final file = File(path);
-    if (await file.length() > PropertyMediaLimits.maxVideoBytes) {
-      if (!mounted) return;
-      LandaToast.error(
-        context,
-        'Video is larger than 50MB. Please choose a shorter or more compressed clip.',
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    final controller = context.read<LandlordController>();
-    final success = await controller.uploadPropertyVideo(
-      propertyId: widget.property.id,
-      video: file,
-    );
-    if (!mounted) return;
-    if (success) {
-      LandaToast.success(
-        context,
-        replacing ? 'Tour video replaced.' : 'Tour video uploaded.',
-      );
-    } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
-    }
-  }
-
-  Future<void> _deleteVideo() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor(dialogContext),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Remove tour video?',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
-          ),
-        ),
-        content: const Text(
-          'Tenants browsing the marketplace will no longer see a video tour for this property.',
-          style: TextStyle(fontSize: 13, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.disputeColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text(
-              'Remove',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    final controller = context.read<LandlordController>();
-    final success = await controller.deletePropertyVideo(widget.property.id);
-    if (!mounted) return;
-    if (success) {
-      LandaToast.success(context, 'Tour video removed.');
-    } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<LandlordController>();
     final photos = controller.propertyPhotos[widget.property.id] ?? const [];
-    final videoUrl = controller.videoUrlFor(widget.property.id);
+    final units =
+        controller.propertyUnits[widget.property.id] ?? const <UnitModel>[];
+    final missingVideos = units.where((unit) => unit.needsTourVideo).length;
     final busy = controller.isMediaBusy;
+
+    // Has this property's media come back yet? Not the same question as
+    // "is a request in flight": the fetch is scheduled post-frame, so on the
+    // very first frame nothing is loading *and* nothing has been loaded, and
+    // an empty photo list at that moment means "not asked", not "none".
+    //
+    // Reading it as "none" is what made the page announce "No listing photos
+    // yet" to a landlord with four of them, and then swap to the grid a
+    // moment later, which reads as the app having lost their photos and
+    // found them again.
+    final hasLoadedMedia = controller.hasLoaded(
+      LandlordController.propertyMediaKey(widget.property.id),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(
           title: 'LISTING PHOTOS',
-          trailing: '${photos.length}/${PropertyMediaLimits.maxPhotos}',
-          action: photos.length < PropertyMediaLimits.maxPhotos
+          // The count is a claim about what is on the listing, so it stays
+          // blank until there is one to make.
+          trailing: hasLoadedMedia
+              ? '${photos.length}/${PropertyMediaLimits.maxPhotos}'
+              : null,
+          action:
+              hasLoadedMedia && photos.length < PropertyMediaLimits.maxPhotos
               ? TextButton.icon(
                   onPressed: busy ? null : () => _addPhotos(photos.length),
                   icon: const Icon(
@@ -267,7 +201,11 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
               : null,
         ),
         const SizedBox(height: 8),
-        if (photos.isEmpty)
+        if (!hasLoadedMedia)
+          // Shaped like the grid that is coming, so the arrival reads as the
+          // photos resolving rather than the page changing its mind.
+          const _PhotoGridSkeleton()
+        else if (photos.isEmpty)
           _EmptyMediaCard(
             icon: Icons.photo_library_outlined,
             message:
@@ -294,73 +232,61 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
           ),
 
         const SizedBox(height: 24),
-        const _SectionHeader(title: 'PROPERTY TOUR VIDEO'),
+        // The walkthrough moved onto each unit. What is left here is the
+        // scoreboard: a landlord who never opens an individual unit still
+        // needs to know that three of their flats have nothing for a tenant
+        // to watch, because that is why those flats are not being applied
+        // for.
+        const _SectionHeader(title: 'UNIT TOUR VIDEOS'),
         const SizedBox(height: 8),
-        if (videoUrl == null)
-          _EmptyMediaCard(
-            icon: Icons.videocam_outlined,
-            message:
-                'Add an optional walkthrough video (MP4 or MOV, up to 50MB) to help your listing stand out.',
-            actionLabel: 'Upload video',
-            onAction: busy ? null : () => _uploadVideo(replacing: false),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.borderColor(context)),
-            ),
-            child: Column(
-              children: [
-                // Play inline so the landlord sees exactly what tenants will.
-                LandaVideoPlayer(
-                  url: videoUrl,
-                  thumbnailUrl: widget.property.displayImageUrl,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: busy
-                            ? null
-                            : () => _uploadVideo(replacing: true),
-                        icon: const Icon(Icons.swap_horiz, size: 18),
-                        label: const Text('Replace video'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.secondaryTextColor(context),
-                          side: BorderSide(
-                            color: AppTheme.borderColor(context),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: busy ? null : _deleteVideo,
-                      icon: const Icon(Icons.delete_outline),
-                      color: AppTheme.disputeColor,
-                      tooltip: 'Remove video',
-                    ),
-                  ],
-                ),
-              ],
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: missingVideos > 0
+                ? AppTheme.actionColor.withValues(alpha: 0.07)
+                : AppTheme.surfaceColor(context),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: missingVideos > 0
+                  ? AppTheme.actionColor.withValues(alpha: 0.3)
+                  : AppTheme.borderColor(context),
             ),
           ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                missingVideos > 0
+                    ? Icons.videocam_off_outlined
+                    : Icons.videocam_outlined,
+                size: 20,
+                color: missingVideos > 0
+                    ? AppTheme.actionColor
+                    : AppTheme.successColor,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  units.isEmpty
+                      ? 'Each unit gets its own walkthrough. Add units below '
+                            'and attach one to each.'
+                      : missingVideos > 0
+                      ? '$missingVideos of ${units.length} '
+                            '${units.length == 1 ? 'unit has' : 'units have'} '
+                            'no tour video. Open the unit below to add one, '
+                            'tenants rarely apply for a flat they cannot see '
+                            'inside.'
+                      : 'Every unit has a tour video.',
+                  style: AppTheme.bodyText(context),
+                ),
+              ),
+            ],
+          ),
+        ),
         if (busy) ...[
           const SizedBox(height: 12),
-          const Center(
-            child: SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
+          const LandaBusyLine(label: 'Uploading'),
         ],
       ],
     );
@@ -422,16 +348,9 @@ class _PhotoTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            photo.imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              color: AppTheme.primaryColor.withValues(alpha: .08),
-              child: const Icon(
-                Icons.broken_image_outlined,
-                color: AppTheme.primaryColor,
-              ),
-            ),
+          LandaNetworkImage(
+            url: photo.imageUrl,
+            placeholderIcon: Icons.image_outlined,
           ),
           if (isCover)
             Positioned(
@@ -522,6 +441,30 @@ class _EmptyMediaCard extends StatelessWidget {
           ),
           child: Text(actionLabel),
         ),
+      ],
+    ),
+  );
+}
+
+/// Placeholder for the photo grid while a property's media is being read.
+///
+/// Three tiles, the same size and spacing as the real ones: enough to say
+/// "photos are coming" without claiming a count the app does not yet know.
+class _PhotoGridSkeleton extends StatelessWidget {
+  const _PhotoGridSkeleton();
+
+  @override
+  Widget build(BuildContext context) => LandaShimmer(
+    child: GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      crossAxisSpacing: 8,
+      mainAxisSpacing: 8,
+      children: const [
+        ShimmerBox(height: 100),
+        ShimmerBox(height: 100),
+        ShimmerBox(height: 100),
       ],
     ),
   );

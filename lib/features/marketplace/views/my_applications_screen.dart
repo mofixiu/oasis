@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../messaging/views/widgets/message_action_button.dart';
 import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_shimmer.dart';
 import '../../../core/widgets/landa_state_views.dart';
@@ -18,14 +20,16 @@ class MyApplicationsScreen extends StatefulWidget {
   State<MyApplicationsScreen> createState() => _MyApplicationsScreenState();
 }
 
-class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
+class _MyApplicationsScreenState extends State<MyApplicationsScreen>
+    with AutoRefreshMixin<MyApplicationsScreen> {
+  /// Polls while open. Every row here is waiting on a landlord's decision,
+  /// which arrives on their phone rather than this one.
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<MarketplaceController>().loadTenantApplications(),
-    );
-  }
+  Duration? get autoRefreshInterval => kLandaPollInterval;
+
+  @override
+  Future<void> onAutoRefresh() =>
+      context.read<MarketplaceController>().loadTenantApplications();
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +72,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
       );
     }
 
-    // A failed load no longer hides inside the empty state — "no applications
+    // A failed load no longer hides inside the empty state: "no applications
     // yet" and "we could not reach the server" are different situations and
     // only one of them is fixed by trying again.
     if (controller.hasError && applications.isEmpty) {
@@ -195,6 +199,19 @@ class _ApplicationCard extends StatelessWidget {
               color: AppTheme.secondaryTextColor(context),
             ),
           ),
+
+          // Applying is what earns the conversation, not approval and not
+          // rent paid. A tenant's questions, when they can inspect, what the
+          // service charge covers: are the ones they need answered *before*
+          // deciding, so the button is here from the moment they apply.
+          if (application.status.canMessage) ...[
+            const SizedBox(height: 12),
+            MessageActionButton(
+              applicationId: application.id,
+              label: 'Message landlord',
+              expanded: true,
+            ),
+          ],
         ],
       ),
     );
@@ -203,7 +220,9 @@ class _ApplicationCard extends StatelessWidget {
   static String _statusHint(ApplicationStatus status) {
     switch (status) {
       case ApplicationStatus.pending:
-        return 'Waiting for the landlord to review your application.';
+        return 'Waiting for the landlord to review your application. You can '
+            'message them while you wait. Nothing is owed until an '
+            'agreement is signed.';
       case ApplicationStatus.approved:
         return 'Approved. Check your agreements to review and sign the tenancy agreement.';
       case ApplicationStatus.rejected:

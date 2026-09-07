@@ -11,15 +11,47 @@ class MarketplaceService {
     : _apiClient = apiClient ?? ApiClient();
 
   /// Browse properties with units available to apply for (Tenant).
+  ///
+  /// [location] is the free-text search box: the backend matches it against
+  /// property name, address, city and state, and it composes with [filters]
+  /// rather than replacing them. Sent as `location`, which the backend
+  /// accepts alongside the `search`/`q` aliases.
+  ///
+  /// [latitude]/[longitude] are the device's own position, and they replace
+  /// [location] rather than joining it: a tenant who has just tapped Near me
+  /// is asking about where they are standing, not about a place name they
+  /// typed earlier. [radiusKm] is only meaningful with coordinates.
+  ///
+  /// These three are sent in the same spelling Stays uses, and the marketplace
+  /// endpoint does not read them yet (see §2 of `backend_change_spec_v6.md`);
+  /// DRF ignores unknown query parameters, so today they cost one harmless
+  /// pair of keys and the controller does the ordering itself. The moment the
+  /// backend starts filtering by radius and returning `distance_km`, this call
+  /// is already asking for it.
   Future<List<MarketplaceProperty>> getMarketplace({
     MarketplaceFilters filters = const MarketplaceFilters(),
+    String? location,
+    double? latitude,
+    double? longitude,
+    int? radiusKm,
   }) async {
+    final hasCoordinates = latitude != null && longitude != null;
+    final query = location?.trim();
     debugPrint(
-      '🏘️ [MARKETPLACE SERVICE] Browsing marketplace GET ${ApiConstants.tenantMarketplaceEndpoint}',
+      '[MARKETPLACE SERVICE] Browsing marketplace GET ${ApiConstants.tenantMarketplaceEndpoint} '
+      '(${hasCoordinates ? 'near $latitude,$longitude' : 'location=${query?.isNotEmpty == true ? query : '-'}'})',
     );
     final response = await _apiClient.get(
       ApiConstants.tenantMarketplaceEndpoint,
-      queryParameters: filters.toQueryParameters(),
+      queryParameters: {
+        ...filters.toQueryParameters(),
+        if (hasCoordinates) ...{
+          'latitude': latitude.toStringAsFixed(6),
+          'longitude': longitude.toStringAsFixed(6),
+          'radius_km': radiusKm?.toString(),
+        } else
+          'location': (query?.isEmpty ?? true) ? null : query,
+      },
     );
     if (response is List) {
       final listings = response
@@ -27,7 +59,7 @@ class MarketplaceService {
           .map(MarketplaceProperty.fromJson)
           .toList();
       debugPrint(
-        '🏘️ [MARKETPLACE SERVICE] Loaded ${listings.length} properties with available units',
+        '[MARKETPLACE SERVICE] Loaded ${listings.length} properties with available units',
       );
       return listings;
     }
@@ -44,7 +76,7 @@ class MarketplaceService {
     String? message,
   }) async {
     debugPrint(
-      '📨 [MARKETPLACE SERVICE] Applying for unit $unitId POST ${ApiConstants.tenantApplicationsEndpoint}',
+      '[MARKETPLACE SERVICE] Applying for unit $unitId POST ${ApiConstants.tenantApplicationsEndpoint}',
     );
     final trimmedMessage = message?.trim();
     final response = await _apiClient.post(
@@ -57,7 +89,7 @@ class MarketplaceService {
     );
     final application = RentalApplication.fromJson(response);
     debugPrint(
-      '📨 [MARKETPLACE SERVICE] Application ${application.id} status=${application.status.label}',
+      '[MARKETPLACE SERVICE] Application ${application.id} status=${application.status.label}',
     );
     return application;
   }
@@ -65,7 +97,7 @@ class MarketplaceService {
   /// List the authenticated tenant's own applications.
   Future<List<RentalApplication>> getTenantApplications() async {
     debugPrint(
-      '📨 [MARKETPLACE SERVICE] Fetching tenant applications GET ${ApiConstants.tenantApplicationsEndpoint}',
+      '[MARKETPLACE SERVICE] Fetching tenant applications GET ${ApiConstants.tenantApplicationsEndpoint}',
     );
     final response = await _apiClient.get(
       ApiConstants.tenantApplicationsEndpoint,
@@ -84,7 +116,7 @@ class MarketplaceService {
     ApplicationStatus? status,
   }) async {
     debugPrint(
-      '📥 [MARKETPLACE SERVICE] Fetching landlord applications GET ${ApiConstants.landlordApplicationsEndpoint} '
+      '[MARKETPLACE SERVICE] Fetching landlord applications GET ${ApiConstants.landlordApplicationsEndpoint} '
       '(status=${status?.queryValue ?? 'any'})',
     );
     final response = await _apiClient.get(
@@ -111,7 +143,7 @@ class MarketplaceService {
   }) async {
     final endpoint = ApiConstants.approveApplicationEndpoint(applicationId);
     debugPrint(
-      '✅ [MARKETPLACE SERVICE] Approving application $applicationId POST $endpoint',
+      '[MARKETPLACE SERVICE] Approving application $applicationId POST $endpoint',
     );
     final response = await _apiClient.post(
       endpoint,
@@ -130,7 +162,7 @@ class MarketplaceService {
   Future<RentalApplication> rejectApplication(String applicationId) async {
     final endpoint = ApiConstants.rejectApplicationEndpoint(applicationId);
     debugPrint(
-      '🚫 [MARKETPLACE SERVICE] Rejecting application $applicationId POST $endpoint',
+      '[MARKETPLACE SERVICE] Rejecting application $applicationId POST $endpoint',
     );
     final response = await _apiClient.post(endpoint, body: const {});
     return RentalApplication.fromJson(

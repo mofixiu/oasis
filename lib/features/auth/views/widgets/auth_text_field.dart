@@ -55,7 +55,11 @@ class _AuthTextFieldState extends State<AuthTextField> {
           decoration: InputDecoration(
             hintText: widget.hintText,
             hintStyle: TextStyle(color: mutedTextColor),
-            prefixIcon: Icon(widget.prefixIcon, color: mutedTextColor, size: 20),
+            prefixIcon: Icon(
+              widget.prefixIcon,
+              color: mutedTextColor,
+              size: 20,
+            ),
             suffixIcon: widget.isPassword
                 ? IconButton(
                     icon: Icon(

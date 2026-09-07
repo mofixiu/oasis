@@ -18,7 +18,19 @@ class AppTheme {
   static const Color vacantSurfaceColor = Color(0xFFF4E8D9);
   static const Color slateSurfaceColor = Color(0xFFF1F4F8);
   static const Color logoutSurfaceColor = Color(0xFFF7E9E6);
-  static const Color darkSurfaceColor = Color(0xFF1A1A1A);
+
+  /// The dark-mode surface ramp.
+  ///
+  /// Warm, not neutral, and stepped rather than flat. Pure black under a
+  /// featureless grey card is the cheapest-looking dark mode there is: every
+  /// plane sits at the same depth, nothing has an edge, and terracotta, a
+  /// warm earth colour, floats on it looking like a sticker.
+  ///
+  /// These carry a few points of red and green over blue, so the palette's
+  /// terracotta and sand read as belonging to the surface they are printed
+  /// on. The steps are deliberately small; the intent is depth you feel
+  /// rather than tints you notice.
+  static const Color darkSurfaceColor = Color(0xFF1C1A19);
 
   // Semantic aliases used around the app
   static const Color primaryColor = terracottaColor;
@@ -38,8 +50,19 @@ class AppTheme {
   // terracotta-tinted selected nav icon it sits on.
   static const Color alertDotColor = Color(0xFFE5484D);
   static const Color backgroundColor = slateSurfaceColor;
-  static const Color darkBackgroundColor = blackColor;
+
+  /// The page behind everything. Not `#000`: a true black gives a card no
+  /// edge to be seen against, which is why every surface used to read as one
+  /// undifferentiated sheet.
+  static const Color darkBackgroundColor = Color(0xFF121110);
+
   static const Color darkCardColor = darkSurfaceColor;
+
+  /// One step above a card, for a sheet or a header that sits on top of one.
+  static const Color darkRaisedColor = Color(0xFF262322);
+
+  /// One step below a card, for insets, input fills and quoted blocks.
+  static const Color darkRecessedColor = Color(0xFF171514);
 
   // ---------------------------------------------------------------- shape
   // Three radii only. Anything that needs a corner picks the nearest of these
@@ -99,7 +122,7 @@ class AppTheme {
   }
 
   // ----------------------------------------------------------------- type
-  // One ramp, used everywhere. Headings carry negative tracking — at display
+  // One ramp, used everywhere. Headings carry negative tracking: at display
   // sizes Montserrat's default spacing looks loose and generic.
   static const double textXs = 11;
   static const double textSm = 13;
@@ -167,12 +190,44 @@ class AppTheme {
   }
 
   static Color elevatedSurfaceColor(BuildContext context) {
-    return isDarkMode(context) ? const Color(0xFF222222) : whiteColor;
+    return isDarkMode(context) ? darkRaisedColor : whiteColor;
   }
 
   static Color subtleSurfaceColor(BuildContext context) {
-    return isDarkMode(context) ? const Color(0xFF181818) : slateSurfaceColor;
+    return isDarkMode(context) ? darkRecessedColor : slateSurfaceColor;
   }
+
+  // Tinted status surfaces: the fills behind pills, callouts and quoted
+  // blocks. Each is a pale wash of its accent in light mode and a deep one in
+  // dark mode.
+  //
+  // The `*SurfaceColor` constants above are the light halves and must not be
+  // used as a fill directly. They are fixed pale creams, and the text that
+  // sits on them is theme-aware: in dark mode that combination is white on
+  // near-white, which is how an applicant's message, a bank name and a
+  // "hidden from the marketplace" warning all became invisible. Resolve the
+  // fill through these instead, and the pairing holds in both themes.
+  //
+  // Deep rather than alpha-composited: an alpha fill takes its final colour
+  // from whatever is behind it, so the same pill reads differently on a card
+  // than on the page, and neither value can be checked for contrast.
+
+  static Color successSurface(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFF17281A) : successSurfaceColor;
+
+  static Color vacantSurface(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFF2A2117) : vacantSurfaceColor;
+
+  // Darker than the other two on purpose: brick red is the deepest accent in
+  // the palette, and a lighter tint under it falls below 3:1. The one place
+  // legibility matters most, since this surface carries disputes.
+  static Color disputeSurface(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFF21100E) : disputeSurfaceColor;
+
+  static Color logoutSurface(BuildContext context) => disputeSurface(context);
+
+  static Color slateSurface(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFF191D23) : slateSurfaceColor;
 
   static Color inputFillColor(BuildContext context) {
     return isDarkMode(context) ? const Color(0xFF262626) : whiteColor;
@@ -190,6 +245,17 @@ class AppTheme {
 
   static Color profileTextColor(BuildContext context) {
     return isDarkMode(context) ? whiteColor : profileColor;
+  }
+
+  /// High-contrast neutral for copy that has to be *read* rather than
+  /// scanned: legal terms, agreement rules, anything with consequences.
+  ///
+  /// [primaryTextColor] is brand terracotta in light mode, which clears 4.5:1
+  /// against white but not against the tinted surfaces those blocks sit on;
+  /// [secondaryTextColor] is dimmer still. Neither is a safe default for a
+  /// paragraph somebody is agreeing to, so this is the one that is.
+  static Color readingTextColor(BuildContext context) {
+    return isDarkMode(context) ? whiteColor : blackColor;
   }
 
   static Color secondaryTextColor(BuildContext context) {

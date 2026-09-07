@@ -6,25 +6,59 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/fade_page_route.dart';
 import '../../../core/utils/landa_haptics.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_pressable.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../../agreements/controllers/agreement_controller.dart';
+import '../../agreements/views/my_agreements_screen.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/views/identity_verification_screen.dart';
 import '../../auth/views/sign_in_screen.dart';
+import '../../fix/controllers/fix_controller.dart';
+import '../../notifications/controllers/notification_controller.dart';
 import '../../payments/controllers/payment_controller.dart';
+import '../../payouts/controllers/payout_controller.dart';
+import '../../payouts/models/payout_models.dart';
+import '../../payouts/views/payout_account_screen.dart';
 import '../../properties/controllers/landlord_controller.dart';
+import '../../shortlets/views/my_shortlet_bookings_screen.dart';
+import '../../vault/controllers/vault_controller.dart';
+import '../../vault/views/vault_pin_sheet.dart';
 
 /// Account screen: identity, verification standing, portfolio/tenancy figures,
 /// account details and preferences.
 ///
-/// Built around one idea — the user's verified identity is the product's whole
+/// Built around one idea: the user's verified identity is the product's whole
 /// premise, so it gets the hero treatment at the top rather than being a chip
 /// tucked beside an email address.
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen>
+    with AutoRefreshMixin<ProfileScreen> {
+  /// Everything this page reports is somebody else's to change: verification
+  /// is cleared by an admin, the payout account is verified by the bank, the
+  /// vault PIN and the agreement archive move as the user acts elsewhere in
+  /// the app. It was reading all of it from whatever happened to be cached
+  /// when the screen opened, which is why a landlord who had just been
+  /// verified still saw "we are checking your documents" here.
+  @override
+  Future<void> onAutoRefresh() async {
+    final auth = context.read<AuthController>();
+    await Future.wait([
+      auth.refreshProfile(),
+      context.read<AgreementController>().loadAgreements(),
+      context.read<PayoutController>().loadPayoutAccount(),
+      context.read<VaultController>().loadPinStatus(),
+      context.read<NotificationController>().loadPreferences(),
+    ]);
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -109,7 +143,12 @@ class ProfileScreen extends StatelessWidget {
     final themeController = context.watch<ThemeController>();
 
     final user = authController.currentUser;
-    final isLandlord = authController.currentRole == UserRole.owner;
+    final role = authController.currentRole;
+    final isLandlord = role == UserRole.owner;
+    // Deliberately not `!isLandlord`: an artisan is neither landlord nor
+    // tenant, and every branch below that used to read "not a landlord" meant
+    // "a tenant", meaning rent reminders, short-let stays, the role label.
+    final isTenant = role.isTenant;
     final status = user?.verificationStatus ?? VerificationStatus.unverified;
 
     final email = user?.email ?? '';
@@ -150,7 +189,7 @@ class ProfileScreen extends StatelessWidget {
                   child: _IdentityHero(
                     displayName: displayName,
                     email: email,
-                    isLandlord: isLandlord,
+                    role: role,
                     status: status,
                   ),
                 ),
@@ -167,6 +206,8 @@ class ProfileScreen extends StatelessWidget {
                   child: _StatsStrip(
                     tiles: isLandlord
                         ? _landlordStats(landlordController)
+                        : role.isArtisan
+                        ? _artisanStats(context)
                         : _tenantStats(
                             landlordController,
                             agreementController,
@@ -194,10 +235,7 @@ class ProfileScreen extends StatelessWidget {
                             ? () => _copy(context, 'Phone number', user!.phone)
                             : null,
                       ),
-                      _DetailRow(
-                        label: 'Role',
-                        value: isLandlord ? 'Landlord / Owner' : 'Tenant',
-                      ),
+                      _DetailRow(label: 'Role', value: role.displayName),
                       _DetailRow(
                         label: 'Identity',
                         value: _statusCopy(status),
@@ -207,12 +245,124 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Signed agreements live behind here rather than on the
+                // dashboard. A dashboard is a list of things to do; a fully
+                // signed agreement is a record, and this is where people look
+                // for records. Unsigned ones stay on the dashboard.
+                //
+                // A row rather than the list itself: the archive grows by one
+                // per unit per term and would push everything below it
+                // (payouts, preferences, log out) off the bottom of a
+                // landlord's profile within a year.
+                const SizedBox(height: 24),
+                if (!role.isArtisan)
+                  LandaEntrance(
+                    index: 4,
+                    child: _Section(
+                      label: 'RECORDS',
+                      children: [
+                        _DetailRow(
+                          label: 'My agreements',
+                          value: _agreementCountCopy(agreementController),
+                          isLast: isLandlord,
+                          trailingIcon: Icons.chevron_right_rounded,
+                          onTap: () => Navigator.push(
+                            context,
+                            FadePageRoute(page: const MyAgreementsScreen()),
+                          ),
+                        ),
+                        // Guests only: a landlord's short-let bookings are
+                        // decisions to make, and live on their Short Lets
+                        // screen rather than in their own records.
+                        if (isTenant)
+                          _DetailRow(
+                            label: 'My stays',
+                            value: 'Short lets',
+                            isLast: true,
+                            trailingIcon: Icons.chevron_right_rounded,
+                            onTap: () => Navigator.push(
+                              context,
+                              FadePageRoute(
+                                page: const MyShortLetBookingsScreen(),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                // Both roles hold a vault and both can withdraw from it, so
+                // neither of these rows is landlord-only any more: a tenant
+                // who saves rent here needs the same bank account and the same
+                // PIN to get it back out again.
                 const SizedBox(height: 24),
                 LandaEntrance(
-                  index: 4,
+                  index: 5,
+                  child: _Section(
+                    label: 'MONEY',
+                    children: [
+                      Consumer<PayoutController>(
+                        builder: (context, payout, _) => _DetailRow(
+                          label: 'Payout account',
+                          value: _payoutCopy(payout, user),
+                          valueColor: _payoutColor(payout, user),
+                          trailingIcon: Icons.chevron_right_rounded,
+                          onTap: () => Navigator.push(
+                            context,
+                            FadePageRoute(page: const PayoutAccountScreen()),
+                          ),
+                        ),
+                      ),
+                      Consumer<VaultController>(
+                        builder: (context, vault, _) => _DetailRow(
+                          label: 'Vault PIN',
+                          value: _vaultPinCopy(vault),
+                          valueColor: _vaultPinColor(vault),
+                          isLast: true,
+                          trailingIcon: Icons.chevron_right_rounded,
+                          onTap: () => openVaultPinManager(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                LandaEntrance(
+                  index: 6,
                   child: _Section(
                     label: 'PREFERENCES',
                     children: [
+                      // Tenants only: these are rent reminders, and neither a
+                      // landlord nor an artisan is ever the one being reminded
+                      // to pay rent.
+                      if (isTenant)
+                        Consumer<NotificationController>(
+                          builder: (context, notifications, _) => _SwitchRow(
+                            title: 'Early rent reminder emails',
+                            subtitle:
+                                'Emails 6, 3 and 1 month before rent is due. '
+                                'Reminders in the app, and the ones close to '
+                                'the date, are sent either way.',
+                            // Defaults to on because these are opt-out, and
+                            // holds the last known value while a change is in
+                            // flight rather than flicking back and forth.
+                            value:
+                                notifications.earlyRentReminderEmails ?? true,
+                            onChanged: notifications.isSavingPreferences
+                                ? null
+                                : (value) async {
+                                    LandaHaptics.select();
+                                    final saved = await notifications
+                                        .setEarlyRentReminderEmails(value);
+                                    if (!context.mounted || saved) return;
+                                    LandaToast.error(
+                                      context,
+                                      notifications.errorMessage ??
+                                          'Could not save that just now. Try '
+                                              'again in a moment.',
+                                    );
+                                  },
+                          ),
+                        ),
                       _SwitchRow(
                         title: 'Dark mode',
                         subtitle: 'Use the black theme across the app',
@@ -231,7 +381,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
                 LandaEntrance(
-                  index: 5,
+                  index: 7,
                   child: LandaButton(
                     label: 'Log out',
                     icon: Icons.logout_rounded,
@@ -250,6 +400,17 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  /// How many records are behind the row.
+  ///
+  /// A count rather than "View": it tells someone whether the tap is worth
+  /// making, and an empty archive says so plainly instead of opening a screen
+  /// that has nothing on it.
+  String _agreementCountCopy(AgreementController controller) {
+    final count = controller.completedAgreements.length;
+    if (count == 0) return 'None yet';
+    return '$count ${count == 1 ? 'agreement' : 'agreements'}';
+  }
+
   List<_StatTile> _landlordStats(LandlordController controller) {
     final units = controller.propertyUnits.values.expand((u) => u).toList();
     final occupied = units.where((u) => u.isOccupied).length;
@@ -259,7 +420,38 @@ class ProfileScreen extends StatelessWidget {
       _StatTile(label: 'Units', value: '${units.length}'),
       _StatTile(
         label: 'Occupied',
-        value: units.isEmpty ? '—' : '$occupied/${units.length}',
+        value: units.isEmpty ? '-' : '$occupied/${units.length}',
+      ),
+    ];
+  }
+
+  /// An artisan holds no unit and signs no agreement, so the tenant tiles
+  /// would all read ": ".
+  ///
+  /// They used to have jobs and earnings. API guide 18 removed the Fix job
+  /// workflow, so what is left describes the listing they are found by: the
+  /// three fields that decide whether somebody rings them.
+  List<_StatTile> _artisanStats(BuildContext context) {
+    final profile = context.watch<FixController>().myProfile;
+
+    return [
+      _StatTile(
+        label: 'Trade',
+        value: profile == null || profile.categoryLabel.isEmpty
+            ? '-'
+            : profile.categoryLabel,
+      ),
+      _StatTile(
+        label: 'Area',
+        value: profile == null || profile.location.trim().isEmpty
+            ? '-'
+            : profile.location.trim(),
+      ),
+      _StatTile(
+        label: 'Experience',
+        value: profile == null || profile.yearsOfExperience <= 0
+            ? '-'
+            : '${profile.yearsOfExperience} yr',
       ),
     ];
   }
@@ -275,7 +467,7 @@ class ProfileScreen extends StatelessWidget {
         .length;
 
     return [
-      _StatTile(label: 'My unit', value: unit == null ? '—' : unit.unitNumber),
+      _StatTile(label: 'My unit', value: unit == null ? '-' : unit.unitNumber),
       _StatTile(label: 'Agreements', value: '$executed'),
       _StatTile(
         label: 'Payments',
@@ -294,18 +486,18 @@ class ProfileScreen extends StatelessWidget {
 /// Deliberately not a coloured hero card: a saturated gradient block with a
 /// circular avatar and pill badges is the default look every template ships
 /// with, and it fights the restrained palette used everywhere else in the app.
-/// This is the editorial alternative — a monogram tile, the name set large and
+/// This is the editorial alternative: a monogram tile, the name set large and
 /// tight, and standing expressed as one line of small caps under a hairline.
 class _IdentityHero extends StatelessWidget {
   final String displayName;
   final String email;
-  final bool isLandlord;
+  final UserRole role;
   final VerificationStatus status;
 
   const _IdentityHero({
     required this.displayName,
     required this.email,
-    required this.isLandlord,
+    required this.role,
     required this.status,
   });
 
@@ -335,10 +527,8 @@ class _IdentityHero extends StatelessWidget {
               ),
               child: Text(
                 initial,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.5,
+                style: AppTheme.screenTitle(
+                  context,
                   color: AppTheme.profileTextColor(context),
                 ),
               ),
@@ -362,7 +552,7 @@ class _IdentityHero extends StatelessWidget {
                         ),
                       ),
                       // Verified reads as a mark against the name, the way a
-                      // verified account does everywhere else — not as a chip.
+                      // verified account does everywhere else, not as a chip.
                       if (verified) ...[
                         const SizedBox(width: 7),
                         const Icon(
@@ -390,7 +580,7 @@ class _IdentityHero extends StatelessWidget {
         Row(
           children: [
             Text(
-              (isLandlord ? 'Landlord' : 'Tenant').toUpperCase(),
+              role.displayName.toUpperCase(),
               style: AppTheme.labelText(
                 context,
                 color: AppTheme.secondaryTextColor(context),
@@ -441,9 +631,7 @@ class _VerificationCallout extends StatelessWidget {
           ? null
           : () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const IdentityVerificationScreen(),
-              ),
+              FadePageRoute(page: const IdentityVerificationScreen()),
             ),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -511,7 +699,7 @@ class _StatTile {
 /// Figures rail.
 ///
 /// One card holding three columns split by hairlines, rather than three
-/// separate cards each with its own tinted icon tile — fewer boxes, and the
+/// separate cards each with its own tinted icon tile: fewer boxes, and the
 /// numbers carry the section instead of the chrome around them.
 class _StatsStrip extends StatelessWidget {
   final List<_StatTile> tiles;
@@ -628,12 +816,18 @@ class _DetailRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isLast;
 
+  /// Affordance shown when the row is tappable. Defaults to a copy glyph
+  /// because most tappable rows here copy their value: navigation rows pass
+  /// a chevron instead, so the icon never promises the wrong action.
+  final IconData trailingIcon;
+
   const _DetailRow({
     required this.label,
     required this.value,
     this.valueColor,
     this.onTap,
     this.isLast = false,
+    this.trailingIcon = Icons.copy_rounded,
   });
 
   @override
@@ -663,7 +857,7 @@ class _DetailRow extends StatelessWidget {
           if (onTap != null) ...[
             const SizedBox(width: 8),
             Icon(
-              Icons.copy_rounded,
+              trailingIcon,
               size: 15,
               color: AppTheme.mutedTextColor(context),
             ),
@@ -695,7 +889,11 @@ class _SwitchRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+
+  /// Null while a change is being saved, so the switch cannot be flipped
+  /// again before the backend has answered the first time.
+  final ValueChanged<bool>? onChanged;
+
   final bool isLast;
 
   const _SwitchRow({
@@ -805,3 +1003,55 @@ IconData _statusIcon(VerificationStatus status) => switch (status) {
   VerificationStatus.failed => Icons.error_outline_rounded,
   VerificationStatus.unverified => Icons.gpp_maybe_outlined,
 };
+
+/// Vault PIN row copy.
+///
+/// Says ": " rather than "Not set" before the status has been read: telling
+/// someone their PIN is missing when we simply have not looked would send them
+/// into a form they do not need.
+String _vaultPinCopy(VaultController vault) {
+  final status = vault.pinStatus;
+  if (status == null) return '-';
+  if (!status.isSet) return 'Not set';
+  return status.isLocked ? 'Locked' : 'Set';
+}
+
+Color? _vaultPinColor(VaultController vault) {
+  final status = vault.pinStatus;
+  if (status == null) return null;
+  if (!status.isSet) return AppTheme.warningColor;
+  return status.isLocked ? AppTheme.disputeColor : AppTheme.successColor;
+}
+
+/// Payout row copy. Prefers the payout endpoint's own status, falling back to
+/// the profile's `payout_account_status` before the endpoint has loaded so the
+/// row is never blank on first paint.
+String _payoutCopy(PayoutController payout, UserModel? user) {
+  final status = payout.hasLoaded
+      ? payout.status
+      : (user?.payoutAccountStatus ?? PayoutAccountStatus.unknown);
+  final account = payout.account;
+  if (status.isVerified && account != null && account.hasDetails) {
+    return '${account.bankName} ${account.accountNumber}';
+  }
+  return switch (status) {
+    PayoutAccountStatus.verified => 'Verified',
+    PayoutAccountStatus.pending => 'Verifying',
+    PayoutAccountStatus.failed => 'Verification failed',
+    PayoutAccountStatus.missing => 'Add account',
+    PayoutAccountStatus.notRequired => 'Not required',
+    PayoutAccountStatus.unknown => payout.hasLoaded ? 'Add account' : '-',
+  };
+}
+
+Color _payoutColor(PayoutController payout, UserModel? user) {
+  final status = payout.hasLoaded
+      ? payout.status
+      : (user?.payoutAccountStatus ?? PayoutAccountStatus.unknown);
+  return switch (status) {
+    PayoutAccountStatus.verified => AppTheme.successColor,
+    PayoutAccountStatus.failed => AppTheme.disputeColor,
+    PayoutAccountStatus.pending => AppTheme.warningColor,
+    _ => AppTheme.actionColor,
+  };
+}

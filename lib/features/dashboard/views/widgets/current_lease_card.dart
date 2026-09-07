@@ -25,7 +25,7 @@ class CurrentLeaseCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          
+
           // Image with pill overlay
           Stack(
             children: [
@@ -42,7 +42,10 @@ class CurrentLeaseCard extends StatelessWidget {
                 top: 12,
                 left: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.actionColor,
                     borderRadius: BorderRadius.circular(12),
@@ -66,26 +69,19 @@ class CurrentLeaseCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Property Name
-          const Text(
+          Text(
             'Unit 4B, The Gables',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.primaryColor,
-            ),
+            style: AppTheme.sectionTitle(context, color: AppTheme.primaryColor),
           ),
           const SizedBox(height: 4),
           Text(
             'Lekki Phase 1, Lagos',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
-          
+
           // Lease end and doc icon
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

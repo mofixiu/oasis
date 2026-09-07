@@ -84,7 +84,7 @@ class _LandaEntranceState extends State<LandaEntrance>
 ///
 /// Swapping the subtree directly makes a skeleton snap into real content;
 /// this dissolves it. Children must carry distinct keys for the switch to be
-/// detected — pass [stateKey] rather than relying on widget type.
+/// detected: pass [stateKey] rather than relying on widget type.
 class LandaContentSwitcher extends StatelessWidget {
   final String stateKey;
   final Widget child;

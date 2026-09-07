@@ -1,5 +1,5 @@
 /// The single consent type currently required before identity verification.
-/// Bump [version] whenever the backend guide documents a new one — sending a
+/// Bump [version] whenever the backend guide documents a new one: sending a
 /// stale version does not satisfy the gate.
 class VerificationConsent {
   static const String type = 'VERIFICATION_PRIVACY';
