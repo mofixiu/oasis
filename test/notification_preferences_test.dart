@@ -46,8 +46,12 @@ void main() {
       ),
     );
 
-    expect(await service.getEarlyRentReminderEmailsEnabled(), isFalse);
-    expect(await service.setEarlyRentReminderEmailsEnabled(false), isFalse);
+    expect((await service.getPreferences()).earlyRentReminderEmails, isFalse);
+    expect(
+      (await service.setPreferences(earlyRentReminderEmails: false))
+          .earlyRentReminderEmails,
+      isFalse,
+    );
 
     expect(paths, [
       '/api/users/notification-preferences/',
@@ -64,7 +68,34 @@ void main() {
       apiClient: ApiClient(client: MockClient((_) async => _json({}))),
     );
 
-    expect(await service.getEarlyRentReminderEmailsEnabled(), isTrue);
+    final preferences = await service.getPreferences();
+    expect(preferences.earlyRentReminderEmails, isTrue);
+    // Push is opt-out for the same reason, and is absent from this payload
+    // exactly as it is from a backend that predates API guide 19.
+    expect(preferences.pushNotifications, isTrue);
+  });
+
+  test('a preference save sends only the switch that moved', () async {
+    // A PATCH that echoed both values back would overwrite a change made on
+    // another device between this app reading the settings and writing them.
+    Map<String, dynamic>? sentBody;
+    final service = NotificationService(
+      apiClient: ApiClient(
+        client: MockClient((request) async {
+          if (request.method == 'PATCH') {
+            sentBody = jsonDecode(request.body) as Map<String, dynamic>;
+          }
+          return _json({'push_notifications_enabled': false});
+        }),
+      ),
+    );
+
+    final saved = await service.setPreferences(pushNotifications: false);
+
+    expect(sentBody, {'push_notifications_enabled': false});
+    expect(saved.pushNotifications, isFalse);
+    // Untouched by this request, so it keeps the opt-out default.
+    expect(saved.earlyRentReminderEmails, isTrue);
   });
 
   test('the switch does not move until the backend agrees', () async {

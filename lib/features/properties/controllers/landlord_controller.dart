@@ -115,6 +115,8 @@ class LandlordController extends ChangeNotifier
 
   @override
   void resetSessionState() {
+    _removalBlockers = const [];
+    _isRemoving = false;
     _properties = [];
     _propertyUnits.clear();
     _propertyPhotos.clear();
@@ -337,6 +339,107 @@ class LandlordController extends ChangeNotifier
       notifyListeners();
     } catch (e) {
       captureFailure(e);
+      notifyListeners();
+    }
+  }
+
+  // ---------------------------------------------------- removing a property
+
+  /// Why the last removal attempt was refused, per unit. Empty when the last
+  /// attempt was not refused for that reason.
+  List<PropertyRemovalBlocker> _removalBlockers = const [];
+  List<PropertyRemovalBlocker> get removalBlockers => _removalBlockers;
+
+  bool _isRemoving = false;
+  bool get isRemoving => _isRemoving;
+
+  /// Asks to remove a property. Returns the request when the backend
+  /// accepted it, and null otherwise — with either [removalBlockers] filled
+  /// in (something on the property is still live) or [errorMessage] set.
+  Future<PropertyRemovalRequest?> requestPropertyRemoval({
+    required String propertyId,
+    required String reason,
+  }) => _removalCall(
+    () => _propertyService.requestRemoval(
+      propertyId: propertyId,
+      reason: reason,
+    ),
+  );
+
+  /// Confirms a removal with the account password, starting the cooling-off
+  /// window. The property is refetched afterwards so the countdown banner
+  /// has an `archive_at` to render.
+  Future<PropertyRemovalRequest?> confirmPropertyRemoval({
+    required String propertyId,
+    required String requestId,
+    required String password,
+  }) async {
+    final request = await _removalCall(
+      () => _propertyService.confirmRemoval(
+        propertyId: propertyId,
+        requestId: requestId,
+        password: password,
+      ),
+    );
+    if (request != null) await loadLandlordProperties();
+    return request;
+  }
+
+  /// Calls off a removal. Returns whether it went through.
+  Future<bool> cancelPropertyRemoval({
+    required String propertyId,
+    required String requestId,
+  }) async {
+    _isRemoving = true;
+    _removalBlockers = const [];
+    clearFailure();
+    notifyListeners();
+    try {
+      await _propertyService.cancelRemoval(
+        propertyId: propertyId,
+        requestId: requestId,
+      );
+      await _propertyService
+          .getPropertyDetail(propertyId)
+          .then((detail) {
+            final index = _properties.indexWhere((p) => p.id == propertyId);
+            if (index != -1) _properties[index] = detail.property;
+          })
+          // The cancel itself succeeded; a failed refresh after it is not a
+          // failed cancel. Same rule as the short-let save.
+          .catchError((Object e) {
+            debugPrint('[LANDLORD] Cancelled, but the refresh failed: $e');
+          });
+      return true;
+    } catch (e) {
+      captureFailure(e);
+      return false;
+    } finally {
+      _isRemoving = false;
+      notifyListeners();
+    }
+  }
+
+  /// Shared plumbing for the two calls that can come back blocked.
+  Future<PropertyRemovalRequest?> _removalCall(
+    Future<PropertyRemovalRequest> Function() action,
+  ) async {
+    _isRemoving = true;
+    _removalBlockers = const [];
+    clearFailure();
+    notifyListeners();
+    try {
+      return await action();
+    } on PropertyRemovalBlocked catch (blocked) {
+      // Not an error message: the sheet renders these per unit, and
+      // flattening them into one sentence would lose which flat to deal with.
+      _removalBlockers = blocked.blockers;
+      return null;
+    } catch (e) {
+      captureFailure(e);
+      return null;
+    } finally {
+      _isRemoving = false;
       notifyListeners();
     }
   }

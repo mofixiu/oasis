@@ -6,9 +6,8 @@ import '../../../core/widgets/landa_network_image.dart';
 import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_pressable.dart';
 import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/widgets/landa_toast.dart';
 import '../../../core/utils/landa_currency.dart';
-import '../../agreements/controllers/agreement_controller.dart';
-import '../../agreements/models/agreement_model.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
 import '../../dashboard/views/widgets/move_in_tenants_modal.dart';
 import '../../fix/views/unit_recommendations_sheet.dart';
@@ -17,6 +16,7 @@ import '../controllers/landlord_controller.dart';
 import '../models/property_model.dart';
 import 'widgets/edit_unit_rent_sheet.dart';
 import 'widgets/property_media_manager.dart';
+import 'widgets/remove_property_sheet.dart';
 import 'widgets/unit_media_sheet.dart';
 
 class ManagedPropertyDetailScreen extends StatefulWidget {
@@ -43,18 +43,15 @@ class _ManagedPropertyDetailScreenState
   /// in and media uploaded from sheets pushed over this screen, and every one
   /// of them leaves the page behind describing the property as it was.
   ///
-  /// Agreements come along because the unit sheet's "Message tenant" button
-  /// is keyed on the tenancy: a landlord who reaches this page without
-  /// passing the dashboard (deep link, or straight from My properties after a
-  /// session reset) would otherwise find the button missing on units that
-  /// plainly have somebody living in them.
+  /// The agreements list used to be refetched here as well, because the unit
+  /// sheet's "Message tenant" button was keyed on scanning it. API guide 19
+  /// §3 puts `active_agreement` on the unit itself, so one request now
+  /// answers what two used to.
   @override
-  Future<void> onAutoRefresh() => Future.wait([
-    context.read<LandlordController>().refreshPropertyDetail(
-      widget.property.id,
-    ),
-    context.read<AgreementController>().loadAgreements(),
-  ]);
+  Future<void> onAutoRefresh() =>
+      context.read<LandlordController>().refreshPropertyDetail(
+        widget.property.id,
+      );
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -95,6 +92,18 @@ class _ManagedPropertyDetailScreenState
                         controller.refreshPropertyDetail(widget.property.id),
                   ),
                 ),
+              // Ahead of the property itself: a landlord who has asked to
+              // remove this building needs the countdown and the way back
+              // before anything else on the page, not under three sections
+              // of detail about a listing that is on its way out.
+              if (currentProperty.pendingRemoval case final removal?
+                  when currentProperty.isBeingRemoved) ...[
+                _RemovalPendingBanner(
+                  property: currentProperty,
+                  removal: removal,
+                ),
+                const SizedBox(height: 16),
+              ],
               _PropertyHero(property: currentProperty),
               const SizedBox(height: 24),
               PropertyMediaManager(property: currentProperty),
@@ -173,6 +182,15 @@ class _ManagedPropertyDetailScreenState
               ...currentUnits.map(
                 (unit) => _UnitCard(unit: unit, propertyId: widget.property.id),
               ),
+
+              // Last on the page, and the only destructive control on it.
+              // Hidden while a removal is already running: the banner at the
+              // top owns that state, and offering "remove" again underneath
+              // a countdown reads as a second, different action.
+              if (!currentProperty.isBeingRemoved) ...[
+                const SizedBox(height: 28),
+                _RemovePropertyAction(property: currentProperty),
+              ],
             ],
           ),
         );
@@ -335,12 +353,14 @@ class _UnitCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    unit.isOccupied
+                    unit.isOccupied || unit.isReserved
                         ? 'Tenant: ${unit.tenant ?? 'Assigned'}'
                         : 'Vacant',
                     style: TextStyle(
                       fontSize: 12,
-                      color: unit.isOccupied
+                      // Sand while the flat is only reserved: sage is for a
+                      // tenancy that is actually running.
+                      color: unit.isOccupied && !unit.isReserved
                           ? AppTheme.successColor
                           : AppTheme.vacantColor,
                       fontWeight: FontWeight.w600,
@@ -472,7 +492,7 @@ class _UnitInfoSheet extends StatelessWidget {
         unitLabel: 'Unit ${unit.unitNumber}',
       );
 
-  /// The live tenancy on this unit, or null when there is not one yet.
+  /// The live tenancy on this unit, from the unit's own payload.
   ///
   /// A landlord cannot open a conversation from a unit id: `POST
   /// /conversations/` refuses it, because a unit can have several applicants
@@ -480,23 +500,13 @@ class _UnitInfoSheet extends StatelessWidget {
   /// agreement, which names exactly one tenant, so that is what the button
   /// hangs off.
   ///
-  /// Newest first, and only agreements that are still real: an expired or
-  /// voided tenancy is a record, not somebody to message. A renewal chain
-  /// leaves several agreements on one unit, and the current one is the one
-  /// with the latest start date.
-  TenancyAgreementModel? _liveTenancy(List<TenancyAgreementModel> all) {
-    final onThisUnit =
-        all
-            .where(
-              (agreement) =>
-                  agreement.unit == unit.id &&
-                  agreement.status != AgreementStatus.expired &&
-                  agreement.status != AgreementStatus.voided,
-            )
-            .toList()
-          ..sort((a, b) => b.startDate.compareTo(a.startDate));
-    return onThisUnit.isEmpty ? null : onThisUnit.first;
-  }
+  /// This used to be found by scanning every agreement the landlord has for
+  /// one whose `unit` matched — forty agreements held in memory to decide one
+  /// button on a screen showing one flat, and wrong whenever the agreements
+  /// list had not been fetched. API guide 19 §3 puts `active_agreement` on
+  /// the unit itself, so the screen no longer depends on another feature's
+  /// controller having loaded.
+  UnitActiveAgreement? get _liveTenancy => unit.activeAgreement;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -525,27 +535,14 @@ class _UnitInfoSheet extends StatelessWidget {
           onEdit: () => _openRentEditor(context),
           editTooltip: 'Change the rent',
         ),
-        // "Occupied" is the backend's word for a unit with a tenant attached,
-        // and it starts saying so the moment an application is approved —
-        // before the agreement is signed and before any rent has moved. A
-        // landlord reading "Occupied" on a flat nobody has paid for is being
-        // told their money is on the way when it is not, so the row says
-        // which of the two it is.
-        Builder(
-          builder: (context) {
-            if (!unit.isOccupied) return const _InfoRow('Occupancy', 'Vacant');
-            final tenancy = _liveTenancy(
-              context.watch<AgreementController>().agreements,
-            );
-            return _InfoRow(
-              'Occupancy',
-              tenancy?.awaitingFirstRent == true
-                  ? 'Reserved · first rent not paid'
-                  : 'Occupied',
-            );
-          },
-        ),
-        if (unit.isOccupied) ...[
+        // Three states, not two. "Occupied" used to start the moment an
+        // application was approved — before the agreement was signed and
+        // before any rent had moved — so a landlord read it as money on the
+        // way when it was not. Since API guide 19 the backend distinguishes
+        // reserved from occupied itself, and [UnitModel.occupancyLabel] is
+        // the one place that turns it into words.
+        _InfoRow('Occupancy', unit.occupancyLabel),
+        if (unit.isOccupied || unit.isReserved) ...[
           _InfoRow('Tenant', unit.tenant ?? 'Tenant assigned'),
           if (unit.tenantEmail != null) _InfoRow('Email', unit.tenantEmail!),
           if (unit.tenantPhone != null) _InfoRow('Phone', unit.tenantPhone!),
@@ -556,28 +553,21 @@ class _UnitInfoSheet extends StatelessWidget {
           // Testers hit exactly that. The tenancy is the relationship the
           // backend will open a conversation against, so the button lives on
           // the unit the tenancy is for.
-          Builder(
-            builder: (context) {
-              final tenancy = _liveTenancy(
-                context.watch<AgreementController>().agreements,
-              );
-              if (tenancy == null) {
-                return Text(
-                  'You can message this tenant once their tenancy agreement '
-                  'exists. Create it below.',
-                  style: AppTheme.labelText(
-                    context,
-                    color: AppTheme.secondaryTextColor(context),
-                  ),
-                );
-              }
-              return MessageActionButton(
-                agreementId: tenancy.id,
-                label: 'Message ${unit.tenant ?? 'tenant'}',
-                expanded: true,
-              );
-            },
-          ),
+          if (_liveTenancy case final tenancy?)
+            MessageActionButton(
+              agreementId: tenancy.id,
+              label: 'Message ${unit.tenant ?? 'tenant'}',
+              expanded: true,
+            )
+          else
+            Text(
+              'You can message this tenant once their tenancy agreement '
+              'exists. Create it below.',
+              style: AppTheme.labelText(
+                context,
+                color: AppTheme.secondaryTextColor(context),
+              ),
+            ),
         ],
         const SizedBox(height: 12),
         SizedBox(
@@ -672,5 +662,135 @@ class _InfoRow extends StatelessWidget {
           ),
       ],
     ),
+  );
+}
+
+/// The banner on a property that is on its way out.
+///
+/// States the two things the landlord needs: how long is left, and that it is
+/// reversible. Brick red, like every other destructive surface in the app.
+class _RemovalPendingBanner extends StatelessWidget {
+  final PropertyModel property;
+  final PropertyRemovalRequest removal;
+
+  const _RemovalPendingBanner({
+    required this.property,
+    required this.removal,
+  });
+
+  Future<void> _cancel(BuildContext context) async {
+    final controller = context.read<LandlordController>();
+    final cancelled = await controller.cancelPropertyRemoval(
+      propertyId: property.id,
+      requestId: removal.id,
+    );
+    if (!context.mounted) return;
+    if (cancelled) {
+      LandaToast.success(
+        context,
+        '${property.name} is back on Landa.',
+      );
+    } else {
+      LandaToast.error(
+        context,
+        controller.errorMessage ??
+            'Could not undo the removal. Try again in a moment.',
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final countdown = removal.countdown;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.disputeSurface(context),
+        borderRadius: AppTheme.cornerLg,
+        border: Border.all(
+          color: AppTheme.logoutColor.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.domain_disabled_outlined,
+                size: 19,
+                color: AppTheme.logoutColor,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  countdown == null
+                      ? 'Being removed from Landa'
+                      : 'Being removed · $countdown',
+                  style: AppTheme.cardTitle(
+                    context,
+                    color: AppTheme.logoutColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tenants can no longer see this property. Nothing has been '
+            'deleted, and you can put it back until it archives.',
+            style: AppTheme.bodyText(context),
+          ),
+          const SizedBox(height: 14),
+          Consumer<LandlordController>(
+            builder: (context, controller, _) => LandaButton(
+              label: 'Keep this property',
+              icon: Icons.undo_rounded,
+              isBusy: controller.isRemoving,
+              onPressed: controller.isRemoving ? null : () => _cancel(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The way out, at the bottom of the page where destructive actions belong.
+class _RemovePropertyAction extends StatelessWidget {
+  final PropertyModel property;
+
+  const _RemovePropertyAction({required this.property});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('REMOVING THIS PROPERTY', style: AppTheme.labelText(context)),
+      const SizedBox(height: 6),
+      Text(
+        'Takes it off Landa. It cannot be removed while a tenancy is '
+        'running, money is in escrow, a stay is booked or an application is '
+        'waiting.',
+        style: AppTheme.bodyText(context),
+      ),
+      const SizedBox(height: 12),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: () =>
+              openRemovePropertySheet(context, property: property),
+          icon: const Icon(Icons.domain_disabled_outlined, size: 18),
+          label: const Text('Remove property'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppTheme.logoutColor,
+            side: const BorderSide(color: AppTheme.logoutColor),
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            shape: RoundedRectangleBorder(borderRadius: AppTheme.cornerMd),
+          ),
+        ),
+      ),
+    ],
   );
 }

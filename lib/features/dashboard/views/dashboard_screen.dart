@@ -154,8 +154,13 @@ class _TenantAgreementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isExecuted = agreement.isExecuted;
-    final actionLabel = agreement.canPayRent
+    // Green only once the tenancy is actually running. An agreement that is
+    // signed but unpaid is a task, and colouring it as done is what let a
+    // tenant believe they had moved in.
+    final isLive = agreement.isExecuted;
+    final actionLabel = agreement.awaitingFirstRent
+        ? 'Pay the first rent to start your tenancy'
+        : agreement.canPayRent
         ? 'View executed agreement & pay rent'
         : agreement.canTenantSign
         ? 'Review & sign agreement'
@@ -186,7 +191,7 @@ class _TenantAgreementCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: isExecuted ? AppTheme.successColor : AppTheme.warningColor,
+              color: isLive ? AppTheme.successColor : AppTheme.warningColor,
             ),
           ),
           const SizedBox(height: 12),

@@ -156,10 +156,34 @@ class ApiConstants {
   /// `location`.
   static const String tenantFixArtisansEndpoint = '/tenant/fix/artisans/';
 
-  // Which optional emails a user wants. Only the early rent reminders are
-  // switchable; the ones that matter are sent regardless.
+  // Which optional emails a user wants, and whether phone push is on. Only
+  // the early rent reminders are switchable among the emails; the ones that
+  // matter are sent regardless.
   static const String notificationPreferencesEndpoint =
       '/notification-preferences/';
+
+  /// Phone push registration. One row per device token.
+  ///
+  /// Posted on every launch rather than once: FCM reissues a token on
+  /// reinstall, on a data clear, and periodically on its own, and the
+  /// endpoint is idempotent on the token so re-posting the same one updates
+  /// rather than duplicating. A token posted for a different user *moves* to
+  /// that user, which is what stops the previous account's notifications
+  /// arriving on a shared phone.
+  ///
+  /// The `DELETE` on sign-out is the half that matters for privacy: without
+  /// it, "rent is due for Unit A1" keeps reaching a phone whose owner signed
+  /// out weeks ago. See API guide 19 §2.
+  static const String devicesEndpoint = '/devices/';
+  static String deviceDetailEndpoint(String deviceId) =>
+      '/devices/$deviceId/';
+
+  /// The canonical 37 Nigerian states, server-side.
+  ///
+  /// The app ships its own list in `NigeriaLocations` and does not need
+  /// this; it exists so a state added or respelled on the backend does not
+  /// require an app release to stay in step.
+  static const String statesEndpoint = '/locations/states/';
 
   static const String propertiesEndpoint = '/properties/';
   static String propertyDetailEndpoint(String propertyId) =>
@@ -173,6 +197,29 @@ class ApiConstants {
   ) => '/properties/$propertyId/photos/$photoId/';
   static String propertyVideoEndpoint(String propertyId) =>
       '/properties/$propertyId/video/';
+
+  /// Taking a property off Landa. Three calls, deliberately: a property is
+  /// not a leaf, and a plain `DELETE` on one with a signed tenancy under it
+  /// would delete somebody's home, their agreement and the record of the
+  /// rent they paid into escrow.
+  ///
+  /// `POST` asks, and is refused with `409` and a per-unit list of reasons
+  /// while anything is live on it. `confirm` re-enters the account password
+  /// and starts a 7-day window in which the property is hidden from tenants
+  /// but still the landlord's to change their mind about. `DELETE` cancels.
+  /// Nothing is ever hard-deleted: an archived property still resolves, so
+  /// an old agreement or payment pointing at it does not break.
+  /// See API guide 19 §6.
+  static String propertyRemovalRequestEndpoint(String propertyId) =>
+      '/properties/$propertyId/removal-request/';
+  static String propertyRemovalConfirmEndpoint(
+    String propertyId,
+    String requestId,
+  ) => '/properties/$propertyId/removal-request/$requestId/confirm/';
+  static String propertyRemovalCancelEndpoint(
+    String propertyId,
+    String requestId,
+  ) => '/properties/$propertyId/removal-request/$requestId/';
 
   static String propertyUnitsEndpoint(String propertyId) =>
       '/properties/$propertyId/units/';

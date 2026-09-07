@@ -811,7 +811,11 @@ class ViewAgreementModal extends StatelessWidget {
             _infoRow(
               context,
               'Rent payment:',
-              agreement.canPayRent ? 'Unlocked' : 'Locked until execution',
+              agreement.awaitingFirstRent
+                  ? 'Due now — the tenancy starts when it clears'
+                  : agreement.canPayRent
+                  ? 'Unlocked'
+                  : 'Locked until both parties sign',
             ),
             const SizedBox(height: 16),
             Text('AGREEMENT RULES & TERMS', style: AppTheme.labelText(context)),
@@ -899,6 +903,19 @@ class ViewAgreementModal extends StatelessWidget {
                 }
 
                 if (!isTenant && !agreement.canLandlordSign) {
+                  // Three states, not two. A landlord who has counter-signed
+                  // and is waiting on the tenant's first rent is in neither
+                  // of the old ones, and used to be told they were waiting
+                  // for a signature that had already been given.
+                  if (agreement.awaitingFirstRent) {
+                    return _stateNotice(
+                      icon: Icons.lock_clock_outlined,
+                      color: AppTheme.warningColor,
+                      message:
+                          'Both signatures are in. The tenancy starts once '
+                          'the tenant\'s first rent reaches escrow.',
+                    );
+                  }
                   return _stateNotice(
                     icon: agreement.isExecuted
                         ? Icons.verified

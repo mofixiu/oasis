@@ -199,21 +199,56 @@ sign agreements and pay rent into escrow.
      so one broken widget no longer takes a page with it. It makes these bugs
      legible; it does not make them acceptable.
 
-11. **Signed is not the same as moved in:**
-   - `TenancyAgreementModel.awaitingFirstRent` is true for an executed
-     agreement whose rent is `DUE`/`FAILED` with nothing paid on it. The
-     tenant's unit card and screen, and the landlord's unit sheet, all render
-     that as a tenancy that has **not started** rather than as a home the
-     tenant already has.
-   - It is presentation, not enforcement. The backend grants occupancy on
-     application approval and executes on the second signature, neither of
-     which asks about money — `backend docs/backend_change_spec_v14.md` §1 is
-     the ask to close it. Keep the check conservative: `NOT_DUE` and a missing
-     `rent_payment` block both mean "settled", because that is how a tenancy
-     the landlord imported with rent already collected arrives, and accusing a
-     paid-up tenant of owing money is the worse failure.
+11. **Signed is not the same as moved in** (API guide 19 §1):
+   - A tenancy signed by both parties sits at `AWAITING_FIRST_RENT` until the
+     money reaches escrow, and the backend **voids it after 72 hours** if it
+     does not. `first_rent_due_by` is the deadline and it is always the
+     backend's: never compute one here, a client clock a day fast would show
+     a live tenancy as lapsed.
+   - **`canPayRent` must accept `AWAITING_FIRST_RENT`.** It reads
+     `payRentUnlocked && isBothSigned`. Writing it as `isExecuted && …`, which
+     is what it said before guide 19, leaves the tenant with no way to pay
+     during the only window in which paying matters, and the backend then
+     voids the tenancy for a non-payment the app made impossible. Any check
+     that means "signing is done" is `isBothSigned`, not `isExecuted`.
+   - `awaitingFirstRent` prefers the backend's own answer (`status`, then
+     `first_rent_settled`) and only falls back to reading the rent block for a
+     deployment that predates guide 19. Keep that fallback conservative:
+     `NOT_DUE` and a missing `rent_payment` both mean "settled", because that
+     is how a tenancy the landlord imported with rent already collected
+     arrives, and accusing a paid-up tenant of owing money is the worse
+     failure.
+   - Units carry `availability` (`AVAILABLE | RESERVED | OCCUPIED`).
+     `is_occupied` alone was two ideas in one boolean; `UnitModel.occupancyLabel`
+     is the single place that turns the three states into words.
+   - A unit also carries `active_agreement` (id, status, `conversation_id`),
+     which is what the landlord's **Message tenant** button hangs off. Do not
+     go back to scanning `AgreementController.agreements` for a matching
+     `unit`: that held every agreement in memory to draw one button, and was
+     wrong whenever that list had not been fetched.
 
-12. **Testing:**
+12. **Removing a property is a request, not a delete** (API guide 19 §6):
+   - Three calls: `POST …/removal-request/` (refused `409` with per-unit
+     reasons while a tenancy, escrow, booking or application is live),
+     `confirm` with the account password, `DELETE` to cancel. Seven days of
+     cooling off, and **nothing is ever hard-deleted** — an archived property
+     still resolves, so the agreements and payments pointing at it keep
+     working. That is what makes offering the button acceptable at all.
+   - `PropertyRemovalBlocked` carries the reasons per unit rather than one
+     flattened sentence: the landlord's next move is on a specific flat.
+
+13. **Push notifications are half-built** (API guide 19 §2):
+   - The backend endpoints are live and `DeviceService` speaks to them, but
+     nothing calls `register` yet: the token needs `firebase_messaging`, which
+     needs a `google-services.json`, which needs a Firebase project that does
+     not exist. **Adding the dependency without that file breaks the Android
+     build**, so it is deliberately absent.
+   - When it lands, `unregister` on sign-out is the half to get right.
+     Registering late costs somebody a notification; failing to unregister
+     keeps sending a tenancy's rent reminders to a phone whose owner signed
+     out weeks ago.
+
+14. **Testing:**
    - Tests live in `test/` and cover contracts and states rather than golden
      pixels: backend lifecycle contracts, session reset, connection-error
      branching, application decision state, currency formatting, and widget

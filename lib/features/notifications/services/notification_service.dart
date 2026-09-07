@@ -56,12 +56,18 @@ class NotificationService {
     return [];
   }
 
-  /// Whether the user wants the optional early rent reminder emails.
+  /// Both switchable notification preferences, in one request.
   ///
-  /// Only the 180, 90 and 30-day ones are switchable. The reminders that
-  /// actually matter (in-app, 7-day, due-today and overdue) are sent either
-  /// way, which is why the setting is one switch rather than a list.
-  Future<bool> getEarlyRentReminderEmailsEnabled() async {
+  /// `early_rent_reminder_emails_enabled` covers the 180, 90 and 30-day
+  /// emails. The reminders that actually matter (in-app, 7-day, due-today
+  /// and overdue) are sent either way, which is why it is one switch rather
+  /// than a list. `push_notifications_enabled` (API guide 19 §2) governs
+  /// phone push across the board.
+  ///
+  /// Both default to **on** when absent. They are opt-out settings, and
+  /// reading a missing field as "off" would silently stop notifications
+  /// nobody turned off.
+  Future<NotificationPreferences> getPreferences() async {
     debugPrint(
       '[NOTIFICATION SERVICE] Fetching preferences GET '
       '${ApiConstants.notificationPreferencesEndpoint}',
@@ -69,25 +75,32 @@ class NotificationService {
     final response = await _apiClient.get(
       ApiConstants.notificationPreferencesEndpoint,
     );
-    // Absent means on: these emails are opt-out, so treating a missing field
-    // as "off" would silently stop reminders the user never turned off.
-    return response is Map<String, dynamic>
-        ? response['early_rent_reminder_emails_enabled'] != false
-        : true;
+    return NotificationPreferences.fromJson(response);
   }
 
-  Future<bool> setEarlyRentReminderEmailsEnabled(bool enabled) async {
+  /// Saves whichever preferences were named. Omitted ones are left alone:
+  /// this is a `PATCH`, and sending the other switch's current value back
+  /// would overwrite a change made on another device between the read and
+  /// the write.
+  Future<NotificationPreferences> setPreferences({
+    bool? earlyRentReminderEmails,
+    bool? pushNotifications,
+  }) async {
+    final body = <String, dynamic>{
+      if (earlyRentReminderEmails != null)
+        'early_rent_reminder_emails_enabled': earlyRentReminderEmails,
+      if (pushNotifications != null)
+        'push_notifications_enabled': pushNotifications,
+    };
     debugPrint(
       '[NOTIFICATION SERVICE] Saving preferences PATCH '
-      '${ApiConstants.notificationPreferencesEndpoint} (enabled=$enabled)',
+      '${ApiConstants.notificationPreferencesEndpoint} ($body)',
     );
     final response = await _apiClient.patch(
       ApiConstants.notificationPreferencesEndpoint,
-      body: {'early_rent_reminder_emails_enabled': enabled},
+      body: body,
     );
-    return response is Map<String, dynamic>
-        ? response['early_rent_reminder_emails_enabled'] != false
-        : enabled;
+    return NotificationPreferences.fromJson(response);
   }
 
   /// Mark notification as read
@@ -104,5 +117,25 @@ class NotificationService {
       '[NOTIFICATION SERVICE] Notification marked as read: ID=${notification.id}',
     );
     return notification;
+  }
+}
+
+/// The user's switchable notification settings.
+class NotificationPreferences {
+  final bool earlyRentReminderEmails;
+  final bool pushNotifications;
+
+  const NotificationPreferences({
+    this.earlyRentReminderEmails = true,
+    this.pushNotifications = true,
+  });
+
+  factory NotificationPreferences.fromJson(dynamic json) {
+    if (json is! Map<String, dynamic>) return const NotificationPreferences();
+    return NotificationPreferences(
+      earlyRentReminderEmails:
+          json['early_rent_reminder_emails_enabled'] != false,
+      pushNotifications: json['push_notifications_enabled'] != false,
+    );
   }
 }

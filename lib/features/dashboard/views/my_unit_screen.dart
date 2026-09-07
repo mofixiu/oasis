@@ -97,7 +97,7 @@ class _MyUnitScreenState extends State<MyUnitScreen>
           // only thing on the screen the tenant can act on, and every other
           // panel below describes a tenancy that has not started.
           if (agreement.awaitingFirstRent) ...[
-            const _FirstRentNotice(),
+            _FirstRentNotice(agreement: agreement),
             const SizedBox(height: 16),
           ],
 
@@ -355,13 +355,15 @@ class _PaymentRow extends StatelessWidget {
 /// signed for a yearly flat and the app treated them as moved in without a
 /// first rent.
 ///
-/// The enforcement belongs in the backend (see
-/// `backend docs/backend_change_spec_v14.md` §2). This is the honest version
-/// of the state in the meantime, and it stays useful afterwards: even once
-/// occupancy is gated server-side, the tenant still needs telling what the
-/// outstanding step is and where to do it.
+/// The enforcement now lives in the backend: API guide 19 §1 holds the
+/// agreement at `AWAITING_FIRST_RENT` until the money reaches escrow, and
+/// voids it 72 hours later if it does not. So this is no longer only an
+/// honest description of a gap — it is a deadline, and the countdown is the
+/// most important thing on the screen.
 class _FirstRentNotice extends StatelessWidget {
-  const _FirstRentNotice();
+  final TenancyAgreementModel agreement;
+
+  const _FirstRentNotice({required this.agreement});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -403,6 +405,34 @@ class _FirstRentNotice extends StatelessWidget {
           'have moved in.',
           style: AppTheme.bodyText(context),
         ),
+        // The consequence, stated plainly and only when the backend has
+        // actually given a deadline. A tenant who does not know the flat can
+        // be taken back has no reason to treat this as urgent.
+        if (agreement.firstRentCountdown case final countdown?) ...[
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.timer_outlined,
+                size: 16,
+                color: AppTheme.disputeColor,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$countdown. If the rent has not arrived by then, this '
+                  'agreement is cancelled and the unit goes back on the '
+                  'market.',
+                  style: AppTheme.labelText(
+                    context,
+                    color: AppTheme.disputeColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 14),
         LandaButton(
           label: 'Pay the first rent',

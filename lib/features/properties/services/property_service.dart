@@ -428,6 +428,111 @@ class PropertyService {
       rethrow;
     }
   }
+
+  // -------------------------------------------------------- removing one
+
+  /// Asks to take a property off Landa.
+  ///
+  /// Returns the created request, or throws [PropertyRemovalBlocked] when
+  /// the backend refuses because something on the property is still live.
+  /// That refusal is a `409` carrying a per-unit list of reasons, and it is
+  /// modelled as its own exception rather than a null return because the
+  /// reasons are the whole answer: the landlord has to go and end a tenancy
+  /// or wait out an escrow, and "no" on its own tells them nothing.
+  Future<PropertyRemovalRequest> requestRemoval({
+    required String propertyId,
+    required String reason,
+  }) async {
+    final endpoint = ApiConstants.propertyRemovalRequestEndpoint(propertyId);
+    debugPrint('[PROPERTY SERVICE] Requesting removal POST $endpoint');
+    try {
+      final response = await _apiClient.post(
+        endpoint,
+        body: {'reason': reason.trim()},
+      );
+      final request = PropertyRemovalRequest.fromJson(response);
+      if (request == null) {
+        throw ApiException('Could not read the removal request.');
+      }
+      return request;
+    } on ApiException catch (e) {
+      final blockers = _blockersFrom(e);
+      if (blockers != null) throw PropertyRemovalBlocked(blockers);
+      rethrow;
+    }
+  }
+
+  /// Confirms a removal by re-entering the account password, which starts
+  /// the cooling-off window.
+  Future<PropertyRemovalRequest> confirmRemoval({
+    required String propertyId,
+    required String requestId,
+    required String password,
+  }) async {
+    final endpoint = ApiConstants.propertyRemovalConfirmEndpoint(
+      propertyId,
+      requestId,
+    );
+    debugPrint('[PROPERTY SERVICE] Confirming removal POST $endpoint');
+    try {
+      final response = await _apiClient.post(
+        endpoint,
+        body: {'password': password},
+      );
+      final request = PropertyRemovalRequest.fromJson(response);
+      if (request == null) {
+        throw ApiException('Could not read the removal request.');
+      }
+      return request;
+    } on ApiException catch (e) {
+      // The blocking conditions are re-checked at confirmation time, because
+      // a tenant can apply between the request and the password.
+      final blockers = _blockersFrom(e);
+      if (blockers != null) throw PropertyRemovalBlocked(blockers);
+      rethrow;
+    }
+  }
+
+  /// Calls off a removal, any time before the property is archived.
+  Future<void> cancelRemoval({
+    required String propertyId,
+    required String requestId,
+  }) async {
+    final endpoint = ApiConstants.propertyRemovalCancelEndpoint(
+      propertyId,
+      requestId,
+    );
+    debugPrint('[PROPERTY SERVICE] Cancelling removal DELETE $endpoint');
+    await _apiClient.delete(endpoint);
+  }
+
+  /// Reads the per-unit blocking reasons out of a refusal, or null when the
+  /// error was something else entirely.
+  List<PropertyRemovalBlocker>? _blockersFrom(ApiException error) {
+    final body = error.errors;
+    if (body is! Map) return null;
+    if (body['blocked'] != true) return null;
+    final reasons = body['reasons'];
+    if (reasons is! List) return const [];
+    return reasons
+        .map(PropertyRemovalBlocker.fromJson)
+        .whereType<PropertyRemovalBlocker>()
+        .toList();
+  }
+}
+
+/// Thrown when a property cannot be removed because something on it is live.
+///
+/// Carries the reasons per unit, which is what the sheet renders: the
+/// landlord's next move is on a specific flat, not on the property.
+class PropertyRemovalBlocked implements Exception {
+  final List<PropertyRemovalBlocker> blockers;
+
+  const PropertyRemovalBlocked(this.blockers);
+
+  @override
+  String toString() =>
+      'PropertyRemovalBlocked(${blockers.length} unit(s) blocking)';
 }
 
 /// Result of GET /properties/{property_id}/: property fields plus its nested units.

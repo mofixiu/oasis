@@ -331,6 +331,33 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: _Section(
                     label: 'PREFERENCES',
                     children: [
+                      // Every role, unlike the rent emails below: a landlord
+                      // gets applications and payouts pushed to them, an
+                      // artisan gets nothing yet but will.
+                      Consumer<NotificationController>(
+                        builder: (context, notifications, _) => _SwitchRow(
+                          title: 'Push notifications',
+                          subtitle:
+                              'Alerts on your phone when something happens '
+                              'while the app is closed.',
+                          // Opt-out, like the emails: absent reads as on.
+                          value: notifications.pushNotifications ?? true,
+                          onChanged: notifications.isSavingPreferences
+                              ? null
+                              : (value) async {
+                                  LandaHaptics.select();
+                                  final saved = await notifications
+                                      .setPushNotifications(value);
+                                  if (!context.mounted || saved) return;
+                                  LandaToast.error(
+                                    context,
+                                    notifications.errorMessage ??
+                                        'Could not save that just now. Try '
+                                            'again in a moment.',
+                                  );
+                                },
+                        ),
+                      ),
                       // Tenants only: these are rent reminders, and neither a
                       // landlord nor an artisan is ever the one being reminded
                       // to pay rent.
@@ -462,8 +489,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     PaymentController paymentController,
   ) {
     final unit = landlordController.tenantAssignedUnit;
+    // Counts tenancies that are signed, including one still waiting on its
+    // first rent: this is "how many agreements do I have", not "how many are
+    // collecting money", and leaving the newest one out for its first 72
+    // hours would read as the app losing it.
     final executed = agreementController.agreements
-        .where((a) => a.isExecuted)
+        .where((a) => a.isBothSigned)
         .length;
 
     return [

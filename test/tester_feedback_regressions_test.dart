@@ -166,6 +166,251 @@ void main() {
     });
   });
 
+  group('API guide 19: awaiting the first rent', () {
+    /// The backend now holds a signed agreement at `AWAITING_FIRST_RENT`
+    /// until the money reaches escrow, and voids it 72 hours later if it
+    /// does not. Everything here is about the app not making that window
+    /// unsurvivable.
+    TenancyAgreementModel awaiting({Map<String, dynamic> extra = const {}}) =>
+        TenancyAgreementModel.fromJson({
+          'id': 'agreement-1',
+          'unit': 'unit-1',
+          'unit_number': 'A1',
+          'status': 'AWAITING_FIRST_RENT',
+          'rent_amount': '450000.00',
+          'start_date': '2026-09-01',
+          'end_date': '2027-08-31',
+          'pay_rent_unlocked': true,
+          'first_rent_settled': false,
+          'tenant_signed_at': '2026-09-07T09:00:00Z',
+          'landlord_signed_at': '2026-09-07T09:40:00Z',
+          'rent_payment': {'status': 'DUE', 'total_amount': '472500.00'},
+          ...extra,
+        });
+
+    test('the status is read, not swallowed as a draft', () {
+      // `fromString` falls back to DRAFT for anything it does not know, and
+      // a DRAFT agreement is unpayable and sits in the wrong bucket.
+      expect(awaiting().status, AgreementStatus.awaitingFirstRent);
+      expect(awaiting().isAwaitingFirstRent, isTrue);
+      expect(awaiting().awaitingFirstRent, isTrue);
+    });
+
+    test('the tenant can pay — this is the whole point of the state', () {
+      // The regression that would have mattered most: `canPayRent` used to
+      // require EXECUTED, so during the only 72 hours in which paying the
+      // first rent is possible the app would have offered no way to do it,
+      // and the backend would then have voided the tenancy for non-payment
+      // the app made impossible.
+      expect(awaiting().canPayRent, isTrue);
+    });
+
+    test('an expired or voided agreement is still unpayable', () {
+      // canPayRent trusts pay_rent_unlocked, but not on its own.
+      final voided = awaiting(extra: const {'status': 'VOIDED'});
+      expect(voided.canPayRent, isFalse);
+    });
+
+    test('nobody is asked to sign something already signed', () {
+      final agreement = awaiting();
+      expect(agreement.isBothSigned, isTrue);
+      expect(agreement.awaitingLandlordSignature, isFalse);
+      expect(agreement.canTenantSign, isFalse);
+      expect(agreement.canLandlordSign, isFalse);
+    });
+
+    test('it buckets as completed, not as a task', () {
+      // Nothing is left to *sign*, so it does not belong on a dashboard
+      // whose job is listing outstanding signatures.
+      expect(awaiting().bucket, AgreementBucket.completed);
+      expect(awaiting().needsSignature, isFalse);
+    });
+
+    test('the rent bill is still shown', () {
+      final rent = awaiting().upcomingRent;
+      expect(rent, isNotNull);
+      expect(rent!.isDueNow, isTrue);
+      expect(rent.nextAmountDue, '472500.00');
+    });
+
+    test('the deadline comes from the backend and reads coarsely', () {
+      final soon = awaiting(
+        extra: {
+          'first_rent_due_by': DateTime.now()
+              .toUtc()
+              .add(const Duration(hours: 50, minutes: 30))
+              .toIso8601String(),
+        },
+      );
+      expect(soon.firstRentCountdown, '2 days left');
+
+      // Half an hour of slack on each of these: the countdown truncates, so
+      // an exact boundary would flip the answer on the microseconds spent
+      // between building the date and reading it back.
+      final hours = awaiting(
+        extra: {
+          'first_rent_due_by': DateTime.now()
+              .toUtc()
+              .add(const Duration(hours: 5, minutes: 30))
+              .toIso8601String(),
+        },
+      );
+      expect(hours.firstRentCountdown, '5 hours left');
+
+      // The expiry job runs daily, so a deadline can pass before the backend
+      // acts on it. Saying "overdue" is honest; saying "-3 hours" is not.
+      final passed = awaiting(
+        extra: {
+          'first_rent_due_by': DateTime.now()
+              .toUtc()
+              .subtract(const Duration(hours: 3))
+              .toIso8601String(),
+        },
+      );
+      expect(passed.firstRentCountdown, 'Overdue');
+    });
+
+    test('no deadline sent means no countdown invented', () {
+      // A date a tenant loses their home to is never computed client-side.
+      expect(awaiting().firstRentCountdown, isNull);
+      expect(awaiting().firstRentDeadline, isNull);
+    });
+
+    test('an executed tenancy is running and says nothing about first rent', () {
+      final executed = TenancyAgreementModel.fromJson(const {
+        'id': 'agreement-2',
+        'status': 'EXECUTED',
+        'pay_rent_unlocked': true,
+        'first_rent_settled': true,
+        'rent_amount': '450000.00',
+      });
+      expect(executed.awaitingFirstRent, isFalse);
+      expect(executed.canPayRent, isTrue);
+      expect(executed.firstRentCountdown, isNull);
+    });
+  });
+
+  group('API guide 19: a unit knows its own tenancy', () {
+    test('availability separates reserved from occupied', () {
+      final reserved = UnitModel.fromJson(const {
+        'id': 'unit-1',
+        'unit_number': 'A1',
+        'is_occupied': false,
+        'availability': 'RESERVED',
+      });
+      expect(reserved.isReserved, isTrue);
+      expect(reserved.occupancyLabel, 'Reserved · first rent not paid');
+
+      final occupied = UnitModel.fromJson(const {
+        'id': 'unit-2',
+        'unit_number': 'A2',
+        'is_occupied': true,
+        'availability': 'OCCUPIED',
+      });
+      expect(occupied.isReserved, isFalse);
+      expect(occupied.occupancyLabel, 'Occupied');
+    });
+
+    test('a payload without availability falls back to is_occupied', () {
+      final old = UnitModel.fromJson(const {
+        'id': 'unit-3',
+        'unit_number': 'A3',
+        'is_occupied': true,
+      });
+      expect(old.availability, UnitAvailability.unknown);
+      expect(old.occupancyLabel, 'Occupied');
+    });
+
+    test('an active agreement is what the message button hangs off', () {
+      // A landlord cannot open a conversation from a unit id, so the button
+      // needs the agreement — and reading it off the unit is what removed a
+      // dependency on the whole agreements list being loaded.
+      final unit = UnitModel.fromJson(const {
+        'id': 'unit-1',
+        'unit_number': 'A1',
+        'is_occupied': true,
+        'availability': 'OCCUPIED',
+        'active_agreement': {
+          'id': 'agreement-1',
+          'status': 'EXECUTED',
+          'conversation_id': 'conversation-1',
+        },
+      });
+      expect(unit.activeAgreement?.id, 'agreement-1');
+      expect(unit.activeAgreement?.conversationId, 'conversation-1');
+      expect(unit.activeAgreement?.isAwaitingFirstRent, isFalse);
+    });
+
+    test('a vacant unit has no tenancy to message', () {
+      final unit = UnitModel.fromJson(const {
+        'id': 'unit-4',
+        'unit_number': 'A4',
+        'availability': 'AVAILABLE',
+        'active_agreement': null,
+      });
+      expect(unit.activeAgreement, isNull);
+      expect(unit.occupancyLabel, 'Vacant');
+    });
+  });
+
+  group('API guide 19: removing a property', () {
+    test('a pending removal carries a countdown and a way back', () {
+      final property = PropertyModel.fromJson({
+        'id': 'property-1',
+        'name': 'Sunset House',
+        'removal_status': 'REMOVAL_PENDING',
+        'pending_removal': {
+          'id': 'removal-1',
+          'status': 'CONFIRMED',
+          'archive_at': DateTime.now()
+              .toUtc()
+              .add(const Duration(days: 6, hours: 2))
+              .toIso8601String(),
+        },
+      });
+      expect(property.isBeingRemoved, isTrue);
+      expect(property.pendingRemoval?.isConfirmed, isTrue);
+      expect(property.pendingRemoval?.countdown, '6 days left');
+    });
+
+    test('a live property says so', () {
+      final property = PropertyModel.fromJson(const {
+        'id': 'property-2',
+        'name': 'Sunset House',
+      });
+      expect(property.removalStatus, PropertyRemovalStatus.active);
+      expect(property.isBeingRemoved, isFalse);
+      expect(property.isArchived, isFalse);
+      expect(property.pendingRemoval, isNull);
+    });
+
+    test('removal state is never inherited through a media merge', () {
+      // withMediaFrom exists to stop a thinner payload blanking photos. It
+      // must not also carry a stale countdown onto a property the landlord
+      // has already reinstated.
+      final wasBeingRemoved = PropertyModel.fromJson({
+        'id': 'property-1',
+        'name': 'Sunset House',
+        'photo_urls': ['https://example.test/front.jpg'],
+        'removal_status': 'REMOVAL_PENDING',
+        'pending_removal': {'id': 'removal-1', 'status': 'CONFIRMED'},
+      });
+      final reinstated = PropertyModel.fromJson(const {
+        'id': 'property-1',
+        'name': 'Sunset House',
+        'photo_urls': <String>[],
+        'removal_status': 'ACTIVE',
+      });
+
+      final merged = reinstated.withMediaFrom(wasBeingRemoved);
+
+      expect(merged.isBeingRemoved, isFalse);
+      expect(merged.pendingRemoval, isNull);
+      // …while the photos it was actually merging for still survive.
+      expect(merged.photoUrls, ['https://example.test/front.jpg']);
+    });
+  });
+
   group('a property keeps the photos it has', () {
     /// "They can see the property but they cant see any picture in it."
     ///

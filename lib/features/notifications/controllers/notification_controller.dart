@@ -52,14 +52,17 @@ class NotificationController extends ChangeNotifier
   bool _isSendingBroadcast = false;
   bool get isSendingBroadcast => _isSendingBroadcast;
 
-  bool? _earlyRentReminderEmails;
+  NotificationPreferences? _preferences;
 
   /// Whether the user wants the optional 180/90/30-day rent reminder emails.
   ///
   /// Null until read. The switch shows the last known value while a change is
   /// in flight rather than flicking back and forth, so this is only ever set
   /// from the backend's own answer.
-  bool? get earlyRentReminderEmails => _earlyRentReminderEmails;
+  bool? get earlyRentReminderEmails => _preferences?.earlyRentReminderEmails;
+
+  /// Whether phone push is on for this account. Same null-until-read rule.
+  bool? get pushNotifications => _preferences?.pushNotifications;
 
   bool _isSavingPreferences = false;
   bool get isSavingPreferences => _isSavingPreferences;
@@ -91,7 +94,7 @@ class NotificationController extends ChangeNotifier
     _unreadCount = 0;
     _typeFilter = null;
     _unreadOnly = false;
-    _earlyRentReminderEmails = null;
+    _preferences = null;
     _isSavingPreferences = false;
     clearFailure();
     _isLoading = false;
@@ -106,8 +109,7 @@ class NotificationController extends ChangeNotifier
   /// switch they were not looking at would be noise.
   Future<void> loadPreferences() async {
     try {
-      _earlyRentReminderEmails = await _notificationService
-          .getEarlyRentReminderEmailsEnabled();
+      _preferences = await _notificationService.getPreferences();
       notifyListeners();
     } catch (e) {
       debugPrint('[NOTIFICATIONS] Could not read preferences: $e');
@@ -118,14 +120,26 @@ class NotificationController extends ChangeNotifier
   ///
   /// The switch is only moved once the backend confirms: an optimistic flip
   /// that then fails would leave someone believing they had unsubscribed.
-  Future<bool> setEarlyRentReminderEmails(bool enabled) async {
+  Future<bool> setEarlyRentReminderEmails(bool enabled) =>
+      _savePreference(earlyRentReminderEmails: enabled);
+
+  /// Turns phone push on or off. Same rule: the switch follows the backend.
+  Future<bool> setPushNotifications(bool enabled) =>
+      _savePreference(pushNotifications: enabled);
+
+  Future<bool> _savePreference({
+    bool? earlyRentReminderEmails,
+    bool? pushNotifications,
+  }) async {
     _isSavingPreferences = true;
     clearFailure();
     notifyListeners();
 
     try {
-      _earlyRentReminderEmails = await _notificationService
-          .setEarlyRentReminderEmailsEnabled(enabled);
+      _preferences = await _notificationService.setPreferences(
+        earlyRentReminderEmails: earlyRentReminderEmails,
+        pushNotifications: pushNotifications,
+      );
       return true;
     } catch (e) {
       captureFailure(e);

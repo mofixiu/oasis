@@ -403,8 +403,22 @@ class ApiClient {
     String path, {
     dynamic body,
     bool requiresAuth = true,
+
+    /// Query string, for the few DELETEs that address a row by something
+    /// other than its id: removing a push device by its token, for one.
+    /// Built through [Uri.replace] rather than concatenated, so a value
+    /// carrying a `&` or a `+` cannot silently change the request.
+    Map<String, String?>? queryParameters,
   }) async {
-    final url = Uri.parse('${ApiConstants.baseUrl}$path');
+    var url = Uri.parse('${ApiConstants.baseUrl}$path');
+    final filters = <String, String>{
+      for (final entry
+          in (queryParameters ?? const <String, String?>{}).entries)
+        if (entry.value != null) entry.key: entry.value!,
+    };
+    if (filters.isNotEmpty) {
+      url = url.replace(queryParameters: {...url.queryParameters, ...filters});
+    }
     final headers = await _getHeaders(
       isJson: body != null,
       requiresAuth: requiresAuth,

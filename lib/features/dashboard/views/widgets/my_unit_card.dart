@@ -154,8 +154,7 @@ class MyUnitCard extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Your tenancy starts once the first rent is in '
-                        'escrow. Pay it from Payments to move in.',
+                        _firstRentLine(agreement),
                         style: AppTheme.labelText(
                           context,
                           color: AppTheme.warningColor,
@@ -198,6 +197,19 @@ class MyUnitCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// The banner's sentence, with the deadline when the backend gave one.
+  ///
+  /// The countdown is the difference between a nudge and a warning: since
+  /// API guide 19 §1 an unpaid first rent voids the agreement after 72 hours
+  /// and puts the flat back on the market.
+  static String _firstRentLine(TenancyAgreementModel agreement) {
+    const opening = 'Your tenancy starts once the first rent is in escrow.';
+    final countdown = agreement.firstRentCountdown;
+    return countdown == null
+        ? '$opening Pay it from Payments to move in.'
+        : '$opening $countdown.';
   }
 
   static String? _location(TenancyAgreementModel agreement) {

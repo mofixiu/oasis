@@ -3,6 +3,21 @@ import '../../properties/models/property_model.dart';
 enum AgreementStatus {
   draft,
   pending,
+
+  /// Both parties have signed and the first rent has not reached escrow.
+  ///
+  /// API guide 19 §1. This sits between the second signature and
+  /// [executed], and it is the state the whole "you cannot move in without
+  /// paying" rule is built on: `pay_rent_unlocked` is true here, the tenant
+  /// must pay, and the backend voids the agreement 72 hours later if they
+  /// do not.
+  ///
+  /// Treating it as an unknown status would be worse than a cosmetic bug:
+  /// [AgreementStatus.fromString] falls back to [draft], `canPayRent` would
+  /// read false, and the tenant would have no way to pay the rent the
+  /// countdown is running on.
+  awaitingFirstRent,
+
   executed,
   expired,
   voided,
@@ -22,6 +37,8 @@ enum AgreementStatus {
         return AgreementStatus.activated;
       case 'PENDING':
         return AgreementStatus.pending;
+      case 'AWAITING_FIRST_RENT':
+        return AgreementStatus.awaitingFirstRent;
       case 'EXECUTED':
         return AgreementStatus.executed;
       case 'EXPIRED':
@@ -39,6 +56,8 @@ enum AgreementStatus {
         return 'DRAFT';
       case AgreementStatus.pending:
         return 'PENDING';
+      case AgreementStatus.awaitingFirstRent:
+        return 'AWAITING_FIRST_RENT';
       case AgreementStatus.executed:
         return 'EXECUTED';
       case AgreementStatus.expired:
@@ -60,6 +79,8 @@ enum AgreementStatus {
         return 'Draft Agreement';
       case AgreementStatus.pending:
         return 'Awaiting Tenant Signature';
+      case AgreementStatus.awaitingFirstRent:
+        return 'Awaiting First Rent';
       case AgreementStatus.executed:
         return 'Agreement Executed';
       case AgreementStatus.expired:
@@ -408,6 +429,19 @@ class TenancyAgreementModel {
   /// When the agreement became fully signed. Null until then.
   final String? signedAt;
 
+  /// ISO datetime the first rent has to be in escrow by: 72 hours from the
+  /// second signature. Null on any agreement not in that state, and on
+  /// payloads that predate API guide 19.
+  ///
+  /// The app never computes this. A deadline the tenant loses their home to
+  /// is the backend's to set, and a client clock that is a day fast would
+  /// show a tenancy as lapsed while it is still perfectly alive.
+  final String? firstRentDueBy;
+
+  /// The backend's `first_rent_settled`. Null before guide 19, in which case
+  /// [awaitingFirstRent] falls back to reading the rent block.
+  final bool? serverFirstRentSettled;
+
   /// Rent standing for an executed agreement. Null on payloads that predate
   /// the field, in which case the payments screen falls back to comparing the
   /// agreement against the payment list.
@@ -459,6 +493,8 @@ class TenancyAgreementModel {
     this.serverFullySigned,
     this.awaitingSignatureFrom,
     this.signedAt,
+    this.firstRentDueBy,
+    this.serverFirstRentSettled,
     this.rentPayment,
     this.rentSchedule,
     this.rentPlan = RentPlan.unknown,
@@ -500,6 +536,10 @@ class TenancyAgreementModel {
           : null,
       awaitingSignatureFrom: json['awaiting_signature_from']?.toString(),
       signedAt: json['signed_at']?.toString(),
+      firstRentDueBy: json['first_rent_due_by']?.toString(),
+      serverFirstRentSettled: json['first_rent_settled'] is bool
+          ? json['first_rent_settled'] as bool
+          : null,
       rentPayment: json['rent_payment'] is Map<String, dynamic>
           ? RentPayment.fromJson(json['rent_payment'])
           : null,
@@ -525,7 +565,21 @@ class TenancyAgreementModel {
 
   bool get isExecuted => status == AgreementStatus.executed;
 
-  bool get awaitingLandlordSignature => hasTenantSigned && !isExecuted;
+  /// Both signatures are in and the first rent has not cleared escrow.
+  bool get isAwaitingFirstRent =>
+      status == AgreementStatus.awaitingFirstRent;
+
+  /// Nobody has anything left to sign.
+  ///
+  /// The distinction [isExecuted] used to carry on its own. Since API guide
+  /// 19 a fully signed agreement spends its first 72 hours in
+  /// `AWAITING_FIRST_RENT`, so every check that meant "signing is done" and
+  /// was written as `isExecuted` would silently answer no for three days —
+  /// which is where the countdown to voiding the tenancy runs.
+  bool get isBothSigned =>
+      isExecuted || isAwaitingFirstRent || status == AgreementStatus.activated;
+
+  bool get awaitingLandlordSignature => hasTenantSigned && !isBothSigned;
 
   /// Treat a legacy `TENANT_SIGNED` value without matching signature data as
   /// pending. This lets the tenant complete a signing attempt that the
@@ -538,12 +592,23 @@ class TenancyAgreementModel {
   bool get canLandlordSign =>
       status == AgreementStatus.pending && hasTenantSigned && !isExecuted;
 
-  /// The PRD requires both the executed state and the explicit backend lock
-  /// flag before the tenant can create a payment.
-  bool get canPayRent => isExecuted && payRentUnlocked;
+  /// Whether the tenant may create a rent payment right now.
+  ///
+  /// `pay_rent_unlocked` is the backend's own flag and it is true in
+  /// `AWAITING_FIRST_RENT` as well as `EXECUTED` — deliberately, because the
+  /// first of those is the state whose entire purpose is *getting the rent
+  /// paid*. Reading this as `isExecuted && payRentUnlocked`, which is what it
+  /// said before API guide 19, would have left the tenant with no way to pay
+  /// during the only 72 hours in which paying matters, and the backend would
+  /// then have voided the tenancy for non-payment the app made impossible.
+  ///
+  /// The status is still checked alongside the flag rather than trusting the
+  /// flag alone: an agreement that is expired or voided has no business
+  /// offering a payment button, whatever a stale payload says.
+  bool get canPayRent => payRentUnlocked && isBothSigned;
 
-  /// The tenancy is signed by both parties but no rent has ever been paid on
-  /// it, and rent is owed *now*.
+  /// The tenancy is signed by both parties and the first rent has not
+  /// reached escrow.
   ///
   /// Landa's whole promise is that rent goes through escrow, and testers
   /// found the gap in it: sign the agreement and the flat is yours, on the
@@ -571,12 +636,39 @@ class TenancyAgreementModel {
   /// So it fires only when the backend itself says rent is owed and nothing
   /// has been paid.
   bool get awaitingFirstRent {
+    // API guide 19 made this a state the backend names outright. Where it
+    // says so, that is the answer: it knows whether the tenancy was imported
+    // with rent already collected, and it owns the 72-hour window.
+    if (isAwaitingFirstRent) return true;
+    final settled = serverFirstRentSettled;
+    if (settled != null) return !settled && isBothSigned;
+
+    // Fallback for a backend that predates guide 19, kept deliberately
+    // conservative because a false positive accuses a paid-up tenant of
+    // owing money: anything paid clears it, and so does `NOT_DUE` or a
+    // missing rent block, which is how an imported tenancy arrives.
     if (!isExecuted) return false;
     if ((rentSchedule?.instalmentsPaid ?? 0) > 0) return false;
-    final status = rentPayment?.status;
-    if (status == null) return false;
-    return status == RentPaymentStatus.due ||
-        status == RentPaymentStatus.failed;
+    final paymentStatus = rentPayment?.status;
+    if (paymentStatus == null) return false;
+    return paymentStatus == RentPaymentStatus.due ||
+        paymentStatus == RentPaymentStatus.failed;
+  }
+
+  /// When the first rent has to be in escrow, or null when that is not what
+  /// this agreement is waiting for.
+  DateTime? get firstRentDeadline {
+    if (!awaitingFirstRent) return null;
+    final raw = firstRentDueBy;
+    if (raw == null || raw.trim().isEmpty) return null;
+    return DateTime.tryParse(raw)?.toLocal();
+  }
+
+  /// How long is left to pay the first rent. Negative once the window has
+  /// closed and the backend's daily job simply has not run yet.
+  Duration? get firstRentTimeLeft {
+    final deadline = firstRentDeadline;
+    return deadline?.difference(DateTime.now());
   }
 
   /// True once both parties' signatures are recorded.
@@ -606,7 +698,17 @@ class TenancyAgreementModel {
     if (fromServer != null) {
       return fromServer.hasUpcomingPayment ? fromServer : null;
     }
-    if (!isExecuted) return null;
+    if (!isBothSigned) return null;
+
+    // The first rent, on an agreement waiting for exactly that. Owed now by
+    // definition — this is the state the 72-hour window runs in.
+    if (isAwaitingFirstRent) {
+      return RentSchedule(
+        plan: plan,
+        nextAmountDue: _fallbackAmountDue,
+        isOverdue: true,
+      );
+    }
 
     // Rent that is owed right now outranks any date: the tenant can pay it
     // today, whatever the term dates say.
@@ -637,6 +739,30 @@ class TenancyAgreementModel {
   /// there is nothing to divide it by that would not be a guess.
   String get _fallbackAmountDue => rentPayment?.totalAmount ?? rentAmount;
 
+  /// "2 days left" / "8 hours left" / "Less than an hour left", or null when
+  /// this agreement is not waiting on its first rent or the backend sent no
+  /// deadline.
+  ///
+  /// Coarse on purpose. The backend's expiry job runs once a day at 07:00
+  /// UTC, so a tenancy can outlive its stated deadline by up to a day, and a
+  /// ticking "02:14:09" would be claiming a precision the rule does not
+  /// have. Days and hours are what somebody needs to decide whether to pay
+  /// tonight or in the morning.
+  String? get firstRentCountdown {
+    final left = firstRentTimeLeft;
+    if (left == null) return null;
+    if (left.isNegative) return 'Overdue';
+    if (left.inHours >= 24) {
+      final days = left.inDays;
+      return '$days ${days == 1 ? 'day' : 'days'} left';
+    }
+    if (left.inHours >= 1) {
+      final hours = left.inHours;
+      return '$hours ${hours == 1 ? 'hour' : 'hours'} left';
+    }
+    return 'Less than an hour left';
+  }
+
   /// The rent cycle, from whichever source knows it.
   ///
   /// The schedule is authoritative once it exists; before execution the
@@ -657,6 +783,11 @@ class TenancyAgreementModel {
 
     switch (status) {
       case AgreementStatus.executed:
+      // Signed by both, waiting on money rather than on a signature. The
+      // backend buckets it as COMPLETED for exactly that reason: nobody has
+      // anything left to *sign*, so it does not belong on a dashboard whose
+      // job is listing signatures to collect.
+      case AgreementStatus.awaitingFirstRent:
       case AgreementStatus.expired:
       case AgreementStatus.voided:
       // Legacy synonym for executed.
@@ -677,6 +808,11 @@ class TenancyAgreementModel {
   bool get isCompleted => bucket == AgreementBucket.completed;
 
   String get progressTitle {
+    // Said as the thing that is outstanding, not as a status name. This is
+    // the line a tenant reads on their dashboard, and "Agreement Executed"
+    // over a flat they have not paid for is the exact confusion the
+    // AWAITING_FIRST_RENT state exists to end.
+    if (isAwaitingFirstRent) return 'First rent due';
     if (isExecuted) return 'Agreement Executed';
     if (awaitingLandlordSignature) return 'Awaiting Landlord Signature';
     // Some older staging records retained TENANT_SIGNED after a failed or

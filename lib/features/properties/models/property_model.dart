@@ -74,6 +74,121 @@ enum RentInterval {
       : const [RentInterval.perYear, RentInterval.perMonth];
 }
 
+/// Where a property stands between listed and gone.
+///
+/// A property is never hard-deleted (API guide 19 §6): an archived one still
+/// resolves, so an expired agreement or a released payment that points at it
+/// keeps working. It simply stops being listed — to tenants immediately on
+/// confirmation, and to its own landlord once archived.
+enum PropertyRemovalStatus {
+  active,
+  removalPending,
+  archived;
+
+  static PropertyRemovalStatus fromString(String? value) =>
+      switch (value?.toUpperCase()) {
+        'REMOVAL_PENDING' => PropertyRemovalStatus.removalPending,
+        'ARCHIVED' => PropertyRemovalStatus.archived,
+        // Anything unrecognised is treated as a live property. The opposite
+        // default would hide a listing on a payload the app misread.
+        _ => PropertyRemovalStatus.active,
+      };
+}
+
+/// A removal request in flight on a property.
+class PropertyRemovalRequest {
+  final String id;
+
+  /// `PENDING_CONFIRMATION` until the password is re-entered, `CONFIRMED`
+  /// after.
+  final String status;
+
+  /// ISO datetime the property is archived for good, once confirmed. Null
+  /// while the request is still awaiting its password.
+  final String? archiveAt;
+
+  const PropertyRemovalRequest({
+    required this.id,
+    required this.status,
+    this.archiveAt,
+  });
+
+  static PropertyRemovalRequest? fromJson(dynamic json) {
+    if (json is! Map<String, dynamic>) return null;
+    final id = json['id']?.toString();
+    if (id == null || id.isEmpty) return null;
+    return PropertyRemovalRequest(
+      id: id,
+      status: json['status']?.toString().toUpperCase() ?? '',
+      archiveAt: json['archive_at']?.toString(),
+    );
+  }
+
+  bool get isConfirmed => status == 'CONFIRMED';
+
+  bool get needsConfirmation => status == 'PENDING_CONFIRMATION';
+
+  DateTime? get archiveDate {
+    final raw = archiveAt;
+    if (raw == null || raw.trim().isEmpty) return null;
+    return DateTime.tryParse(raw)?.toLocal();
+  }
+
+  /// How long the landlord has left to change their mind, or null when the
+  /// request has not been confirmed yet.
+  Duration? get timeLeft => archiveDate?.difference(DateTime.now());
+
+  /// "6 days left" / "20 hours left". Coarse, like the first-rent countdown
+  /// and for the same reason: the archiving job runs daily, so a to-the-
+  /// second figure would claim a precision the rule does not have.
+  String? get countdown {
+    final left = timeLeft;
+    if (left == null) return null;
+    if (left.isNegative) return 'Archiving shortly';
+    if (left.inHours >= 24) {
+      final days = left.inDays;
+      return '$days ${days == 1 ? 'day' : 'days'} left';
+    }
+    if (left.inHours >= 1) {
+      final hours = left.inHours;
+      return '$hours ${hours == 1 ? 'hour' : 'hours'} left';
+    }
+    return 'Less than an hour left';
+  }
+}
+
+/// Why a property cannot be removed yet, for one unit.
+///
+/// Per-unit rather than one flat message because that is what the landlord
+/// has to act on: "Unit A1 has a running tenancy" names the flat to deal
+/// with, where "cannot delete" names nothing.
+class PropertyRemovalBlocker {
+  final String unitId;
+  final String unitNumber;
+  final List<String> reasons;
+
+  const PropertyRemovalBlocker({
+    required this.unitId,
+    required this.unitNumber,
+    required this.reasons,
+  });
+
+  static PropertyRemovalBlocker? fromJson(dynamic json) {
+    if (json is! Map<String, dynamic>) return null;
+    final reasons = json['reasons'];
+    return PropertyRemovalBlocker(
+      unitId: json['unit_id']?.toString() ?? '',
+      unitNumber: json['unit_number']?.toString() ?? '',
+      reasons: reasons is List
+          ? reasons.map((r) => r.toString()).where((r) => r.isNotEmpty).toList()
+          : const [],
+    );
+  }
+
+  String get label =>
+      unitNumber.isEmpty ? 'This property' : 'Unit $unitNumber';
+}
+
 class PropertyModel {
   final String id;
   final String name;
@@ -102,6 +217,12 @@ class PropertyModel {
   /// Null before the field ships; [needsPhotos] then works it out locally.
   final bool? serverNeedsPhotos;
 
+  /// Whether this property is being taken off Landa. See API guide 19 §6.
+  final PropertyRemovalStatus removalStatus;
+
+  /// The removal request in flight, when there is one.
+  final PropertyRemovalRequest? pendingRemoval;
+
   PropertyModel({
     required this.id,
     required this.name,
@@ -117,6 +238,8 @@ class PropertyModel {
     this.verificationStatus = 'PENDING',
     this.serverPhotoCount,
     this.serverNeedsPhotos,
+    this.removalStatus = PropertyRemovalStatus.active,
+    this.pendingRemoval,
   });
 
   /// Image to lead with: the backend's cover choice, falling back to the
@@ -136,6 +259,13 @@ class PropertyModel {
   /// marketplace. Surfaced on the landlord's own property card so they can
   /// fix it: a listing hidden with no explanation is worse than no rule.
   bool get needsPhotos => serverNeedsPhotos ?? photoCount == 0;
+
+  /// Confirmed for removal and inside its cooling-off window: hidden from
+  /// tenants, still the landlord's to cancel.
+  bool get isBeingRemoved =>
+      removalStatus == PropertyRemovalStatus.removalPending;
+
+  bool get isArchived => removalStatus == PropertyRemovalStatus.archived;
 
   /// This property, with any media it is missing taken from [previous].
   ///
@@ -178,6 +308,11 @@ class PropertyModel {
       // would make `needsPhotos` guess from a length it no longer owns.
       serverPhotoCount: serverPhotoCount ?? previous.serverPhotoCount,
       serverNeedsPhotos: serverNeedsPhotos ?? previous.serverNeedsPhotos,
+      // Removal state is never inherited: it is the newest payload's to
+      // state, and carrying a stale "being removed" forward would show a
+      // countdown on a property the landlord has already reinstated.
+      removalStatus: removalStatus,
+      pendingRemoval: pendingRemoval,
     );
   }
 
@@ -199,6 +334,10 @@ class PropertyModel {
       serverNeedsPhotos: json['needs_photos'] is bool
           ? json['needs_photos'] as bool
           : null,
+      removalStatus: PropertyRemovalStatus.fromString(
+        json['removal_status']?.toString(),
+      ),
+      pendingRemoval: PropertyRemovalRequest.fromJson(json['pending_removal']),
     );
   }
 
@@ -291,6 +430,84 @@ class PropertyMediaLimits {
   static const int maxUnitPhotos = 12;
 }
 
+/// Where a unit stands between empty and lived in.
+///
+/// `is_occupied` was one boolean doing two jobs. Since API guide 19 §1 it
+/// only means "somebody has paid and moved in": the gap between a landlord
+/// approving an application and the first rent clearing escrow is
+/// [reserved], which is neither. A landlord looking at a flat that reads
+/// "Occupied" before any money has arrived is being told their rent is on
+/// the way when it is not.
+enum UnitAvailability {
+  available,
+  reserved,
+  occupied,
+  unknown;
+
+  static UnitAvailability fromString(String? value) => switch (value
+      ?.toUpperCase()) {
+    'AVAILABLE' => UnitAvailability.available,
+    'RESERVED' => UnitAvailability.reserved,
+    'OCCUPIED' => UnitAvailability.occupied,
+    _ => UnitAvailability.unknown,
+  };
+
+  String get label => switch (this) {
+    UnitAvailability.available => 'Vacant',
+    UnitAvailability.reserved => 'Reserved · first rent not paid',
+    UnitAvailability.occupied => 'Occupied',
+    UnitAvailability.unknown => 'Unknown',
+  };
+}
+
+/// The live tenancy on a unit, as the unit payload now carries it.
+///
+/// API guide 19 §3. Before this, drawing a "Message tenant" button meant
+/// holding every one of the landlord's agreements in memory and scanning
+/// them for a matching `unit` — forty agreements loaded to decide one
+/// button on a screen showing one flat.
+class UnitActiveAgreement {
+  final String id;
+
+  /// The agreement's status, so a unit row can tell a running tenancy from
+  /// one still waiting on a signature or on its first rent.
+  final AgreementStatusName status;
+
+  /// The open conversation for this tenancy, when one has been started.
+  /// Null means the thread has to be opened with `POST /conversations/`.
+  final String? conversationId;
+
+  const UnitActiveAgreement({
+    required this.id,
+    required this.status,
+    this.conversationId,
+  });
+
+  static UnitActiveAgreement? fromJson(dynamic json) {
+    if (json is! Map<String, dynamic>) return null;
+    final id = json['id']?.toString();
+    if (id == null || id.isEmpty) return null;
+    final conversation = json['conversation_id']?.toString();
+    return UnitActiveAgreement(
+      id: id,
+      status: json['status']?.toString().toUpperCase() ?? '',
+      conversationId: (conversation == null || conversation.isEmpty)
+          ? null
+          : conversation,
+    );
+  }
+
+  /// Signed by both and waiting on the first rent.
+  bool get isAwaitingFirstRent => status == 'AWAITING_FIRST_RENT';
+}
+
+/// The agreement status as a bare wire string.
+///
+/// Deliberately not `AgreementStatus`: the unit payload lives in the
+/// properties feature and importing the agreements feature's enum here
+/// would tie two features together for one string comparison.
+typedef AgreementStatusName = String;
+
 class UnitModel {
   final String id;
   final String unitNumber;
@@ -319,6 +536,15 @@ class UnitModel {
   /// rather than a feature nobody used.
   final String? videoUrl;
 
+  /// Vacant, reserved or occupied. [UnitAvailability.unknown] on payloads
+  /// that predate API guide 19, where [occupancyLabel] falls back to
+  /// [isOccupied].
+  final UnitAvailability availability;
+
+  /// The live tenancy, when the backend sends one. Null for a vacant unit,
+  /// and on payloads that predate guide 19.
+  final UnitActiveAgreement? activeAgreement;
+
   UnitModel({
     required this.id,
     required this.unitNumber,
@@ -334,6 +560,8 @@ class UnitModel {
     this.photoUrls = const [],
     this.coverPhotoUrl,
     this.videoUrl,
+    this.availability = UnitAvailability.unknown,
+    this.activeAgreement,
   });
 
   factory UnitModel.fromJson(Map<String, dynamic> json) {
@@ -360,6 +588,10 @@ class UnitModel {
       photoUrls: PropertyModel._asStringList(json['photo_urls']),
       coverPhotoUrl: PropertyModel._asNonEmptyString(json['cover_photo_url']),
       videoUrl: PropertyModel._asNonEmptyString(json['video_url']),
+      availability: UnitAvailability.fromString(
+        json['availability']?.toString(),
+      ),
+      activeAgreement: UnitActiveAgreement.fromJson(json['active_agreement']),
     );
   }
 
@@ -387,6 +619,22 @@ class UnitModel {
   }
 
   bool get hasVideo => videoUrl != null && videoUrl!.isNotEmpty;
+
+  /// Reserved: an approved applicant is on it and the first rent has not
+  /// cleared. Read from the backend where it says so, and otherwise inferred
+  /// from the tenancy hanging off the unit.
+  bool get isReserved =>
+      availability == UnitAvailability.reserved ||
+      (availability == UnitAvailability.unknown &&
+          activeAgreement?.isAwaitingFirstRent == true);
+
+  /// What to write in an occupancy row. One string, so the three states are
+  /// worded the same everywhere rather than re-derived per screen.
+  String get occupancyLabel {
+    if (availability != UnitAvailability.unknown) return availability.label;
+    if (isReserved) return UnitAvailability.reserved.label;
+    return isOccupied ? 'Occupied' : 'Vacant';
+  }
 
   /// True when this unit has no walkthrough.
   ///
@@ -423,6 +671,10 @@ class UnitModel {
       photoUrls: photoUrls.isEmpty ? previous.photoUrls : photoUrls,
       coverPhotoUrl: coverPhotoUrl ?? previous.coverPhotoUrl,
       videoUrl: videoUrl ?? previous.videoUrl,
+      availability: availability == UnitAvailability.unknown
+          ? previous.availability
+          : availability,
+      activeAgreement: activeAgreement ?? previous.activeAgreement,
     );
   }
 

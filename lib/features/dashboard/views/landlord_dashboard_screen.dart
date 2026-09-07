@@ -307,6 +307,10 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen>
                 const SizedBox(height: 8),
                 Column(
                   children: openAgreements.map((agreement) {
+                    // The tick is for a tenancy that is running, not one
+                    // that has merely been signed: a landlord seeing a green
+                    // verified badge on a flat whose first rent has not
+                    // landed is being told their money is in when it is not.
                     final isExecuted = agreement.isExecuted;
                     return Container(
                       margin: const EdgeInsets.only(bottom: 10),

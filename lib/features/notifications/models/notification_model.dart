@@ -52,6 +52,14 @@ enum NotificationType {
   rentDue,
   rentOverdue,
 
+  // The 72-hour window between a tenancy being signed and its first rent
+  // reaching escrow (API guide 19 §1). Separate from the rent reminders
+  // above because the stake is different: miss one of those and you are
+  // late, miss this one and the backend voids the agreement and puts the
+  // flat back on the market.
+  firstRentReminder,
+  tenancyLapsed,
+
   // Price movement. Only ever sent on a *drop*, and only to people with a
   // live interest: an applicant on that unit, a guest with a booking on
   // that stay. A rise is not news anybody wants pushed at them.
@@ -104,6 +112,10 @@ enum NotificationType {
         return NotificationType.rentDue;
       case 'RENT_OVERDUE':
         return NotificationType.rentOverdue;
+      case 'FIRST_RENT_REMINDER':
+        return NotificationType.firstRentReminder;
+      case 'TENANCY_LAPSED':
+        return NotificationType.tenancyLapsed;
       case 'WITHDRAWAL_PAID':
         return NotificationType.withdrawalPaid;
       case 'WITHDRAWAL_FAILED':
@@ -172,6 +184,10 @@ enum NotificationType {
         return 'RENT_DUE';
       case NotificationType.rentOverdue:
         return 'RENT_OVERDUE';
+      case NotificationType.firstRentReminder:
+        return 'FIRST_RENT_REMINDER';
+      case NotificationType.tenancyLapsed:
+        return 'TENANCY_LAPSED';
       case NotificationType.withdrawalPaid:
         return 'WITHDRAWAL_PAID';
       case NotificationType.withdrawalFailed:
@@ -239,6 +255,10 @@ enum NotificationType {
         return 'Rent due';
       case NotificationType.rentOverdue:
         return 'Rent overdue';
+      case NotificationType.firstRentReminder:
+        return 'First rent still due';
+      case NotificationType.tenancyLapsed:
+        return 'Tenancy lapsed';
       case NotificationType.withdrawalPaid:
         return 'Withdrawal paid';
       case NotificationType.withdrawalFailed:
@@ -309,6 +329,10 @@ enum NotificationType {
         return Icons.event_available_outlined;
       case NotificationType.rentOverdue:
         return Icons.event_busy_outlined;
+      case NotificationType.firstRentReminder:
+        return Icons.lock_clock_outlined;
+      case NotificationType.tenancyLapsed:
+        return Icons.heart_broken_outlined;
       case NotificationType.withdrawalPaid:
         return Icons.north_east_rounded;
       case NotificationType.withdrawalFailed:
@@ -366,10 +390,15 @@ enum NotificationType {
       // Being late costs a tenant their tenancy, so it reads as urgently as
       // a dispute rather than as another calendar note.
       case NotificationType.rentOverdue:
+      // The tenancy is gone and the flat is back on the market. Nothing in
+      // the app is more of a loss to the person being told.
+      case NotificationType.tenancyLapsed:
       case NotificationType.verificationFailed:
         return AppTheme.disputeColor;
       case NotificationType.rentDueSoon:
       case NotificationType.rentDue:
+      // Half the window is gone and the home is still losable.
+      case NotificationType.firstRentReminder:
       // An approved booking expires 24 hours after approval, so a request
       // waiting on someone is genuinely time-limited.
       case NotificationType.shortLetBookingRequested:
@@ -417,12 +446,14 @@ enum NotificationType {
       case NotificationType.escrowDisputed:
       case NotificationType.withdrawalFailed:
       case NotificationType.vaultTopUpFailed:
+      case NotificationType.tenancyLapsed:
       case NotificationType.rentOverdue:
       case NotificationType.shortLetBookingRejected:
       case NotificationType.verificationFailed:
         return AppTheme.disputeSurface(context);
       case NotificationType.rentDueSoon:
       case NotificationType.rentDue:
+      case NotificationType.firstRentReminder:
       case NotificationType.shortLetBookingRequested:
       case NotificationType.shortLetBookingCancelled:
       case NotificationType.shortLetPaymentInitiated:

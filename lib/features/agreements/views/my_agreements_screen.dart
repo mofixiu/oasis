@@ -362,6 +362,12 @@ class _StatusPill extends StatelessWidget {
     final (label, color) = switch (agreement.status) {
       AgreementStatus.executed ||
       AgreementStatus.activated => ('Signed', AppTheme.successColor),
+      // Signed by both and not yet running. Sand rather than sage, like
+      // every other pending state in the app: this tenancy has not started.
+      AgreementStatus.awaitingFirstRent => (
+        'First rent due',
+        AppTheme.vacantColor,
+      ),
       AgreementStatus.expired => ('Expired', AppTheme.mutedTextColor(context)),
       AgreementStatus.voided => ('Voided', AppTheme.disputeColor),
       _ => (agreement.status.userFriendlyTitle, AppTheme.warningColor),
