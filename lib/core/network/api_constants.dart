@@ -162,18 +162,16 @@ class ApiConstants {
   static const String notificationPreferencesEndpoint =
       '/notification-preferences/';
 
-  /// Phone push registration. One row per device token.
-  ///
-  /// Posted on every launch rather than once: FCM reissues a token on
-  /// reinstall, on a data clear, and periodically on its own, and the
-  /// endpoint is idempotent on the token so re-posting the same one updates
-  /// rather than duplicating. A token posted for a different user *moves* to
-  /// that user, which is what stops the previous account's notifications
-  /// arriving on a shared phone.
-  ///
-  /// The `DELETE` on sign-out is the half that matters for privacy: without
-  /// it, "rent is due for Unit A1" keeps reaching a phone whose owner signed
-  /// out weeks ago. See API guide 19 §2.
+  // Phone push registration (API guide 19 §2) is **not wired up**. The
+  // endpoints exist server-side and the paths are recorded below so this
+  // file stays a complete catalogue of the API, but nothing calls them:
+  // getting a token needs `firebase_messaging`, which needs a
+  // `google-services.json`, which needs a Firebase project. Push is out of
+  // MVP scope. When it comes back, the notes that matter are: post on every
+  // launch (FCM reissues tokens, and the endpoint is idempotent on them),
+  // and the `DELETE` on sign-out is the half to get right — without it,
+  // "rent is due for Unit A1" keeps reaching a phone whose owner signed out
+  // weeks ago. `backend docs/backend_change_spec_v15.md` §3 has the rest.
   static const String devicesEndpoint = '/devices/';
   static String deviceDetailEndpoint(String deviceId) =>
       '/devices/$deviceId/';

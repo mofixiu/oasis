@@ -237,16 +237,20 @@ sign agreements and pay rent into escrow.
    - `PropertyRemovalBlocked` carries the reasons per unit rather than one
      flattened sentence: the landlord's next move is on a specific flat.
 
-13. **Push notifications are half-built** (API guide 19 §2):
-   - The backend endpoints are live and `DeviceService` speaks to them, but
-     nothing calls `register` yet: the token needs `firebase_messaging`, which
-     needs a `google-services.json`, which needs a Firebase project that does
-     not exist. **Adding the dependency without that file breaks the Android
-     build**, so it is deliberately absent.
-   - When it lands, `unregister` on sign-out is the half to get right.
-     Registering late costs somebody a notification; failing to unregister
-     keeps sending a tenancy's rent reminders to a phone whose owner signed
-     out weeks ago.
+13. **Phone push is out of scope for the MVP** (API guide 19 §2):
+   - The backend endpoints are live and the paths are catalogued in
+     `ApiConstants`, but the app registers no device token and shows no push
+     setting. Do not add one: a switch over a preference the app cannot act
+     on promises alerts that never arrive.
+   - What it would take, when it comes back: a Firebase project (one for both
+     platforms, plus an APNs key before iOS works at all), then
+     `firebase_messaging` + a `google-services.json` — **the dependency
+     without that file fails the Android build** — then register on sign-in
+     and, more importantly, unregister on sign-out. Registering late costs
+     somebody a notification; failing to unregister keeps sending a tenancy's
+     rent reminders to a phone whose owner signed out weeks ago.
+   - In-app notifications, the WebSocket and the 45-second fallback poll all
+     work and are unaffected. The gap is only what reaches a closed app.
 
 14. **Testing:**
    - Tests live in `test/` and cover contracts and states rather than golden

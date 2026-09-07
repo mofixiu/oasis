@@ -331,33 +331,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: _Section(
                     label: 'PREFERENCES',
                     children: [
-                      // Every role, unlike the rent emails below: a landlord
-                      // gets applications and payouts pushed to them, an
-                      // artisan gets nothing yet but will.
-                      Consumer<NotificationController>(
-                        builder: (context, notifications, _) => _SwitchRow(
-                          title: 'Push notifications',
-                          subtitle:
-                              'Alerts on your phone when something happens '
-                              'while the app is closed.',
-                          // Opt-out, like the emails: absent reads as on.
-                          value: notifications.pushNotifications ?? true,
-                          onChanged: notifications.isSavingPreferences
-                              ? null
-                              : (value) async {
-                                  LandaHaptics.select();
-                                  final saved = await notifications
-                                      .setPushNotifications(value);
-                                  if (!context.mounted || saved) return;
-                                  LandaToast.error(
-                                    context,
-                                    notifications.errorMessage ??
-                                        'Could not save that just now. Try '
-                                            'again in a moment.',
-                                  );
-                                },
-                        ),
-                      ),
+                      // No push switch here. The backend can take the
+                      // preference (API guide 19 §2) but the app sends no
+                      // device token — phone push is out of MVP scope — so a
+                      // switch would promise alerts that never arrive, which
+                      // is worse than not offering the setting. It comes back
+                      // with the Firebase work, not before.
+                      //
                       // Tenants only: these are rent reminders, and neither a
                       // landlord nor an artisan is ever the one being reminded
                       // to pay rent.

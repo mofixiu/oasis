@@ -6,7 +6,7 @@
 >
 > **Date:** 2026-09-07
 >
-> **Status:** Guide 19 closed **all six** sections of v14 — the first-rent gate, push endpoints, `active_agreement`, state normalisation, the photo fields and property removal. The app has been updated against every one of them. This document is short on purpose: three answers to questions guide 19 asked, one thing that is blocked on our side rather than yours, and one loose end.
+> **Status:** Guide 19 closed **all six** sections of v14 — the first-rent gate, push endpoints, `active_agreement`, state normalisation, the photo fields and property removal. The app has been updated against five of them. The sixth, push, has been **cut from the MVP** — §3 explains, and the short version is that nothing further is needed from you on it. This document is otherwise short on purpose: answers to the questions guide 19 asked, and one loose end.
 
 ---
 
@@ -20,8 +20,7 @@
 | `availability` | `UnitModel.occupancyLabel` renders `AVAILABLE`/`RESERVED`/`OCCUPIED` as one wording everywhere |
 | `active_agreement` | The landlord's **Message tenant** button reads it directly; the property screen no longer loads the agreements list at all |
 | `FIRST_RENT_REMINDER`, `TENANCY_LAPSED` | Named, iconed and coloured — lapsed reads as brick red, alongside a dispute |
-| `push_notifications_enabled` | A switch in Settings, for every role |
-| `DeviceService` | Registers/removes push tokens. Not called yet — see §3 |
+| Push | **Deliberately not built** — out of MVP scope, see §3 |
 | Property removal | Full flow: request, per-unit blocking reasons, password confirm, countdown banner, cancel |
 | `NigeriaLocations` | Verified: the app's capital spelling is already exactly `"Abuja (FCT)"` |
 
@@ -64,24 +63,27 @@ One request, though: **please confirm the expiry checks payment state at run tim
 
 ---
 
-## 3. Push: the Firebase project is our blocker, not yours
+## 3. Push: deferred. Please stop holding a slot for it
 
-Guide 19 §2 asks whether a Firebase project already exists for Landa OS. **We do not have one**, and that is now the only thing between the endpoints you built and working push.
+Guide 19 §2 asks whether a Firebase project already exists for Landa OS, and notes the backend is waiting on `FIREBASE_CREDENTIALS_JSON` before it can dispatch.
 
-Where the app stands:
+**Do not wait on us, and do not spend more effort here.** Phone push has been cut from the MVP. There is no Firebase project, and creating one is not on the critical path for launch.
 
-* `DeviceService` speaks to `POST/GET/DELETE /devices/` and is written and reviewed.
-* `push_notifications_enabled` is a live switch in Settings.
-* **Nothing calls `register` yet.** The token comes from `firebase_messaging`, which requires a `google-services.json` in the Android module. Adding the dependency *without* that file fails the Android build outright, so it is deliberately not in `pubspec.yaml`.
+The app therefore:
 
-So the sequence is: someone creates the Firebase project → we add the config file, the dependency and the receiving side → you set `FIREBASE_CREDENTIALS_JSON`. Two of those three are ours. No backend work is waiting on us.
+* registers **no** device token — nothing calls `POST /devices/`;
+* shows **no** push setting, so `push_notifications_enabled` is never written. A switch over a preference the app cannot act on would promise alerts that never arrive, which is worse than not offering it;
+* keeps the endpoint paths catalogued in `ApiConstants` purely as a record of the API surface.
 
-Two things we will need from the project when it exists, worth knowing now:
+Nothing you built is wasted — it is correct and it is where it needs to be for when this comes back. It simply has no client until then, so `FIREBASE_CREDENTIALS_JSON` can stay unset indefinitely and the no-op send path is the permanent state for now.
 
-1. **The same project for both platforms**, so one sender id serves Android and iOS.
+What we would need whenever it is picked up again, recorded so nobody has to rediscover it:
+
+1. **One Firebase project for both platforms**, so a single sender id serves Android and iOS.
 2. **An APNs key uploaded to it** before iOS push works at all — Firebase relays to APNs, it does not replace it.
+3. On the payload, `suppress_if_foreground: "true"` on every push is the right call. The app would check its own foreground state and drop the system notification where the in-app banner has already covered the event.
 
-On the payload: `suppress_if_foreground: "true"` on every push is the right call and matches what we asked for. The app will check its own foreground state and drop the system notification when the in-app banner has already covered the event.
+Worth being explicit about what the MVP does still have, because it is most of the value: in-app notifications, the realtime WebSocket, and the 45-second REST fallback all work. The only gap is what reaches a **closed** app.
 
 ---
 
@@ -112,7 +114,7 @@ We will retest against the current deploy and report back. Nothing to do until t
 | --- | --- | --- |
 | 1 | Optional: document that clients must gate payment on `pay_rent_unlocked`, not `status` | Docs only |
 | 2 | Confirm the expiry job re-checks payment at run time. **Do not** tighten the schedule | Confirmation |
-| 3 | Nothing — the Firebase project is ours to create | — |
+| 3 | Nothing — push is cut from the MVP, leave `FIREBASE_CREDENTIALS_JSON` unset | — |
 | 4 | One query to rule out photo-less properties on staging | Minutes |
 | 5B | Eventually: `?include_archived=true` on `GET /properties/` | Small, later |
 

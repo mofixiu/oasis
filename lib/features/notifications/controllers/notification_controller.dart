@@ -61,8 +61,11 @@ class NotificationController extends ChangeNotifier
   /// from the backend's own answer.
   bool? get earlyRentReminderEmails => _preferences?.earlyRentReminderEmails;
 
-  /// Whether phone push is on for this account. Same null-until-read rule.
-  bool? get pushNotifications => _preferences?.pushNotifications;
+  // `push_notifications_enabled` is read and parsed by
+  // [NotificationPreferences] but deliberately not surfaced: the app sends no
+  // device token, so phone push does not happen and a setting for it would be
+  // a switch over nothing. Out of MVP scope — see
+  // `backend docs/backend_change_spec_v15.md` §3.
 
   bool _isSavingPreferences = false;
   bool get isSavingPreferences => _isSavingPreferences;
@@ -123,14 +126,7 @@ class NotificationController extends ChangeNotifier
   Future<bool> setEarlyRentReminderEmails(bool enabled) =>
       _savePreference(earlyRentReminderEmails: enabled);
 
-  /// Turns phone push on or off. Same rule: the switch follows the backend.
-  Future<bool> setPushNotifications(bool enabled) =>
-      _savePreference(pushNotifications: enabled);
-
-  Future<bool> _savePreference({
-    bool? earlyRentReminderEmails,
-    bool? pushNotifications,
-  }) async {
+  Future<bool> _savePreference({bool? earlyRentReminderEmails}) async {
     _isSavingPreferences = true;
     clearFailure();
     notifyListeners();
@@ -138,7 +134,6 @@ class NotificationController extends ChangeNotifier
     try {
       _preferences = await _notificationService.setPreferences(
         earlyRentReminderEmails: earlyRentReminderEmails,
-        pushNotifications: pushNotifications,
       );
       return true;
     } catch (e) {
