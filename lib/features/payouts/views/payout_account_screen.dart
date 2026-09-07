@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_pressable.dart';
 import '../../../core/widgets/landa_toast.dart';
@@ -28,28 +29,30 @@ class PayoutAccountScreen extends StatefulWidget {
   State<PayoutAccountScreen> createState() => _PayoutAccountScreenState();
 }
 
-class _PayoutAccountScreenState extends State<PayoutAccountScreen> {
+class _PayoutAccountScreenState extends State<PayoutAccountScreen>
+    with AutoRefreshMixin<PayoutAccountScreen> {
   final _accountNumberController = TextEditingController();
   String? _bankName;
 
+  /// Re-read on return and on resume as well as on mount. Verification of a
+  /// bank account is the provider's to finish, not the app's, so the standing
+  /// shown here can change while the landlord is looking at something else,
+  /// and it used to sit on whatever the one opening fetch returned.
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final controller = context.read<PayoutController>();
-      await controller.loadPayoutAccount();
-      if (!mounted) return;
-      // Prefill from the saved account so "update" is an edit, not a retype.
-      // The account number arrives masked, so it is deliberately left blank:
-      // the backend needs the real number again to re-verify.
-      final account = controller.account;
-      if (account != null && account.hasDetails) {
-        setState(() {
-          _bankName = account.bankName;
-        });
-      }
-      controller.loadBanks();
-    });
+  Future<void> onAutoRefresh() async {
+    final controller = context.read<PayoutController>();
+    await controller.loadPayoutAccount();
+    if (!mounted) return;
+    // Prefill from the saved account so "update" is an edit, not a retype.
+    // The account number arrives masked, so it is deliberately left blank:
+    // the backend needs the real number again to re-verify. Only ever fills
+    // a blank field, so a refresh landing mid-edit cannot move the bank the
+    // landlord is part-way through choosing.
+    final account = controller.account;
+    if (account != null && account.hasDetails && _bankName == null) {
+      setState(() => _bankName = account.bankName);
+    }
+    await controller.loadBanks();
   }
 
   @override

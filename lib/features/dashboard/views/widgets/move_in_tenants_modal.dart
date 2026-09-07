@@ -12,6 +12,7 @@ import '../../../agreements/models/tenancy_import.dart';
 import '../../../agreements/views/widgets/rent_plan_picker.dart';
 import '../../../properties/controllers/landlord_controller.dart';
 import '../../../properties/models/property_model.dart';
+import '../../../../core/utils/landa_input_formatters.dart';
 
 /// Records the tenants already living in a property.
 ///
@@ -135,7 +136,7 @@ class _MoveInTenantsModalState extends State<MoveInTenantsModal> {
           unitId: draft.unit!.id,
           unitLabel: 'Unit ${draft.unit!.unitNumber}',
           tenantContact: draft.contact.text,
-          rentAmount: draft.rent.text,
+          rentAmount: LandaThousandsFormatter.digitsOf(draft.rent.text),
           startDate: draft.startDate!,
           endDate: draft.endDate,
           rentPlan: _rentPlan,
@@ -467,7 +468,9 @@ class _TenancyDraftCard extends StatelessWidget {
                     // but only where the landlord has not already typed
                     // something, which would be the real figure.
                     if (unit != null && draft.rent.text.trim().isEmpty) {
-                      draft.rent.text = unit.rentAmount;
+                      draft.rent.text = LandaThousandsFormatter.groupAmount(
+                        unit.rentAmount,
+                      );
                     }
                     onChanged();
                   }
@@ -495,9 +498,12 @@ class _TenancyDraftCard extends StatelessWidget {
                 child: TextField(
                   controller: draft.rent,
                   enabled: enabled,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  // Grouped as it is typed. A year's rent is six or seven
+                  // digits and this row is filled in once per flat: an
+                  // unnoticed extra zero here writes the wrong rent into a
+                  // signed tenancy.
+                  keyboardType: TextInputType.number,
+                  inputFormatters: const [LandaThousandsFormatter()],
                   style: AppTheme.cardTitle(context),
                   onChanged: (_) => onChanged(),
                   decoration: landaInputDecoration(
@@ -778,7 +784,7 @@ class _TenancyDraft {
   bool get isComplete =>
       unit != null &&
       contact.text.trim().isNotEmpty &&
-      double.tryParse(rent.text.trim()) != null &&
+      double.tryParse(LandaThousandsFormatter.digitsOf(rent.text)) != null &&
       startDate != null;
 
   static const List<String> _months = [

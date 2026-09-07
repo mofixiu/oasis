@@ -29,6 +29,14 @@ sign agreements and pay rent into escrow.
        user-presentable. Never surface the raw debug string in a toast.
    - Money arrives as decimal strings (`"450000.00"`). Format with
      `LandaCurrency`, which groups digits textually — never parse to `double`.
+   - Money is *typed* through `LandaThousandsFormatter`
+     (`core/utils/landa_input_formatters.dart`), which groups digits as they
+     are entered. Every money field carries it. The separators are display
+     only: read the field back with `LandaThousandsFormatter.digitsOf(...)`
+     before it goes anywhere near the wire, and seed a field from a backend
+     amount with `groupAmount(...)`. A raw `text.trim()` on one of these
+     fields sends `"450,000"`, which a serializer rejects and a query
+     parameter silently matches against nothing.
    - Historical note: `IAuthService`/`IDashboardService` and their mock
      implementations survive from the pre-API phase. Auth and dashboard still
      depend on those interfaces; every feature added since (marketplace,
@@ -64,9 +72,16 @@ sign agreements and pay rent into escrow.
 5. **Freshness — the app re-reads rather than waiting to be dragged:**
    - Screens that fetch mix in `AutoRefreshMixin` (`core/utils/landa_refresh.dart`)
      and implement `onAutoRefresh()`. It fetches on mount, again when a pushed
-     route pops (`landaRouteObserver`, registered on the `MaterialApp`), and
-     again on app resume. Do NOT hand-roll `addPostFrameCallback` for a first
-     load any more.
+     route pops (`landaRouteObserver`, registered on the `MaterialApp`), again
+     when its **tab becomes visible**, and again on app resume. Do NOT
+     hand-roll `addPostFrameCallback` for a first load any more.
+   - The tab trigger is `LandaTabVisibility`, which `MainScaffold` wraps each
+     tab in. It exists because the bottom bar is an `IndexedStack`: switching
+     tabs mounts nothing, disposes nothing and pushes no route, so every
+     screen used to sit on whatever it loaded when it was first built and
+     pull-to-refresh was the only way out. It also *defers* the opening fetch
+     of a tab nobody has opened — an `IndexedStack` builds all its children at
+     once, and without it four screens fetched on the first frame.
    - Set `autoRefreshInterval => kLandaPollInterval` only where the user is
      waiting on somebody else: booking requests, applications, the messaging
      inbox. Polling a screen nobody is waiting on is battery — which is why
@@ -82,6 +97,15 @@ sign agreements and pay rent into escrow.
      `resetLoadedState()`.
 
 6. **Shared UI Components — reach for these before writing new chrome:**
+   - `LandaPickerField` + `openStatePicker` / `openCityPicker`
+     (`core/widgets/landa_place_picker.dart`) over `NigeriaLocations`
+     (`core/utils/nigeria_locations.dart`) — states and cities are **picked,
+     never typed**. Both sides of the marketplace filter compare the landlord's
+     string against the tenant's, so "Lagos" and "lagos state" were two
+     different places and neither user was told why. `canonicalState` is also
+     what the geocoder's answer is normalised through, so a pin that resolves
+     "Federal Capital Territory" fills the box with the one spelling the
+     picker offers.
    - `LandaSheet` — the one bottom-sheet chrome: grab handle, header block,
      scrolling body, pinned keyboard-aware footer. Pair with
      `landaInputDecoration()`, `LandaFieldLabel`, `LandaSheetButton`,
@@ -175,7 +199,21 @@ sign agreements and pay rent into escrow.
      so one broken widget no longer takes a page with it. It makes these bugs
      legible; it does not make them acceptable.
 
-11. **Testing:**
+11. **Signed is not the same as moved in:**
+   - `TenancyAgreementModel.awaitingFirstRent` is true for an executed
+     agreement whose rent is `DUE`/`FAILED` with nothing paid on it. The
+     tenant's unit card and screen, and the landlord's unit sheet, all render
+     that as a tenancy that has **not started** rather than as a home the
+     tenant already has.
+   - It is presentation, not enforcement. The backend grants occupancy on
+     application approval and executes on the second signature, neither of
+     which asks about money — `backend docs/backend_change_spec_v14.md` §1 is
+     the ask to close it. Keep the check conservative: `NOT_DUE` and a missing
+     `rent_payment` block both mean "settled", because that is how a tenancy
+     the landlord imported with rent already collected arrives, and accusing a
+     paid-up tenant of owing money is the worse failure.
+
+12. **Testing:**
    - Tests live in `test/` and cover contracts and states rather than golden
      pixels: backend lifecycle contracts, session reset, connection-error
      branching, application decision state, currency formatting, and widget

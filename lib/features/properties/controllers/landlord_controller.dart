@@ -74,10 +74,17 @@ class LandlordController extends ChangeNotifier
     notifyListeners();
 
     try {
-      _properties = await _propertyService.getProperties();
+      final fetched = await _propertyService.getProperties();
+      // Merged, not replaced. `GET /properties/` describes a property more
+      // thinly than `POST /properties/` does — no `cover_photo_url`, no
+      // counts — so a refresh landing over a freshly created property used
+      // to blank its photos on the card. See [PropertyModel.withMediaFrom].
+      _properties = [
+        for (final prop in fetched) prop.withMediaFrom(_propertyById(prop.id)),
+      ];
       for (var prop in _properties) {
         final units = await _propertyService.getUnits(prop.id);
-        _propertyUnits[prop.id] = units;
+        _propertyUnits[prop.id] = _mergeUnits(prop.id, units);
       }
     } catch (e) {
       captureFailure(e);
@@ -86,6 +93,24 @@ class LandlordController extends ChangeNotifier
       markLoaded(kPropertiesKey);
       notifyListeners();
     }
+  }
+
+  /// The copy already held for [propertyId], or null when this is the first
+  /// time we have seen it.
+  PropertyModel? _propertyById(String propertyId) {
+    for (final prop in _properties) {
+      if (prop.id == propertyId) return prop;
+    }
+    return null;
+  }
+
+  /// Fresh units for a property, each keeping any media the new payload does
+  /// not carry. Same reasoning as [PropertyModel.withMediaFrom].
+  List<UnitModel> _mergeUnits(String propertyId, List<UnitModel> fetched) {
+    final known = _propertyUnits[propertyId];
+    if (known == null || known.isEmpty) return fetched;
+    final byId = {for (final unit in known) unit.id: unit};
+    return [for (final unit in fetched) unit.withMediaFrom(byId[unit.id])];
   }
 
   @override
@@ -302,10 +327,13 @@ class LandlordController extends ChangeNotifier
     try {
       final detail = await _propertyService.getPropertyDetail(propertyId);
       final index = _properties.indexWhere((p) => p.id == propertyId);
+      final merged = detail.property.withMediaFrom(_propertyById(propertyId));
       if (index != -1) {
-        _properties[index] = detail.property;
+        _properties[index] = merged;
+      } else {
+        _properties.insert(0, merged);
       }
-      _propertyUnits[propertyId] = detail.units;
+      _propertyUnits[propertyId] = _mergeUnits(propertyId, detail.units);
       notifyListeners();
     } catch (e) {
       captureFailure(e);

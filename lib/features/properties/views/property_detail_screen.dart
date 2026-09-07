@@ -7,9 +7,12 @@ import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_pressable.dart';
 import '../../../core/widgets/landa_state_views.dart';
 import '../../../core/utils/landa_currency.dart';
+import '../../agreements/controllers/agreement_controller.dart';
+import '../../agreements/models/agreement_model.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
 import '../../dashboard/views/widgets/move_in_tenants_modal.dart';
 import '../../fix/views/unit_recommendations_sheet.dart';
+import '../../messaging/views/widgets/message_action_button.dart';
 import '../controllers/landlord_controller.dart';
 import '../models/property_model.dart';
 import 'widgets/edit_unit_rent_sheet.dart';
@@ -39,10 +42,19 @@ class _ManagedPropertyDetailScreenState
   /// Re-read on return as well as on mount: units are added, tenants moved
   /// in and media uploaded from sheets pushed over this screen, and every one
   /// of them leaves the page behind describing the property as it was.
+  ///
+  /// Agreements come along because the unit sheet's "Message tenant" button
+  /// is keyed on the tenancy: a landlord who reaches this page without
+  /// passing the dashboard (deep link, or straight from My properties after a
+  /// session reset) would otherwise find the button missing on units that
+  /// plainly have somebody living in them.
   @override
-  Future<void> onAutoRefresh() => context
-      .read<LandlordController>()
-      .refreshPropertyDetail(widget.property.id);
+  Future<void> onAutoRefresh() => Future.wait([
+    context.read<LandlordController>().refreshPropertyDetail(
+      widget.property.id,
+    ),
+    context.read<AgreementController>().loadAgreements(),
+  ]);
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -460,6 +472,32 @@ class _UnitInfoSheet extends StatelessWidget {
         unitLabel: 'Unit ${unit.unitNumber}',
       );
 
+  /// The live tenancy on this unit, or null when there is not one yet.
+  ///
+  /// A landlord cannot open a conversation from a unit id: `POST
+  /// /conversations/` refuses it, because a unit can have several applicants
+  /// and the backend will not guess which of them is meant. It *will* take an
+  /// agreement, which names exactly one tenant, so that is what the button
+  /// hangs off.
+  ///
+  /// Newest first, and only agreements that are still real: an expired or
+  /// voided tenancy is a record, not somebody to message. A renewal chain
+  /// leaves several agreements on one unit, and the current one is the one
+  /// with the latest start date.
+  TenancyAgreementModel? _liveTenancy(List<TenancyAgreementModel> all) {
+    final onThisUnit =
+        all
+            .where(
+              (agreement) =>
+                  agreement.unit == unit.id &&
+                  agreement.status != AgreementStatus.expired &&
+                  agreement.status != AgreementStatus.voided,
+            )
+            .toList()
+          ..sort((a, b) => b.startDate.compareTo(a.startDate));
+    return onThisUnit.isEmpty ? null : onThisUnit.first;
+  }
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
@@ -487,11 +525,59 @@ class _UnitInfoSheet extends StatelessWidget {
           onEdit: () => _openRentEditor(context),
           editTooltip: 'Change the rent',
         ),
-        _InfoRow('Occupancy', unit.isOccupied ? 'Occupied' : 'Vacant'),
+        // "Occupied" is the backend's word for a unit with a tenant attached,
+        // and it starts saying so the moment an application is approved —
+        // before the agreement is signed and before any rent has moved. A
+        // landlord reading "Occupied" on a flat nobody has paid for is being
+        // told their money is on the way when it is not, so the row says
+        // which of the two it is.
+        Builder(
+          builder: (context) {
+            if (!unit.isOccupied) return const _InfoRow('Occupancy', 'Vacant');
+            final tenancy = _liveTenancy(
+              context.watch<AgreementController>().agreements,
+            );
+            return _InfoRow(
+              'Occupancy',
+              tenancy?.awaitingFirstRent == true
+                  ? 'Reserved · first rent not paid'
+                  : 'Occupied',
+            );
+          },
+        ),
         if (unit.isOccupied) ...[
           _InfoRow('Tenant', unit.tenant ?? 'Tenant assigned'),
           if (unit.tenantEmail != null) _InfoRow('Email', unit.tenantEmail!),
           if (unit.tenantPhone != null) _InfoRow('Phone', unit.tenantPhone!),
+          const SizedBox(height: 14),
+          // Messaging used to be reachable only from an application, which
+          // meant a landlord could talk to somebody applying for a flat and
+          // then lose the thread the moment they became the tenant of it.
+          // Testers hit exactly that. The tenancy is the relationship the
+          // backend will open a conversation against, so the button lives on
+          // the unit the tenancy is for.
+          Builder(
+            builder: (context) {
+              final tenancy = _liveTenancy(
+                context.watch<AgreementController>().agreements,
+              );
+              if (tenancy == null) {
+                return Text(
+                  'You can message this tenant once their tenancy agreement '
+                  'exists. Create it below.',
+                  style: AppTheme.labelText(
+                    context,
+                    color: AppTheme.secondaryTextColor(context),
+                  ),
+                );
+              }
+              return MessageActionButton(
+                agreementId: tenancy.id,
+                label: 'Message ${unit.tenant ?? 'tenant'}',
+                expanded: true,
+              );
+            },
+          ),
         ],
         const SizedBox(height: 12),
         SizedBox(

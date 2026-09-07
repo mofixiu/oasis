@@ -25,12 +25,23 @@ class PropertyLocationPicker extends StatefulWidget {
   /// Supplies the address typed elsewhere in the form, for "find address".
   final String Function()? addressResolver;
 
+  /// Fired whenever the pin resolves to a street, city and state.
+  ///
+  /// This is the point of the map for most landlords. They drop a pin on
+  /// their own gate and the form knows the address, the town and the state
+  /// from it: testers were dropping the pin and then typing all three again
+  /// underneath, which is the app knowing something and not saying it. The
+  /// callback carries whatever resolved, and the form decides what to do with
+  /// it — it never overwrites something already typed.
+  final ValueChanged<GeocodeAddress>? onAddressResolved;
+
   final LatLng? initialPin;
 
   const PropertyLocationPicker({
     super.key,
     required this.onChanged,
     this.addressResolver,
+    this.onAddressResolved,
     this.initialPin,
   });
 
@@ -184,6 +195,9 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
       source: _PinSource.address,
       placeName: result.label,
     );
+    // The search already carries the parts, so the city and state boxes fill
+    // in without a second round trip to the reverse geocoder.
+    if (!result.address.isEmpty) widget.onAddressResolved?.call(result.address);
     LandaToast.info(context, 'Found ${result.label}. Nudge the pin if needed.');
   }
 
@@ -210,16 +224,27 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
     if (placeName == null) _scheduleReverseGeocode(point);
   }
 
+  /// Names the pin, and tells the form what it resolved to.
+  ///
+  /// Debounced, because a landlord fine-tuning the entrance taps the map
+  /// several times in a row and Nominatim's usage policy is one request a
+  /// second. The token guards the other half of that: a lookup for a pin the
+  /// landlord has already moved off must not land and overwrite the newer
+  /// one's answer.
   void _scheduleReverseGeocode(LatLng point) {
     _nameDebounce?.cancel();
     final token = ++_nameToken;
     _nameDebounce = Timer(const Duration(milliseconds: 700), () async {
-      final name = await _geocoder.describe(point);
+      final resolved = await _geocoder.describe(point);
       if (!mounted || token != _nameToken) return;
       setState(() {
-        _placeName = name;
+        _placeName = resolved?.label.isNotEmpty == true ? resolved!.label : null;
         _isNaming = false;
       });
+      final address = resolved?.address;
+      if (address != null && !address.isEmpty) {
+        widget.onAddressResolved?.call(address);
+      }
     });
   }
 

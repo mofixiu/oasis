@@ -7,7 +7,7 @@ import '../../../core/widgets/main_scaffold.dart';
 import '../controllers/auth_controller.dart';
 import '../models/user_model.dart';
 import 'identity_verification_screen.dart';
-import 'forgot_password_screen.dart';
+import 'password_reset_sheet.dart';
 import 'widgets/auth_text_field.dart';
 import 'sign_up_screen.dart';
 import '../../../core/widgets/landa_busy.dart';
@@ -145,12 +145,12 @@ class _SignInScreenState extends State<SignInScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: () => Navigator.push(
-                                context,
-                                FadePageRoute(
-                                  page: const ForgotPasswordScreen(),
-                                ),
-                              ),
+                              // A sheet over sign-in, not a page pushed on
+                              // top of it. Resetting a password is a detour
+                              // from signing in: the form you were filling in
+                              // should still be behind it, and dismissing
+                              // should put you back on it.
+                              onPressed: () => openPasswordResetSheet(context),
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.only(
                                   top: 6,

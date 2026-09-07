@@ -15,6 +15,7 @@ import '../models/agreement_model.dart';
 import 'widgets/rent_plan_picker.dart';
 import '../../../core/utils/fade_page_route.dart';
 import '../../../core/widgets/landa_busy.dart';
+import '../../../core/utils/landa_input_formatters.dart';
 
 class CreateAgreementModal extends StatefulWidget {
   final String unitId;
@@ -65,7 +66,10 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
 
   void _submit() async {
     final tenantId = _tenantIdController.text.trim();
-    final rent = _rentAmountController.text.trim();
+    // Stripped of the separators the field shows: the API takes a decimal
+    // string, and `double.tryParse('450,000')` is null, so an ungrouped read
+    // here would reject every rent the landlord typed.
+    final rent = LandaThousandsFormatter.digitsOf(_rentAmountController.text);
     final startDate = _startDateController.text.trim();
     final endDate = _endDateController.text.trim();
     final rules = _rulesController.text.trim();
@@ -165,15 +169,14 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
             const SizedBox(height: 12),
             TextField(
               controller: _rentAmountController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: const [LandaThousandsFormatter()],
               // Redraws the plan picker's instalment preview as the annual
               // figure is typed.
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
                 labelText: 'RENT AMOUNT (₦ / YEAR)',
-                hintText: '450000.00',
+                hintText: '450,000',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -187,7 +190,9 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
             const SizedBox(height: 10),
             RentPlanPicker(
               selected: _rentPlan,
-              annualRent: _rentAmountController.text.trim(),
+              annualRent: LandaThousandsFormatter.digitsOf(
+                _rentAmountController.text,
+              ),
               onChanged: (plan) => setState(() => _rentPlan = plan),
             ),
             const SizedBox(height: 16),

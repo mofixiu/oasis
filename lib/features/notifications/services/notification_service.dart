@@ -30,15 +30,29 @@ class NotificationService {
       ApiConstants.notificationsEndpoint,
       queryParameters: filters,
     );
-    if (response is List) {
-      final notifications = response
-          .map((item) => NotificationItemModel.fromJson(item))
+
+    // A bare array is what API guide 18 documents. The `results` envelope is
+    // tolerated because every other list in this API grew one the moment it
+    // started paginating, and the failure mode here is silent: an envelope
+    // read as "not a list" empties the bell and the badge with it, which
+    // looks exactly like having no notifications at all.
+    final rows = response is Map<String, dynamic>
+        ? response['results']
+        : response;
+    if (rows is List) {
+      final notifications = rows
+          .whereType<Map<String, dynamic>>()
+          .map(NotificationItemModel.fromJson)
           .toList();
       debugPrint(
         '[NOTIFICATION SERVICE] Loaded ${notifications.length} notifications',
       );
       return notifications;
     }
+    debugPrint(
+      '[NOTIFICATION SERVICE] Unexpected notifications payload: '
+      '${response.runtimeType}',
+    );
     return [];
   }
 

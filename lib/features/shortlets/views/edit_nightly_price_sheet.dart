@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -8,6 +7,7 @@ import '../../../core/widgets/landa_sheet.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
+import '../../../core/utils/landa_input_formatters.dart';
 
 /// Changes what a stay costs a night, and nothing else.
 ///
@@ -61,9 +61,13 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
   @override
   void initState() {
     super.initState();
-    _priceController.text = widget.listing.nightlyPrice.split('.').first;
+    _priceController.text = LandaThousandsFormatter.groupAmount(
+      widget.listing.nightlyPrice,
+    );
     if (widget.listing.hasCautionFee) {
-      _cautionController.text = widget.listing.cautionFee.split('.').first;
+      _cautionController.text = LandaThousandsFormatter.groupAmount(
+        widget.listing.cautionFee,
+      );
     }
   }
 
@@ -168,7 +172,7 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
           controller: _priceController,
           autofocus: true,
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: const [LandaThousandsFormatter()],
           onChanged: (_) => setState(() {}),
           style: AppTheme.cardTitle(context),
           decoration: landaInputDecoration(
@@ -198,7 +202,7 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
         TextField(
           controller: _cautionController,
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: const [LandaThousandsFormatter()],
           onChanged: (_) => setState(() {}),
           style: AppTheme.cardTitle(context),
           decoration: landaInputDecoration(

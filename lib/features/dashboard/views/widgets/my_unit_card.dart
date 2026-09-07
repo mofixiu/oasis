@@ -69,7 +69,15 @@ class MyUnitCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                if (tenancy.unitNumber.isNotEmpty) _UnitChip(tenancy.label),
+                if (tenancy.unitNumber.isNotEmpty)
+                  _UnitChip(
+                    tenancy.label,
+                    // Signed but unpaid is not "yours" yet, and the chip is
+                    // the first thing read on this card: green there is the
+                    // app telling a tenant they have moved in when they have
+                    // not paid a naira.
+                    isLive: !agreement.awaitingFirstRent,
+                  ),
               ],
             ),
             if (_location(agreement) case final location?) ...[
@@ -118,9 +126,49 @@ class MyUnitCard extends StatelessWidget {
               ],
             ),
 
+            // The tenancy is signed and the first rent has not been paid, so
+            // the flat is reserved rather than occupied. Said here, on the
+            // card, because this is where a tenant looks to find out where
+            // they stand, and "Rent is due today" alone reads as a bill on a
+            // home they already have.
+            if (agreement.awaitingFirstRent) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.warningColor.withValues(alpha: 0.1),
+                  borderRadius: AppTheme.cornerMd,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.lock_clock_outlined,
+                      size: 16,
+                      color: AppTheme.warningColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Your tenancy starts once the first rent is in '
+                        'escrow. Pay it from Payments to move in.',
+                        style: AppTheme.labelText(
+                          context,
+                          color: AppTheme.warningColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ]
             // Only when there is a date to give. A tenancy with nothing
             // scheduled says nothing rather than inventing reassurance.
-            if (due != null) ...[
+            else if (due != null) ...[
               const SizedBox(height: 16),
               Container(
                 width: double.infinity,
@@ -220,18 +268,28 @@ class MyUnitCard extends StatelessWidget {
 class _UnitChip extends StatelessWidget {
   final String label;
 
-  const _UnitChip(this.label);
+  /// Whether the tenancy is actually running. Sand rather than sage while
+  /// the first rent is outstanding: the palette already means "pending" with
+  /// that colour everywhere else in the app.
+  final bool isLive;
+
+  const _UnitChip(this.label, {this.isLive = true});
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
     decoration: BoxDecoration(
-      color: AppTheme.successSurface(context),
+      color: isLive
+          ? AppTheme.successSurface(context)
+          : AppTheme.vacantSurface(context),
       borderRadius: BorderRadius.circular(20),
     ),
     child: Text(
       label,
-      style: AppTheme.labelText(context, color: AppTheme.successColor),
+      style: AppTheme.labelText(
+        context,
+        color: isLive ? AppTheme.successColor : AppTheme.vacantColor,
+      ),
     ),
   );
 }

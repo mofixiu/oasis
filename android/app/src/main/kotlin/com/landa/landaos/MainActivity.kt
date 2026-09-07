@@ -1,4 +1,4 @@
-package com.example.landa_app
+package com.landa.landaos
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -137,6 +137,50 @@ class PropertyModel {
   /// fix it: a listing hidden with no explanation is worse than no rule.
   bool get needsPhotos => serverNeedsPhotos ?? photoCount == 0;
 
+  /// This property, with any media it is missing taken from [previous].
+  ///
+  /// Landa's endpoints do not all describe a property equally. `POST
+  /// /properties/` answers with `photo_urls`, `cover_photo_url`,
+  /// `photo_count`, `needs_photos` and `video_url`; `GET /properties/`, the
+  /// list the landlord's portfolio is rebuilt from on every refresh, is
+  /// documented with `photo_urls` and none of the rest (API guide 18 §5.11).
+  ///
+  /// So a landlord could add a property with four photos, see them, and then
+  /// watch the card go blank the next time the list was re-read — which is
+  /// what testers reported as "they can see the property but they cant see
+  /// any picture in it". The thinner payload was overwriting the richer one.
+  ///
+  /// The rule here is one line: **a refresh may add media, and may never
+  /// remove it.** A photo set that has genuinely been deleted comes back
+  /// from `GET /properties/{id}/photos/`, which the media manager reads
+  /// directly, so nothing here can keep a deleted photo on screen for long.
+  ///
+  /// `backend docs/backend_change_spec_v14.md` §5 asks for the list payload
+  /// to carry what the create payload carries, which retires this.
+  PropertyModel withMediaFrom(PropertyModel? previous) {
+    if (previous == null) return this;
+    final keptPhotos = photoUrls.isEmpty ? previous.photoUrls : photoUrls;
+    return PropertyModel(
+      id: id,
+      name: name,
+      address: address,
+      city: city,
+      state: state,
+      createdAt: createdAt,
+      latitude: latitude ?? previous.latitude,
+      longitude: longitude ?? previous.longitude,
+      photoUrls: keptPhotos,
+      coverPhotoUrl: coverPhotoUrl ?? previous.coverPhotoUrl,
+      videoUrl: videoUrl ?? previous.videoUrl,
+      verificationStatus: verificationStatus,
+      // The counts follow the photos they describe: keeping a server count of
+      // 4 beside a kept set of 4 is consistent, and keeping a count of null
+      // would make `needsPhotos` guess from a length it no longer owns.
+      serverPhotoCount: serverPhotoCount ?? previous.serverPhotoCount,
+      serverNeedsPhotos: serverNeedsPhotos ?? previous.serverNeedsPhotos,
+    );
+  }
+
   factory PropertyModel.fromJson(Map<String, dynamic> json) {
     return PropertyModel(
       id: json['id'] ?? '',
@@ -353,6 +397,34 @@ class UnitModel {
   bool get needsTourVideo => !hasVideo;
 
   bool get needsPhotos => photoUrls.length < PropertyMediaLimits.minUnitPhotos;
+
+  /// The same rule as [PropertyModel.withMediaFrom], for a flat.
+  ///
+  /// Unit payloads vary more than property ones: the short-let listing
+  /// carries `photo_urls`, `cover_photo_url` and `video_url` on its nested
+  /// unit, while the marketplace's `available_units` carries only
+  /// `photo_count` and `needs_photos`, and the batch-create response carries
+  /// none of it. A refresh through any of those must not blank a flat whose
+  /// walkthrough the landlord uploaded a minute ago.
+  UnitModel withMediaFrom(UnitModel? previous) {
+    if (previous == null) return this;
+    return UnitModel(
+      id: id,
+      unitNumber: unitNumber,
+      bedrooms: bedrooms,
+      bathrooms: bathrooms,
+      rentAmount: rentAmount,
+      isOccupied: isOccupied,
+      tenant: tenant ?? previous.tenant,
+      tenantEmail: tenantEmail ?? previous.tenantEmail,
+      tenantPhone: tenantPhone ?? previous.tenantPhone,
+      createdAt: createdAt,
+      property: property ?? previous.property,
+      photoUrls: photoUrls.isEmpty ? previous.photoUrls : photoUrls,
+      coverPhotoUrl: coverPhotoUrl ?? previous.coverPhotoUrl,
+      videoUrl: videoUrl ?? previous.videoUrl,
+    );
+  }
 
   static String? _tenantName(Map<String, dynamic> json) {
     final tenant = json['tenant'];

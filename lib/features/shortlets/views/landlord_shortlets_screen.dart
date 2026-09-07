@@ -20,6 +20,7 @@ import '../models/shortlet_models.dart';
 import 'create_shortlet_sheet.dart';
 import 'edit_nightly_price_sheet.dart';
 import 'widgets/shortlet_booking_card.dart';
+import '../../../core/utils/landa_input_formatters.dart';
 
 /// The host's side of short lets: requests to decide on, and the places on
 /// offer.
@@ -516,6 +517,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
+              inputFormatters: const [LandaThousandsFormatter()],
               style: AppTheme.bodyText(dialogContext),
               decoration: InputDecoration(
                 hintText: 'Amount (₦). Optional, defaults to the full fee',
@@ -563,7 +565,9 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
       return;
     }
 
-    final rawAmount = amountController.text.trim();
+    final rawAmount = LandaThousandsFormatter.digitsOf(
+      amountController.text,
+    );
     final controller = context.read<ShortLetController>();
     final ok = await controller.openCautionClaim(
       bookingId: booking.id,

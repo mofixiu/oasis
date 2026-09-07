@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Watches route pushes and pops so screens can tell when they are back on
@@ -13,15 +14,61 @@ import 'package:flutter/material.dart';
 final RouteObserver<ModalRoute<void>> landaRouteObserver =
     RouteObserver<ModalRoute<void>>();
 
+/// Tells the subtree which tab it is sitting in, and which tab is on screen.
+///
+/// `MainScaffold` renders its tabs in an `IndexedStack`, which keeps every
+/// visited tab alive so scroll position and loaded data survive a switch.
+/// The side effect is that switching tabs is invisible to everything else:
+/// no route is pushed, no route pops, nothing is mounted or disposed. So a
+/// landlord going Dashboard → Applications → Dashboard came back to the
+/// dashboard exactly as they left it, however long ago that was, and the
+/// only way to correct it was to pull down. That is most of what testers
+/// meant by "I have to refresh everything to see".
+///
+/// [AutoRefreshMixin] listens for this and treats becoming the visible tab
+/// the same way it treats a pushed route popping: the moment the screen's
+/// data is most likely stale.
+///
+/// It also defers the *first* load of a tab nobody has looked at yet. An
+/// `IndexedStack` builds all of its children at once, so without this every
+/// tab fires its opening fetch the instant the app opens — four screens'
+/// worth of requests on a phone that is showing one of them.
+class LandaTabVisibility extends InheritedWidget {
+  /// Which tab is currently on screen.
+  final ValueListenable<int> activeIndex;
+
+  /// Which tab this subtree is.
+  final int index;
+
+  const LandaTabVisibility({
+    super.key,
+    required this.activeIndex,
+    required this.index,
+    required super.child,
+  });
+
+  static LandaTabVisibility? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LandaTabVisibility>();
+
+  bool get isVisible => activeIndex.value == index;
+
+  @override
+  bool updateShouldNotify(LandaTabVisibility oldWidget) =>
+      oldWidget.activeIndex != activeIndex || oldWidget.index != index;
+}
+
 /// Keeps a screen's data fresh without the user dragging for it.
 ///
-/// Four triggers, deliberately chosen rather than "refresh on every build":
+/// Five triggers, deliberately chosen rather than "refresh on every build":
 ///
 /// * **On mount**: replaces the `addPostFrameCallback` every screen was
-///   writing by hand, so the first fetch happens in exactly one place.
+///   writing by hand, so the first fetch happens in exactly one place. Inside
+///   a tab it is deferred until that tab is first looked at.
 /// * **On return**: the screen becomes topmost again after a pushed route
 ///   pops. This is the one that mattered most: the pushed route is usually
 ///   where the state was changed.
+/// * **On becoming the visible tab**: the same idea for the bottom bar, which
+///   pushes and pops nothing. See [LandaTabVisibility].
 /// * **On resume**: the app comes back from the background. A booking's
 ///   24-hour payment window, an artisan's queue and an escrow release all
 ///   move on while the phone is in a pocket.
@@ -48,6 +95,22 @@ mixin AutoRefreshMixin<T extends StatefulWidget> on State<T>
   /// a screen buried under three pushed pages is not being read.
   bool _isTopmost = true;
 
+  /// True while the tab this screen sits in is the one on screen. Always true
+  /// for a screen that is not inside a tab at all.
+  bool _isTabVisible = true;
+
+  /// The tab context, when there is one, and the listener attached to it.
+  LandaTabVisibility? _tab;
+  VoidCallback? _tabListener;
+
+  /// Whether the opening fetch has happened. Tracked rather than fired blindly
+  /// in `initState`, because a tab that is built but not shown should not
+  /// fetch until somebody looks at it.
+  bool _didInitialRefresh = false;
+
+  /// Whether this screen may fetch right now: on screen in both senses.
+  bool get _isActive => _isTopmost && _isTabVisible;
+
   /// Fetches this screen's data. The same method pull-to-refresh uses, so
   /// there is only ever one definition of "reload this page".
   Future<void> onAutoRefresh();
@@ -71,12 +134,22 @@ mixin AutoRefreshMixin<T extends StatefulWidget> on State<T>
     super.initState();
     _lifecycle = _LifecycleBridge(onResume: _handleResume);
     WidgetsBinding.instance.addObserver(_lifecycle!);
-    if (refreshOnMount) {
-      // Post-frame rather than inline: loaders call `notifyListeners()`, and
-      // notifying a provider during the first build throws.
-      WidgetsBinding.instance.addPostFrameCallback((_) => refreshNow());
-    }
+    // Post-frame rather than inline: loaders call `notifyListeners()`, and
+    // notifying a provider during the first build throws. By then
+    // `didChangeDependencies` has run, so the tab check below is answerable.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initialRefresh());
     _restartPolling();
+  }
+
+  /// The opening fetch, once this screen is actually being looked at.
+  void _initialRefresh() {
+    if (!mounted || _didInitialRefresh || !refreshOnMount) return;
+    // Built inside a tab nobody has opened yet: wait. The fetch runs the
+    // first time that tab is shown, which is the first moment its data is
+    // worth anything.
+    if (!_isTabVisible) return;
+    _didInitialRefresh = true;
+    refreshNow();
   }
 
   @override
@@ -90,11 +163,56 @@ mixin AutoRefreshMixin<T extends StatefulWidget> on State<T>
       _subscribedRoute = route;
       landaRouteObserver.subscribe(this, route);
     }
+    _attachTab(LandaTabVisibility.of(context));
+  }
+
+  void _attachTab(LandaTabVisibility? tab) {
+    if (tab == null) {
+      _detachTab();
+      _isTabVisible = true;
+      return;
+    }
+    if (_tab?.activeIndex == tab.activeIndex && _tab?.index == tab.index) {
+      return;
+    }
+    _detachTab();
+    _tab = tab;
+    _tabListener = _handleTabChanged;
+    tab.activeIndex.addListener(_tabListener!);
+    _isTabVisible = tab.isVisible;
+  }
+
+  void _detachTab() {
+    if (_tab != null && _tabListener != null) {
+      _tab!.activeIndex.removeListener(_tabListener!);
+    }
+    _tab = null;
+    _tabListener = null;
+  }
+
+  /// The bottom bar moved. Becoming visible is treated exactly like a pushed
+  /// route popping, because to the user it is the same event: they have come
+  /// back to a page that has been sitting still while things changed.
+  void _handleTabChanged() {
+    final visible = _tab?.isVisible ?? true;
+    if (visible == _isTabVisible) return;
+    _isTabVisible = visible;
+    if (!visible) {
+      _pollTimer?.cancel();
+      return;
+    }
+    _restartPolling();
+    if (!_didInitialRefresh) {
+      _initialRefresh();
+    } else if (refreshOnReturn) {
+      refreshNow();
+    }
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _detachTab();
     if (_lifecycle != null) WidgetsBinding.instance.removeObserver(_lifecycle!);
     if (_subscribedRoute != null) landaRouteObserver.unsubscribe(this);
     super.dispose();
@@ -116,7 +234,11 @@ mixin AutoRefreshMixin<T extends StatefulWidget> on State<T>
   }
 
   void _handleResume() {
-    if (refreshOnResume && mounted && _isTopmost) refreshNow();
+    if (refreshOnResume && mounted && _isActive) {
+      // A tab that was never opened has still not loaded: resuming is as good
+      // a moment as any to notice it is now the visible one.
+      _didInitialRefresh ? refreshNow() : _initialRefresh();
+    }
     _restartPolling();
   }
 
@@ -125,7 +247,7 @@ mixin AutoRefreshMixin<T extends StatefulWidget> on State<T>
     final interval = autoRefreshInterval;
     if (interval == null) return;
     _pollTimer = Timer.periodic(interval, (_) {
-      if (!mounted || !_isTopmost) return;
+      if (!mounted || !_isActive) return;
       refreshNow();
     });
   }
@@ -145,7 +267,7 @@ mixin AutoRefreshMixin<T extends StatefulWidget> on State<T>
   void didPopNext() {
     _isTopmost = true;
     _restartPolling();
-    if (refreshOnReturn) refreshNow();
+    if (refreshOnReturn && _isTabVisible) refreshNow();
   }
 
   @override

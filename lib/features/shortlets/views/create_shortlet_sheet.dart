@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -11,6 +10,7 @@ import '../../properties/controllers/landlord_controller.dart';
 import '../../properties/models/property_model.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
+import '../../../core/utils/landa_input_formatters.dart';
 
 /// Lists a unit for nightly stays, or edits the listing it already has.
 ///
@@ -123,13 +123,19 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
     _unit = widget.initialUnit;
     final seededPrice = widget.initialNightlyPrice;
     if (seededPrice != null) {
-      _priceController.text = seededPrice.split('.').first;
+      _priceController.text = LandaThousandsFormatter.groupAmount(
+        seededPrice,
+      );
     }
     final existing = widget.existing;
     if (existing != null) {
-      _priceController.text = existing.nightlyPrice.split('.').first;
+      _priceController.text = LandaThousandsFormatter.groupAmount(
+        existing.nightlyPrice,
+      );
       if (existing.hasCautionFee) {
-        _cautionController.text = existing.cautionFee.split('.').first;
+        _cautionController.text = LandaThousandsFormatter.groupAmount(
+          existing.cautionFee,
+        );
       }
       _descriptionController.text = existing.description;
       _rulesController.text = existing.houseRules;
@@ -489,7 +495,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         TextField(
           controller: _priceController,
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: const [LandaThousandsFormatter()],
           style: AppTheme.cardTitle(context),
           onChanged: (_) => setState(() {}),
           decoration: landaInputDecoration(
@@ -518,7 +524,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         TextField(
           controller: _cautionController,
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: const [LandaThousandsFormatter()],
           style: AppTheme.cardTitle(context),
           onChanged: (_) => setState(() {}),
           decoration: landaInputDecoration(

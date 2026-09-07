@@ -542,6 +542,43 @@ class TenancyAgreementModel {
   /// flag before the tenant can create a payment.
   bool get canPayRent => isExecuted && payRentUnlocked;
 
+  /// The tenancy is signed by both parties but no rent has ever been paid on
+  /// it, and rent is owed *now*.
+  ///
+  /// Landa's whole promise is that rent goes through escrow, and testers
+  /// found the gap in it: sign the agreement and the flat is yours, on the
+  /// app's own screens, before a naira has moved. The backend marks a unit
+  /// occupied when the application is approved and executes the agreement on
+  /// the landlord's counter-signature; neither step asks about money.
+  ///
+  /// Closing that properly is a backend rule — see
+  /// `backend docs/backend_change_spec_v14.md` §2, which is where occupancy
+  /// has to stop being granted on a signature alone. What the app can do
+  /// meanwhile is stop *saying* the tenancy is live: a tenant who has signed
+  /// and not paid sees the first rent as the outstanding step, and the
+  /// landlord sees the unit as reserved rather than occupied.
+  ///
+  /// Deliberately conservative, because a false positive here accuses a
+  /// paid-up tenant of owing money:
+  ///
+  /// * anything paid on the tenancy already (`instalments_paid > 0`, or a
+  ///   payment in escrow) clears it for good;
+  /// * `NOT_DUE`, and a payload with no `rent_payment` block at all, clear it
+  ///   too. That is the case for a tenancy the landlord imported with rent
+  ///   already collected off-platform, which is a normal way to arrive on
+  ///   Landa and must not be branded unpaid.
+  ///
+  /// So it fires only when the backend itself says rent is owed and nothing
+  /// has been paid.
+  bool get awaitingFirstRent {
+    if (!isExecuted) return false;
+    if ((rentSchedule?.instalmentsPaid ?? 0) > 0) return false;
+    final status = rentPayment?.status;
+    if (status == null) return false;
+    return status == RentPaymentStatus.due ||
+        status == RentPaymentStatus.failed;
+  }
+
   /// True once both parties' signatures are recorded.
   ///
   /// Prefers the backend's own verdict, which also accounts for legacy records

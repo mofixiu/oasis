@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -25,6 +24,7 @@ import 'my_shortlet_bookings_screen.dart';
 import 'shortlet_listing_screen.dart';
 import '../../../core/utils/fade_page_route.dart';
 import '../../../core/utils/landa_prefetch.dart';
+import '../../../core/utils/landa_input_formatters.dart';
 
 /// The Stays tab: where a tenant browses places by the night.
 ///
@@ -677,11 +677,13 @@ class _PriceRangeSheet extends StatefulWidget {
 }
 
 class _PriceRangeSheetState extends State<_PriceRangeSheet> {
+  // Seeded in the grouped shape the field types in, so reopening the sheet
+  // shows the same "50,000" the tenant left in it rather than a bare 50000.
   late final _minController = TextEditingController(
-    text: widget.minPrice ?? '',
+    text: LandaThousandsFormatter.groupAmount(widget.minPrice),
   );
   late final _maxController = TextEditingController(
-    text: widget.maxPrice ?? '',
+    text: LandaThousandsFormatter.groupAmount(widget.maxPrice),
   );
 
   @override
@@ -698,8 +700,10 @@ class _PriceRangeSheetState extends State<_PriceRangeSheet> {
     super.dispose();
   }
 
-  int? get _min => int.tryParse(_minController.text);
-  int? get _max => int.tryParse(_maxController.text);
+  int? get _min =>
+      int.tryParse(LandaThousandsFormatter.digitsOf(_minController.text));
+  int? get _max =>
+      int.tryParse(LandaThousandsFormatter.digitsOf(_maxController.text));
 
   /// The one thing this sheet will not let the tenant send: a range the
   /// backend can only reject. Digit-only formatters already rule out text
@@ -852,7 +856,7 @@ class _PriceField extends StatelessWidget {
       TextField(
         controller: controller,
         keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: const [LandaThousandsFormatter()],
         style: AppTheme.cardTitle(context),
         decoration:
             landaInputDecoration(

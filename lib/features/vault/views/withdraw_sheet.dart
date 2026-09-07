@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -11,6 +10,7 @@ import '../../payouts/views/payout_account_screen.dart';
 import '../controllers/vault_controller.dart';
 import 'vault_pin_sheet.dart';
 import '../../../core/utils/fade_page_route.dart';
+import '../../../core/utils/landa_input_formatters.dart';
 
 /// Moves money from the vault to the user's own bank.
 ///
@@ -153,9 +153,10 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
           onUseAll: vault == null || !vault.hasAvailableBalance
               ? null
               : () => setState(
-                  () => _amountController.text = vault.availableBalance
-                      .split('.')
-                      .first,
+                  () => _amountController.text =
+                      LandaThousandsFormatter.groupAmount(
+                        vault.availableBalance,
+                      ),
                 ),
         ),
         const SizedBox(height: 18),
@@ -164,7 +165,7 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
         TextField(
           controller: _amountController,
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: const [LandaThousandsFormatter()],
           enabled: !needsAccount,
           style: AppTheme.screenTitle(context),
           decoration: landaInputDecoration(

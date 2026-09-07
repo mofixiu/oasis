@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -8,6 +7,7 @@ import '../../../../core/widgets/landa_sheet.dart';
 import '../../../../core/widgets/landa_toast.dart';
 import '../../controllers/landlord_controller.dart';
 import '../../models/property_model.dart';
+import '../../../../core/utils/landa_input_formatters.dart';
 
 /// Changes what a unit costs.
 ///
@@ -144,7 +144,7 @@ class _EditUnitRentSheetState extends State<_EditUnitRentSheet> {
                 controller: _rentController,
                 autofocus: true,
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: const [LandaThousandsFormatter()],
                 onChanged: (_) => setState(() {}),
                 style: AppTheme.cardTitle(context),
                 decoration: landaInputDecoration(

@@ -12,6 +12,7 @@ import '../../features/payments/views/payments_screen.dart';
 import '../../features/shortlets/views/landlord_shortlets_screen.dart';
 import '../../features/shortlets/views/shortlet_browse_screen.dart';
 
+import '../utils/landa_refresh.dart';
 import 'custom_bottom_navbar.dart';
 
 /// Wrapper scaffold that maintains the bottom navigation state and switches
@@ -25,6 +26,30 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
+
+  /// The visible tab, as something the tabs themselves can listen to.
+  ///
+  /// A notifier rather than only `setState`, because the point is to reach
+  /// each tab's [AutoRefreshMixin] *without* rebuilding the whole stack: the
+  /// screens live in an `IndexedStack` precisely so they are not rebuilt, and
+  /// a rebuild is not what they need anyway. They need to be told.
+  final ValueNotifier<int> _activeTab = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _activeTab.dispose();
+    super.dispose();
+  }
+
+  void _selectTab(int index) {
+    if (index == _currentIndex) return;
+    setState(() => _currentIndex = index);
+    // After the frame, so a tab waking up and calling `notifyListeners()` on
+    // a controller cannot do it during this build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _activeTab.value = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,9 +100,11 @@ class _MainScaffoldState extends State<MainScaffold> {
       UserRole.artisan => const [ArtisanHomeScreen()],
     };
 
-    // Safety check for index out of bounds
+    // Safety check for index out of bounds. A role switch can leave the
+    // index pointing past the end of the new role's shorter list.
     if (_currentIndex >= screens.length) {
       _currentIndex = 0;
+      _activeTab.value = 0;
     }
 
     return Scaffold(
@@ -96,7 +123,23 @@ class _MainScaffoldState extends State<MainScaffold> {
           // point: the controllers are process-wide singletons anyway, so
           // the state was already in memory; the widgets were the only thing
           // being thrown away.
-          IndexedStack(index: _currentIndex, children: screens),
+          //
+          // Each child is wrapped so it knows which tab it is and which tab
+          // is showing. Without that, switching tabs is invisible to the
+          // screens themselves: nothing mounts, nothing pops, and a tab that
+          // has been sitting behind another for ten minutes comes back
+          // showing what it loaded then. See [LandaTabVisibility].
+          IndexedStack(
+            index: _currentIndex,
+            children: [
+              for (var i = 0; i < screens.length; i++)
+                LandaTabVisibility(
+                  activeIndex: _activeTab,
+                  index: i,
+                  child: screens[i],
+                ),
+            ],
+          ),
 
           // Hidden for a role with one destination. A bar with a single item
           // is chrome that does nothing but take a thumb's worth of screen.
@@ -108,11 +151,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               child: CustomBottomNavbar(
                 currentIndex: _currentIndex,
                 role: role,
-                onTap: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                },
+                onTap: _selectTab,
               ),
             ),
         ],

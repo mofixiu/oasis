@@ -265,9 +265,18 @@ class ShortLetController extends ChangeNotifier
 
   /// Saves a listing and returns it, or null on failure.
   ///
-  /// The list is refetched rather than patched locally: posting the same unit
-  /// twice edits the existing listing instead of adding one, and guessing
-  /// which happened would leave a duplicate on screen.
+  /// The list is refetched rather than patched locally: the backend decides
+  /// what a saved listing looks like, and guessing would leave a duplicate or
+  /// a stale price on screen.
+  ///
+  /// **The refetch is not part of the save.** It used to be inside the same
+  /// `try`, which meant a listing that saved perfectly well and then hit a
+  /// slow or failed `GET` came back from here as `null` — and the sheet, which
+  /// reads `null` as "it did not save", told the host their listing had
+  /// failed. It had not: it was live, and testers reported exactly that ("it
+  /// showed an error but it still listed"). A save is finished the moment the
+  /// write succeeds; refreshing the local copy afterwards is a convenience,
+  /// and a convenience must never be able to report the write as failed.
   Future<ShortLetListing?> saveListing({
     required String unitId,
     String? listingId,
@@ -290,8 +299,9 @@ class ShortLetController extends ChangeNotifier
     clearFailure();
     notifyListeners();
 
+    final ShortLetListing listing;
     try {
-      var listing = await _saveOrWidenWindow(
+      listing = await _saveOrWidenWindow(
         unitId: unitId,
         listingId: listingId,
         nightlyPrice: nightlyPrice,
@@ -307,8 +317,6 @@ class ShortLetController extends ChangeNotifier
         checkInNotes: checkInNotes,
         isActive: isActive,
       );
-      _listings = await _service.getLandlordListings();
-      return listing;
     } catch (e) {
       // A create refused because the unit is already listed is not really a
       // failure: the host wants that unit let by the night and it is. The
@@ -316,10 +324,39 @@ class ShortLetController extends ChangeNotifier
       // instead of the error.
       _existingListingId = _listingIdFromConflict(e);
       captureFailure(e);
+      _isSubmitting = false;
+      notifyListeners();
       return null;
+    }
+
+    // Past this line the listing exists on the backend, so nothing below may
+    // change the answer. A refetch that fails leaves the newly saved listing
+    // patched into the local set instead, which is enough for the screen the
+    // host lands on, and the next auto-refresh corrects it.
+    try {
+      _listings = await _service.getLandlordListings();
+    } catch (e) {
+      debugPrint('[SHORTLET] Saved, but the list refresh failed: $e');
+      _mergeListing(listing);
     } finally {
       _isSubmitting = false;
       notifyListeners();
+    }
+    return listing;
+  }
+
+  /// Puts [listing] into the local set, replacing the entry for the same id
+  /// or unit rather than adding a second row for one place.
+  void _mergeListing(ShortLetListing listing) {
+    final index = _listings.indexWhere(
+      (existing) =>
+          existing.id == listing.id ||
+          (listing.unitId.isNotEmpty && existing.unitId == listing.unitId),
+    );
+    if (index == -1) {
+      _listings = [listing, ..._listings];
+    } else {
+      _listings = List.of(_listings)..[index] = listing;
     }
   }
 

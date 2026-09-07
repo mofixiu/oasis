@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/fade_page_route.dart';
 import '../../../core/utils/landa_haptics.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_entrance.dart';
 import '../../../core/widgets/landa_pressable.dart';
 import '../../../core/widgets/landa_toast.dart';
@@ -32,8 +33,32 @@ import '../../vault/views/vault_pin_sheet.dart';
 /// Built around one idea: the user's verified identity is the product's whole
 /// premise, so it gets the hero treatment at the top rather than being a chip
 /// tucked beside an email address.
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen>
+    with AutoRefreshMixin<ProfileScreen> {
+  /// Everything this page reports is somebody else's to change: verification
+  /// is cleared by an admin, the payout account is verified by the bank, the
+  /// vault PIN and the agreement archive move as the user acts elsewhere in
+  /// the app. It was reading all of it from whatever happened to be cached
+  /// when the screen opened, which is why a landlord who had just been
+  /// verified still saw "we are checking your documents" here.
+  @override
+  Future<void> onAutoRefresh() async {
+    final auth = context.read<AuthController>();
+    await Future.wait([
+      auth.refreshProfile(),
+      context.read<AgreementController>().loadAgreements(),
+      context.read<PayoutController>().loadPayoutAccount(),
+      context.read<VaultController>().loadPinStatus(),
+      context.read<NotificationController>().loadPreferences(),
+    ]);
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(

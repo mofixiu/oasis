@@ -6,12 +6,16 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/landa_currency.dart';
 import '../../../core/widgets/landa_app_bar.dart';
 import '../../../core/widgets/landa_pressable.dart';
+import '../../../core/utils/landa_refresh.dart';
+import '../../agreements/controllers/agreement_controller.dart';
 import '../../agreements/models/agreement_group.dart';
 import '../../agreements/models/agreement_model.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
+import '../../../core/utils/fade_page_route.dart';
 import '../../payments/controllers/payment_controller.dart';
 import '../../payments/models/payment_model.dart';
 import '../../payments/views/payment_receipt_modal.dart';
+import '../../payments/views/payments_screen.dart';
 
 /// Everything about one of the tenant's homes.
 ///
@@ -19,13 +23,46 @@ import '../../payments/views/payment_receipt_modal.dart';
 /// rent, the next date. This is where the rest of it went: the full term, the
 /// rules, the landlord, the payments made on this unit, and the agreement
 /// itself. Splitting them is what let the dashboard stop being a wall.
-class MyUnitScreen extends StatelessWidget {
+class MyUnitScreen extends StatefulWidget {
   final TenancyGroup tenancy;
 
   const MyUnitScreen({super.key, required this.tenancy});
 
   @override
+  State<MyUnitScreen> createState() => _MyUnitScreenState();
+}
+
+class _MyUnitScreenState extends State<MyUnitScreen>
+    with AutoRefreshMixin<MyUnitScreen> {
+  /// The tenancy and the payments on it both move without the tenant doing
+  /// anything on this page: rent falls due, an escrow release lands, a
+  /// landlord counter-signs. It used to render whatever was cached when the
+  /// dashboard card was tapped, which is what made paying rent and coming
+  /// back show the old balance.
+  @override
+  Future<void> onAutoRefresh() => Future.wait([
+    context.read<AgreementController>().loadAgreements(),
+    context.read<PaymentController>().loadPayments(),
+  ]);
+
+  /// This unit's tenancy as the controller now holds it, falling back to the
+  /// copy the dashboard handed over.
+  ///
+  /// Re-derived rather than kept, because [widget.tenancy] is a snapshot: a
+  /// refresh replaces the agreement objects inside the controller and cannot
+  /// reach into the value already passed to this screen. Without this the
+  /// page would fetch and then render the old data anyway.
+  TenancyGroup get _tenancy {
+    final key = widget.tenancy.unitKey;
+    for (final group in context.watch<AgreementController>().tenancies) {
+      if (group.unitKey == key) return group;
+    }
+    return widget.tenancy;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final tenancy = _tenancy;
     final agreement = tenancy.latest;
     final property = agreement.property;
     final schedule = agreement.upcomingRent;
@@ -54,6 +91,15 @@ class MyUnitScreen extends StatelessWidget {
             Text(tenancy.label, style: AppTheme.bodyText(context)),
           ],
           const SizedBox(height: 20),
+
+          // Signed, not paid. Leading the page rather than buried under the
+          // address, because until the first rent is in escrow this is the
+          // only thing on the screen the tenant can act on, and every other
+          // panel below describes a tenancy that has not started.
+          if (agreement.awaitingFirstRent) ...[
+            const _FirstRentNotice(),
+            const SizedBox(height: 16),
+          ],
 
           _Section(
             title: 'The place',
@@ -88,7 +134,12 @@ class MyUnitScreen extends StatelessWidget {
           _Section(
             title: 'Your tenancy',
             rows: [
-              ('Status', agreement.status.label),
+              (
+                'Status',
+                agreement.awaitingFirstRent
+                    ? 'SIGNED · FIRST RENT DUE'
+                    : agreement.status.label,
+              ),
               if (agreement.startDate.isNotEmpty)
                 ('Starts', _date(agreement.startDate)),
               if (agreement.endDate.isNotEmpty)
@@ -292,6 +343,76 @@ class _PaymentRow extends StatelessWidget {
           ),
         ],
       ),
+    ),
+  );
+}
+
+/// The one thing a signed-but-unpaid tenant can do.
+///
+/// Landa's guarantee is that rent is held in escrow until the tenant is in.
+/// A tenancy that reads as active before any money has moved is the app
+/// undermining that on its own screens, which is what testers found: they
+/// signed for a yearly flat and the app treated them as moved in without a
+/// first rent.
+///
+/// The enforcement belongs in the backend (see
+/// `backend docs/backend_change_spec_v14.md` §2). This is the honest version
+/// of the state in the meantime, and it stays useful afterwards: even once
+/// occupancy is gated server-side, the tenant still needs telling what the
+/// outstanding step is and where to do it.
+class _FirstRentNotice extends StatelessWidget {
+  const _FirstRentNotice();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: AppTheme.vacantSurface(context),
+      borderRadius: AppTheme.cornerLg,
+      border: Border.all(
+        color: AppTheme.vacantColor.withValues(alpha: 0.45),
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.lock_clock_outlined,
+              size: 19,
+              color: AppTheme.warningColor,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Your tenancy has not started yet',
+                style: AppTheme.cardTitle(
+                  context,
+                  color: AppTheme.warningColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Both signatures are in. The first rent still has to reach escrow '
+          'before this home is yours — your landlord is only paid once you '
+          'have moved in.',
+          style: AppTheme.bodyText(context),
+        ),
+        const SizedBox(height: 14),
+        LandaButton(
+          label: 'Pay the first rent',
+          icon: Icons.shield_moon_outlined,
+          onPressed: () => Navigator.push(
+            context,
+            FadePageRoute(page: const PaymentsScreen()),
+          ),
+        ),
+      ],
     ),
   );
 }

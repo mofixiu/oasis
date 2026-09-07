@@ -7,12 +7,15 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/nigeria_locations.dart';
+import '../../../../core/widgets/landa_place_picker.dart';
 import '../../../../core/widgets/landa_pressable.dart';
 import '../../../../core/widgets/landa_sheet.dart';
 import '../../../../core/widgets/landa_toast.dart';
 import '../../../properties/controllers/landlord_controller.dart';
 import '../../../properties/views/widgets/add_units_modal.dart';
 import '../../../properties/models/property_model.dart';
+import '../../../properties/services/geocoding_service.dart';
 import '../../../properties/views/widgets/property_location_picker.dart';
 import '../../../shortlets/views/create_shortlet_sheet.dart';
 import 'move_in_tenants_modal.dart';
@@ -256,15 +259,36 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
   final _nameCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
 
-  /// Left blank on purpose. This used to arrive prefilled with 'Lagos', which
-  /// is not a city anybody writes on a Nigerian address: they write Ikeja,
-  /// Lekki, Yaba, so the default was wrong for every landlord including the
-  /// ones in Lagos, and wrong in the quiet way that gets submitted unread.
+  /// Both blank on purpose.
+  ///
+  /// The city box used to arrive prefilled with 'Lagos', which is not a city
+  /// anybody writes on a Nigerian address: they write Ikeja, Lekki, Yaba. The
+  /// state box kept 'Lagos' longer, on the argument that most early landlords
+  /// are there — and testers in Abuja had to clear it before they could type
+  /// their own, on a form where a prefilled box reads as answered. A default
+  /// that is right for some people and silently wrong for the rest is worse
+  /// than an empty box, because the empty box gets filled in.
+  ///
+  /// Both are filled *automatically* now, from whatever the pin resolves to,
+  /// which is the answer testers actually wanted.
   final _cityCtrl = TextEditingController();
+  final _stateCtrl = TextEditingController();
 
-  /// The state keeps its default: Lagos genuinely is one, and it is where most
-  /// early landlords are.
-  final _stateCtrl = TextEditingController(text: 'Lagos');
+  /// Whether the pin has filled a box in for the landlord.
+  ///
+  /// Tracked so the map can keep correcting its own guesses — dragging the
+  /// pin from Yaba to Ikeja should move the city with it — while never
+  /// touching a value the landlord typed themselves. Typing into a field
+  /// clears its flag and the map stops writing to it.
+  bool _cityFromPin = false;
+  bool _stateFromPin = false;
+  bool _addressFromPin = false;
+
+  /// Set for a moment after the pin fills something in, so the form can say
+  /// which boxes it just wrote to. A form that silently rearranges itself
+  /// while you are looking at the map is unnerving.
+  bool _showAutofillNote = false;
+
   final _picker = ImagePicker();
   final List<File> _photos = [];
   File? _verificationVideo;
@@ -440,6 +464,83 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
   bool get _hasOwnershipEvidence =>
       _verificationVideo != null && (!_needsDeed || _deed != null);
 
+  /// Writes whatever the pin resolved to into the boxes that are still the
+  /// app's to write.
+  ///
+  /// The rule is one sentence: **the landlord always wins**. A field is
+  /// filled when it is empty, or when the last thing in it also came from the
+  /// pin — so nudging the pin down the street keeps the city in step — and is
+  /// left completely alone once they have typed in it themselves. Getting
+  /// this wrong in the other direction is the worse bug: a form that
+  /// overwrites a carefully typed address every time the map settles is one
+  /// nobody can complete.
+  void _applyResolvedAddress(GeocodeAddress address) {
+    if (!mounted) return;
+    var changed = false;
+
+    void fill(
+      TextEditingController controller,
+      String? value,
+      bool fromPin,
+      void Function(bool) mark,
+    ) {
+      final incoming = value?.trim() ?? '';
+      if (incoming.isEmpty) return;
+      final current = controller.text.trim();
+      if (current.isNotEmpty && !fromPin) return;
+      if (current == incoming) return;
+      controller.text = incoming;
+      mark(true);
+      changed = true;
+    }
+
+    fill(
+      _addressCtrl,
+      address.addressLine,
+      _addressFromPin,
+      (v) => _addressFromPin = v,
+    );
+    fill(_cityCtrl, address.city, _cityFromPin, (v) => _cityFromPin = v);
+    fill(_stateCtrl, address.state, _stateFromPin, (v) => _stateFromPin = v);
+
+    if (changed) setState(() => _showAutofillNote = true);
+  }
+
+  /// Opens the state list, then clears a city that no longer belongs to it.
+  ///
+  /// Changing state with "Lekki" left in the city box is how a Rivers
+  /// property ends up advertised in a Lagos suburb, so the stale city goes
+  /// rather than being carried across.
+  Future<void> _pickState() async {
+    final picked = await openStatePicker(context, selected: _stateCtrl.text);
+    if (picked == null || !mounted) return;
+    final cityStillValid =
+        _cityCtrl.text.trim().isEmpty ||
+        NigeriaLocations.canonicalCity(state: picked, city: _cityCtrl.text) !=
+            null;
+    setState(() {
+      _stateCtrl.text = picked;
+      _stateFromPin = false;
+      if (!cityStillValid) {
+        _cityCtrl.clear();
+        _cityFromPin = false;
+      }
+    });
+  }
+
+  Future<void> _pickCity() async {
+    final picked = await openCityPicker(
+      context,
+      state: _stateCtrl.text,
+      selected: _cityCtrl.text,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _cityCtrl.text = picked;
+      _cityFromPin = false;
+    });
+  }
+
   /// The address the landlord has already typed, shaped into a single line
   /// for the pin map's address lookup.
   String _locationQuery() => [
@@ -591,7 +692,9 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         TextField(
           controller: _addressCtrl,
           textCapitalization: TextCapitalization.words,
-          onChanged: (_) => setState(() {}),
+          // Typing here hands the field back to the landlord: the pin stops
+          // writing to it from this point on.
+          onChanged: (_) => setState(() => _addressFromPin = false),
           style: AppTheme.cardTitle(context),
           decoration: landaInputDecoration(
             context,
@@ -600,25 +703,27 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
           ),
         ),
         const SizedBox(height: 12),
+        // Pickers rather than text boxes. Both feed the marketplace's own
+        // city/state filter, which matches strings: a landlord who writes
+        // "lagos state" and a tenant who writes "Lagos" are searching two
+        // different places, and one list on both sides is what stops that.
         Row(
           children: [
             Expanded(
-              child: TextField(
-                controller: _cityCtrl,
-                textCapitalization: TextCapitalization.words,
-                onChanged: (_) => setState(() {}),
-                style: AppTheme.cardTitle(context),
-                decoration: landaInputDecoration(context, hint: 'City'),
+              child: LandaPickerField(
+                value: _stateCtrl.text,
+                hint: 'State',
+                prefixIcon: Icons.map_outlined,
+                onTap: _pickState,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: TextField(
-                controller: _stateCtrl,
-                textCapitalization: TextCapitalization.words,
-                onChanged: (_) => setState(() {}),
-                style: AppTheme.cardTitle(context),
-                decoration: landaInputDecoration(context, hint: 'State'),
+              child: LandaPickerField(
+                value: _cityCtrl.text,
+                hint: 'City / area',
+                prefixIcon: Icons.location_city_rounded,
+                onTap: _pickCity,
               ),
             ),
           ],
@@ -628,7 +733,36 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         PropertyLocationPicker(
           onChanged: (pin) => setState(() => _pin = pin),
           addressResolver: _locationQuery,
+          onAddressResolved: _applyResolvedAddress,
         ),
+        // Said out loud, and only once something was actually written: the
+        // three boxes above are off screen by the time the pin settles, and a
+        // landlord who scrolls back to find them already filled in should
+        // know why rather than wonder what else the app decided for them.
+        if (_showAutofillNote) ...[
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.auto_awesome_rounded,
+                size: 15,
+                color: AppTheme.successColor,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Address, city and state filled in from the pin. Scroll up '
+                  'to change any of them.',
+                  style: AppTheme.labelText(
+                    context,
+                    color: AppTheme.successColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 24),
 
         LandaFieldLabel(
@@ -790,60 +924,12 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
             ],
           ),
         ],
-        const SizedBox(height: 24),
-
-        // Where the property-tour video used to be. It has moved onto each
-        // unit, in the sheet that opens next: a tenant applies for one flat,
-        // and a single walkthrough of the block told them nothing about the
-        // one they would actually live in. Said here rather than left as a
-        // silently missing section, because a landlord who used it before
-        // will come looking for it.
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppTheme.subtleSurfaceColor(context),
-            borderRadius: AppTheme.cornerMd,
-            border: Border.all(color: AppTheme.borderColor(context)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.movie_outlined,
-                size: 19,
-                color: AppTheme.mutedTextColor(context),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tour videos come next',
-                      style: AppTheme.cardTitle(
-                        context,
-                      ).copyWith(fontSize: AppTheme.textSm),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _isShortLet
-                          ? 'Each unit needs its own photos and walkthrough. '
-                                'You add them next, then set the nightly '
-                                'price and house rules for each one.'
-                          : 'Each unit needs its own photos and walkthrough. '
-                                'You will add them on the next step, with '
-                                'the units.',
-                      style: AppTheme.bodyText(
-                        context,
-                        color: AppTheme.mutedTextColor(context),
-                      ).copyWith(fontSize: AppTheme.textXs, height: 1.35),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        // No "tour videos come next" panel here any more. It was a note
+        // explaining that the property-tour video had moved onto each unit —
+        // useful to a landlord who remembered the old form, and dead weight
+        // to everybody else, sitting directly above a footer that already
+        // says what the next step is. The sheet's own subtitle carries the
+        // same fact in one line.
       ],
     );
   }

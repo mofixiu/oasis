@@ -15,6 +15,7 @@ import '../../../fix/models/fix_models.dart';
 import '../../../fix/views/unit_recommendations_sheet.dart';
 import '../../controllers/landlord_controller.dart';
 import '../../models/property_model.dart';
+import '../../../../core/utils/landa_input_formatters.dart';
 
 /// What the units sheet hands back.
 ///
@@ -706,9 +707,12 @@ class _UnitDraftCard extends StatelessWidget {
                 child: TextField(
                   controller: draft.rent,
                   enabled: enabled,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  // Grouped as it is typed. This is the field that decides
+                  // what a flat costs for a year, on a form where a landlord
+                  // fills in six of them in a row, and an extra zero in an
+                  // ungrouped seven-digit number is invisible.
+                  keyboardType: TextInputType.number,
+                  inputFormatters: const [LandaThousandsFormatter()],
                   onChanged: (_) => onChanged(),
                   style: AppTheme.cardTitle(context),
                   decoration: landaInputDecoration(

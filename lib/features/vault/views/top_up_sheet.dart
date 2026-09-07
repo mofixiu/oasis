@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,6 +9,7 @@ import '../../../core/widgets/landa_sheet.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../controllers/vault_controller.dart';
 import '../models/vault_models.dart';
+import '../../../core/utils/landa_input_formatters.dart';
 
 /// Moves money from the tenant's card or bank into their vault.
 ///
@@ -64,7 +64,9 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
     // A shortfall is the common case: they are here because rent costs more
     // than the vault holds. Offer the difference, not the whole bill.
     final shortfall = _shortfall();
-    if (shortfall != null) _amountController.text = shortfall;
+    if (shortfall != null) {
+      _amountController.text = LandaThousandsFormatter.groupAmount(shortfall);
+    }
   }
 
   @override
@@ -281,7 +283,7 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
         TextField(
           controller: _amountController,
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: const [LandaThousandsFormatter()],
           style: AppTheme.screenTitle(context),
           decoration: landaInputDecoration(
             context,
@@ -302,7 +304,9 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
               _QuickAmount(
                 amount: amount,
                 onTap: () => setState(() {
-                  _amountController.text = amount;
+                  _amountController.text = LandaThousandsFormatter.groupAmount(
+                    amount,
+                  );
                 }),
               ),
           ],

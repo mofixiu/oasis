@@ -9,6 +9,7 @@ import '../../../agreements/models/agreement_model.dart';
 import '../../../agreements/views/widgets/rent_plan_picker.dart';
 import '../../../properties/controllers/landlord_controller.dart';
 import '../../../properties/models/property_model.dart';
+import '../../../../core/utils/landa_input_formatters.dart';
 
 class InviteTenantModal extends StatefulWidget {
   const InviteTenantModal({super.key});
@@ -66,7 +67,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
       final agreement = await agreementController.createAgreement(
         unitId: _selectedUnit!.id,
         tenantId: contact,
-        rentAmount: _rentController.text.trim(),
+        rentAmount: LandaThousandsFormatter.digitsOf(_rentController.text),
         startDate: startDate,
         endDate: endDate,
         rules: _rulesController.text.trim(),
@@ -193,7 +194,9 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
                 setState(() {
                   _selectedUnit = val;
                   if (val != null && val.rentAmount.isNotEmpty) {
-                    _rentController.text = val.rentAmount;
+                    _rentController.text = LandaThousandsFormatter.groupAmount(
+                      val.rentAmount,
+                    );
                   }
                 });
               },
@@ -217,12 +220,13 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         const LandaFieldLabel('Agreed rent amount'),
         TextField(
           controller: _rentController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: TextInputType.number,
+          inputFormatters: const [LandaThousandsFormatter()],
           style: AppTheme.cardTitle(context),
           onChanged: (_) => setState(() {}),
           decoration: landaInputDecoration(
             context,
-            hint: '450000.00',
+            hint: '450,000',
             prefixIcon: Icons.payments_outlined,
             suffix: Padding(
               padding: const EdgeInsets.only(right: 16, left: 8),
@@ -238,7 +242,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         const LandaFieldLabel('How often rent is due'),
         RentPlanPicker(
           selected: _rentPlan,
-          annualRent: _rentController.text.trim(),
+          annualRent: LandaThousandsFormatter.digitsOf(_rentController.text),
           onChanged: (plan) => setState(() => _rentPlan = plan),
         ),
         const SizedBox(height: 20),
@@ -246,7 +250,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         _InviteSummary(
           property: _selectedProperty,
           unit: _selectedUnit,
-          rent: _rentController.text.trim(),
+          rent: LandaThousandsFormatter.digitsOf(_rentController.text),
           plan: _rentPlan,
         ),
       ],

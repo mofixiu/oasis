@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/landa_refresh.dart';
 import '../../../core/widgets/landa_media_hero.dart';
 import '../../../core/widgets/landa_media_viewer.dart';
 import '../../../core/widgets/landa_network_image.dart';
@@ -26,7 +27,22 @@ class MarketplacePropertyScreen extends StatefulWidget {
       _MarketplacePropertyScreenState();
 }
 
-class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen> {
+class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen>
+    with AutoRefreshMixin<MarketplacePropertyScreen> {
+  /// A landlord can approve or reject while the tenant is on this page, and
+  /// another tenant can take the flat. The per-unit status pills read from
+  /// the application list, so it is that list, not the listing, that has to
+  /// be re-read for them to mean anything.
+  ///
+  /// Polled, unlike most detail pages: this is one of the few screens in the
+  /// app where the user is waiting for somebody else to act.
+  @override
+  Future<void> onAutoRefresh() =>
+      context.read<MarketplaceController>().loadTenantApplications();
+
+  @override
+  Duration? get autoRefreshInterval => kLandaPollInterval;
+
   /// Photos to show: the cover first, then any others, de-duplicated so a
   /// cover that also appears in `photo_urls` isn't shown twice.
   List<String> get _galleryImages {

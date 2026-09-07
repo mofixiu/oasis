@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/landa_sheet.dart';
 import '../../../core/widgets/landa_toast.dart';
 import '../controllers/shortlet_controller.dart';
+import '../../../core/utils/landa_input_formatters.dart';
 
 /// Answers a host's caution-fee claim: accept it, reject it, or counter with
 /// a smaller amount.
@@ -81,8 +81,10 @@ class _RespondToClaimSheetState extends State<_RespondToClaimSheet> {
         _ClaimResponse.reject => 'REJECT',
         _ClaimResponse.counter => 'COUNTER',
       },
+      // Grouped for reading, stripped for the wire: "5,000" is a
+      // display string and the API takes a decimal.
       counterAmount: _choice == _ClaimResponse.counter
-          ? '${_counterController.text.trim()}.00'
+          ? '${LandaThousandsFormatter.digitsOf(_counterController.text)}.00'
           : null,
       note: _noteController.text.trim().isEmpty
           ? null
@@ -167,7 +169,7 @@ class _RespondToClaimSheetState extends State<_RespondToClaimSheet> {
           TextField(
             controller: _counterController,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: const [LandaThousandsFormatter()],
             style: AppTheme.cardTitle(context),
             decoration: landaInputDecoration(
               context,
