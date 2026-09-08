@@ -18,6 +18,8 @@ npm run preview
 
 ## Configuration
 
+For Vercel's GitHub import, select **LandaOS (root)** as the Root Directory and **Other** as the framework. The repository's root `vercel.json` installs dependencies in `marketing`, runs its static build, and publishes only `marketing/dist`. This avoids needing to select the marketing folder in Vercel's directory picker. Leave build/output overrides unset so the committed configuration applies.
+
 Copy `.env.example` to `.env.local`. All values are public and embedded at build time; rebuild after changes. Never put secrets in them.
 
 | Variable                                                 | Purpose                                                                                                        |
