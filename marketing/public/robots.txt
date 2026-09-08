@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://landaos.com/sitemap.xml

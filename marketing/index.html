@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#B65F3C" />
+    <meta
+      name="description"
+      content="Verified homes, agreements signed in the app, rent held in escrow until the keys change hands. Meet Landa OS, a better way to rent in Nigeria."
+    />
+    <meta property="og:title" content="Landa OS: Home starts with trust." />
+    <meta
+      property="og:description"
+      content="Verified homes. In-app agreements. Protected rent. A better way to rent in Nigeria."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Landa OS" />
+    <meta property="og:locale" content="en_NG" />
+    <meta property="og:url" content="__SITE_URL__/" />
+    <meta property="og:image" content="__SITE_URL__/og.jpg" />
+    <meta property="og:image:secure_url" content="__SITE_URL__/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Landa OS: Home starts with trust. Verified homes. Signed agreements. Protected rent."
+    />
+    <link rel="canonical" href="__SITE_URL__/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Landa OS: Home starts with trust." />
+    <meta
+      name="twitter:description"
+      content="List your property, find a verified home, and follow your rent. Annual rentals and short stays in one app."
+    />
+    <meta name="twitter:image" content="__SITE_URL__/og.jpg" />
+    <meta
+      name="twitter:image:alt"
+      content="Landa OS: Home starts with trust."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Landa OS: Feel at home. Before you move in.</title>
+    <script>
+      try {
+        const preference = localStorage.getItem("landa-theme");
+        document.documentElement.dataset.theme =
+          preference === "dark" ? "dark" : "light";
+      } catch {
+        document.documentElement.dataset.theme = "light";
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript
+      ><style>
+        .theme-toggle {
+          display: none;
+        }
+      </style></noscript
+    >
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
