@@ -541,13 +541,13 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
     });
   }
 
-  /// The address the landlord has already typed, shaped into a single line
-  /// for the pin map's address lookup.
-  String _locationQuery() => [
-    _addressCtrl.text.trim(),
-    _cityCtrl.text.trim(),
-    _stateCtrl.text.trim(),
-  ].where((part) => part.isNotEmpty).join(', ');
+  /// The street line the landlord has typed, for the pin map's lookup.
+  ///
+  /// City and state reach the picker as their own fields now. Joining them
+  /// in here as well would send Nominatim "Kolapo Ishola, Ibadan, Oyo,
+  /// Ibadan, Oyo", and the progressive lookup adds them back at the level
+  /// that needs them.
+  String _streetQuery() => _addressCtrl.text.trim();
 
   /// The one thing still standing between this form and a submission, or null
   /// when it is ready.
@@ -731,8 +731,13 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         const SizedBox(height: 24),
 
         PropertyLocationPicker(
+          // The map follows the town the landlord picked above. Without
+          // these it opened on Lagos whatever they chose, and an estate
+          // Nominatim has never heard of left them stranded there.
+          city: _cityCtrl.text,
+          state: _stateCtrl.text,
           onChanged: (pin) => setState(() => _pin = pin),
-          addressResolver: _locationQuery,
+          addressResolver: _streetQuery,
           onAddressResolved: _applyResolvedAddress,
         ),
         // Said out loud, and only once something was actually written: the

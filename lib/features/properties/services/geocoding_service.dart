@@ -88,6 +88,24 @@ class GeocodeResult {
 /// Every lookup is best-effort: the picker still works with raw coordinates if
 /// the service is slow, rate-limited or unreachable, so failures return null
 /// rather than throwing.
+/// How closely a lookup actually matched what was asked for.
+///
+/// The distinction matters because it decides whether the app may *place a
+/// pin*. A street-level hit is a place; a state-level hit is a viewport.
+/// Dropping a pin on the centroid of Oyo State and calling it a property is
+/// exactly the "silently submitting a fallback city centre" failure the
+/// picker was built to prevent.
+enum GeocodePrecision {
+  /// The street or estate itself was found.
+  address,
+
+  /// Only the town matched.
+  city,
+
+  /// Only the state matched.
+  state,
+}
+
 class GeocodingService {
   static const _host = 'nominatim.openstreetmap.org';
 
@@ -102,6 +120,90 @@ class GeocodingService {
   final http.Client _client;
 
   GeocodingService({http.Client? client}) : _client = client ?? http.Client();
+
+  /// Finds the best point available for an address, giving up detail rather
+  /// than giving up.
+  ///
+  /// Nigerian estates are thinly mapped in OpenStreetMap. "Kolapo Ishola",
+  /// a real and well-known GRA in Ibadan, is not in it — and a single
+  /// all-or-nothing query for "Kolapo Ishola, Ibadan, Oyo" therefore returned
+  /// nothing at all, leaving the map sitting on its Lagos default while the
+  /// form said Oyo. The landlord's reasonable conclusion was that the estate
+  /// name had to be spelled exactly right. It did not; it simply was not
+  /// there, and one missing street took the whole state down with it.
+  ///
+  /// So this asks three progressively vaguer questions and returns the first
+  /// answer, tagged with [GeocodePrecision] so the caller knows whether it
+  /// earned a pin or only a viewport:
+  ///
+  /// 1. the full address, free-text;
+  /// 2. `city, state`, structured;
+  /// 3. `state`, structured.
+  ///
+  /// Structured queries for 2 and 3 rather than more free text: Nominatim
+  /// matches an explicit `city=Ibadan&state=Oyo` far more reliably than the
+  /// same words in a `q`, where they compete with every road that contains
+  /// them.
+  Future<GeocodeSearchResult?> searchProgressive({
+    String street = '',
+    String city = '',
+    String state = '',
+  }) async {
+    final trimmedStreet = street.trim();
+    final trimmedCity = city.trim();
+    final trimmedState = state.trim();
+
+    if (trimmedStreet.isNotEmpty) {
+      final full = [
+        trimmedStreet,
+        if (trimmedCity.isNotEmpty) trimmedCity,
+        if (trimmedState.isNotEmpty) trimmedState,
+      ].join(', ');
+      final hit = await search(full);
+      if (hit != null) {
+        return GeocodeSearchResult(hit, GeocodePrecision.address);
+      }
+    }
+
+    if (trimmedCity.isNotEmpty) {
+      final hit = await _structured(city: trimmedCity, state: trimmedState);
+      if (hit != null) return GeocodeSearchResult(hit, GeocodePrecision.city);
+    }
+
+    if (trimmedState.isNotEmpty) {
+      final hit = await _structured(state: trimmedState);
+      if (hit != null) return GeocodeSearchResult(hit, GeocodePrecision.state);
+    }
+    return null;
+  }
+
+  /// A structured Nominatim lookup, which is what the city and state levels
+  /// use.
+  ///
+  /// The app's own state names are its picker's, not necessarily OSM's: it
+  /// stores the federal capital as "Abuja (FCT)", which matches nothing. The
+  /// parenthetical is stripped here rather than in the picker, because the
+  /// picker's spelling is the one the *backend* validates against and must
+  /// not drift.
+  Future<GeocodeResult?> _structured({
+    String? city,
+    String? state,
+  }) async {
+    final cleanedState = state
+        ?.replaceAll(RegExp(r'\s*\(.*\)\s*'), '')
+        .trim();
+    final uri = Uri.https(_host, '/search', {
+      if (city != null && city.isNotEmpty) 'city': city,
+      if (cleanedState != null && cleanedState.isNotEmpty)
+        'state': cleanedState,
+      'country': 'Nigeria',
+      'format': 'jsonv2',
+      'addressdetails': '1',
+      'limit': '1',
+    });
+    final body = await _get(uri);
+    return _firstResult(body);
+  }
 
   /// Turns a typed address into a point. [countryCode] biases results to
   /// Nigeria so "Admiralty Way" does not land in another country.
@@ -118,7 +220,11 @@ class GeocodingService {
       'limit': '1',
       if (countryCode != null) 'countrycodes': countryCode,
     });
-    final body = await _get(uri);
+    return _firstResult(await _get(uri));
+  }
+
+  /// Reads the first usable row out of a Nominatim search response.
+  GeocodeResult? _firstResult(dynamic body) {
     if (body is! List || body.isEmpty) return null;
     final first = body.first;
     if (first is! Map<String, dynamic>) return null;
@@ -260,4 +366,25 @@ class GeocodingService {
     if (displayName == null || displayName.isEmpty) return '';
     return displayName.split(',').take(3).map((part) => part.trim()).join(', ');
   }
+}
+
+/// A geocode hit plus how precise it turned out to be.
+class GeocodeSearchResult {
+  final GeocodeResult result;
+  final GeocodePrecision precision;
+
+  const GeocodeSearchResult(this.result, this.precision);
+
+  /// Whether this is specific enough to place a pin on.
+  ///
+  /// Only a street-level hit is. A town or state hit is somewhere to *look*,
+  /// and pinning one would put a property at the centroid of Ibadan.
+  bool get isPinnable => precision == GeocodePrecision.address;
+
+  /// The zoom that suits this precision: close on a street, wide on a state.
+  double get zoom => switch (precision) {
+    GeocodePrecision.address => 17,
+    GeocodePrecision.city => 13,
+    GeocodePrecision.state => 9,
+  };
 }

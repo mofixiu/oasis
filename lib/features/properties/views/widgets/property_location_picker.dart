@@ -37,6 +37,15 @@ class PropertyLocationPicker extends StatefulWidget {
 
   final LatLng? initialPin;
 
+  /// The town and state chosen elsewhere in the form.
+  ///
+  /// Watched rather than merely read: picking a state is the landlord telling
+  /// the app where in Nigeria this property is, and a map that keeps showing
+  /// Lagos after they said Oyo is ignoring the clearest signal it will ever
+  /// get. When these change the viewport follows — it does *not* place a pin.
+  final String city;
+  final String state;
+
   /// Whether this is the full-screen picker rather than the one embedded in
   /// the property form. Decides gesture handling and the map's height: see
   /// [_PropertyLocationPickerState._gestureFlags].
@@ -48,6 +57,8 @@ class PropertyLocationPicker extends StatefulWidget {
     this.addressResolver,
     this.onAddressResolved,
     this.initialPin,
+    this.city = '',
+    this.state = '',
     this.isFullScreen = false,
   });
 
@@ -110,6 +121,10 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
   /// Guards against a slow reverse-geocode landing after the pin has moved on.
   int _nameToken = 0;
 
+  /// Same guard for the region recentre, which races the same way when
+  /// somebody changes state twice quickly.
+  int _regionToken = 0;
+
   @override
   void initState() {
     super.initState();
@@ -120,6 +135,38 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
     } else {
       _centreOnDeviceIfAlreadyAllowed();
     }
+  }
+
+  @override
+  void didUpdateWidget(PropertyLocationPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only when it actually changed, and never over a pin the landlord has
+    // already placed: moving the camera off somebody's own gate because they
+    // corrected the town underneath would lose the one thing they came here
+    // to do.
+    final regionChanged =
+        widget.city != oldWidget.city || widget.state != oldWidget.state;
+    if (regionChanged && _pin == null) _centreOnRegion();
+  }
+
+  /// Moves the viewport to the chosen town or state. Never places a pin.
+  ///
+  /// This is what stops a landlord in Ibadan being shown Lagos. The default
+  /// centre is Lagos because it has to be something, but the moment the form
+  /// knows better, so should the map.
+  Future<void> _centreOnRegion() async {
+    final city = widget.city.trim();
+    final state = widget.state.trim();
+    if (city.isEmpty && state.isEmpty) return;
+
+    final token = ++_regionToken;
+    final hit = await _geocoder.searchProgressive(city: city, state: state);
+    // Guards against a slow lookup landing after the landlord has moved on,
+    // or has placed a pin in the meantime.
+    if (!mounted || token != _regionToken || hit == null || _pin != null) {
+      return;
+    }
+    _mapController.move(hit.result.point, hit.zoom);
   }
 
   @override
@@ -216,16 +263,37 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
       return;
     }
     setState(() => _isSearching = true);
-    final result = await _geocoder.search(query);
+    final hit = await _geocoder.searchProgressive(
+      street: widget.addressResolver?.call() ?? '',
+      city: widget.city,
+      state: widget.state,
+    );
     if (!mounted) return;
     setState(() => _isSearching = false);
-    if (result == null) {
+
+    if (hit == null) {
       LandaToast.error(
         context,
         'No match for that address. Tap the map to drop the pin instead.',
       );
       return;
     }
+
+    // Only a street-level hit earns a pin. A town or state match is somewhere
+    // to *look*: pinning it would put the property at the centroid of Ibadan
+    // and call it verified. Nigerian estates are thinly mapped, so this is
+    // the common path, not the edge case — the landlord is taken to the right
+    // town and asked for the one thing only they know.
+    if (!hit.isPinnable) {
+      _mapController.move(hit.result.point, hit.zoom);
+      LandaToast.info(
+        context,
+        'Could not find that exact address. Showing ${hit.result.label} — '
+        'tap the map on your entrance.',
+      );
+      return;
+    }
+    final result = hit.result;
     _applyPin(
       result.point,
       source: _PinSource.address,
