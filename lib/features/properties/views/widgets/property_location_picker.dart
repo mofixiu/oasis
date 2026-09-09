@@ -47,6 +47,27 @@ class PropertyLocationPicker extends StatefulWidget {
   final String city;
   final String state;
 
+  /// Where to open the map when there is no pin yet.
+  ///
+  /// Handed in by the full-screen picker so it continues from wherever the
+  /// inline map was looking rather than restarting somewhere else.
+  final LatLng? initialCentre;
+  final double? initialZoom;
+
+  /// Last-resort view when nothing at all is known. Only ever the *view* the
+  /// map opens on, never a value reported upwards as a location.
+  static const _fallbackCentre = LatLng(6.5244, 3.3792);
+  static const _pinZoom = 17.0;
+
+  /// Wide enough to show a whole state, for the bundled-centre step.
+  static const _stateZoom = 9.0;
+
+  /// A town, once the network has refined the state down to one.
+  static const _regionZoom = 13.0;
+
+  /// Nothing known: show enough of the country to orient.
+  static const _countryZoom = 12.0;
+
   /// Whether this is the full-screen picker rather than the one embedded in
   /// the property form. Decides gesture handling and the map's height: see
   /// [_PropertyLocationPickerState._gestureFlags].
@@ -60,21 +81,46 @@ class PropertyLocationPicker extends StatefulWidget {
     this.initialPin,
     this.city = '',
     this.state = '',
+    this.initialCentre,
+    this.initialZoom,
     this.isFullScreen = false,
   });
+
+  /// Where the map should open, and how close.
+  ///
+  /// Pure and public because the ordering is the whole thing, and getting it
+  /// wrong is invisible until somebody opens the map in the wrong country.
+  /// The full-screen picker shipped once with this unwired: it accepted a
+  /// centre, never passed it down, and every landlord who tapped "open full
+  /// screen" from Ibadan landed in Lagos.
+  ///
+  /// Most specific first:
+  /// 1. an existing pin — the landlord has already said exactly where;
+  /// 2. a camera handed in — the full-screen map continuing the inline one;
+  /// 3. the chosen state's bundled centre — no request, always available;
+  /// 4. Lagos, only when nothing at all is known.
+  static ({LatLng centre, double zoom}) resolveOpeningCamera({
+    LatLng? pin,
+    LatLng? handedIn,
+    double? handedInZoom,
+    String? state,
+  }) {
+    if (pin != null) return (centre: pin, zoom: _pinZoom);
+    if (handedIn != null) {
+      return (centre: handedIn, zoom: handedInZoom ?? _regionZoom);
+    }
+    final bundled = NigeriaLocations.centreOf(state);
+    if (bundled != null) {
+      return (centre: LatLng(bundled.$1, bundled.$2), zoom: _stateZoom);
+    }
+    return (centre: _fallbackCentre, zoom: _countryZoom);
+  }
 
   @override
   State<PropertyLocationPicker> createState() => _PropertyLocationPickerState();
 }
 
 class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
-  /// Only ever the *view* the map opens on, never a value we report upwards.
-  static const _fallbackCenter = LatLng(6.5244, 3.3792);
-  static const _pinZoom = 17.0;
-
-  /// Wide enough to show a whole state, for the bundled-centre step.
-  static const _stateZoom = 9.0;
-
   final _mapController = MapController();
   final _geocoder = GeocodingService();
 
@@ -128,6 +174,18 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
   /// Same guard for the region recentre, which races the same way when
   /// somebody changes state twice quickly.
   int _regionToken = 0;
+
+  /// Resolved once, because `MapOptions.initialCenter` is only read when the
+  /// map is first built. Recomputing it on later rebuilds would suggest a
+  /// liveness it does not have — moving the camera afterwards is
+  /// [MapController.move]'s job.
+  late final ({LatLng centre, double zoom}) _openingCamera =
+      PropertyLocationPicker.resolveOpeningCamera(
+        pin: widget.initialPin,
+        handedIn: widget.initialCentre,
+        handedInZoom: widget.initialZoom,
+        state: widget.state,
+      );
 
   @override
   void initState() {
@@ -183,7 +241,10 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
     // Step one: instant, offline, cannot fail.
     final centre = NigeriaLocations.centreOf(state);
     if (centre != null && _pin == null) {
-      _mapController.move(LatLng(centre.$1, centre.$2), _stateZoom);
+      _mapController.move(
+        LatLng(centre.$1, centre.$2),
+        PropertyLocationPicker._stateZoom,
+      );
     }
 
     // Step two: refine to the town, if the network is willing.
@@ -306,7 +367,10 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
       // to be.
       final centre = NigeriaLocations.centreOf(widget.state);
       if (centre != null) {
-        _mapController.move(LatLng(centre.$1, centre.$2), _stateZoom);
+        _mapController.move(
+          LatLng(centre.$1, centre.$2),
+          PropertyLocationPicker._stateZoom,
+        );
       }
       LandaToast.error(
         context,
@@ -359,7 +423,12 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
     widget.onChanged(point);
     if (recentre) {
       final zoom = _mapController.camera.zoom;
-      _mapController.move(point, zoom < _pinZoom ? _pinZoom : zoom);
+      _mapController.move(
+        point,
+        zoom < PropertyLocationPicker._pinZoom
+            ? PropertyLocationPicker._pinZoom
+            : zoom,
+      );
     }
     if (placeName == null) _scheduleReverseGeocode(point);
   }
@@ -422,6 +491,8 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
           initialCentre: camera.center,
           initialZoom: camera.zoom,
           addressResolver: widget.addressResolver,
+          city: widget.city,
+          state: widget.state,
         ),
       ),
     );
@@ -510,8 +581,8 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
                   FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(
-                      initialCenter: _pin ?? _fallbackCenter,
-                      initialZoom: _pin == null ? 12 : _pinZoom,
+                      initialCenter: _openingCamera.centre,
+                      initialZoom: _openingCamera.zoom,
                       minZoom: 3,
                       maxZoom: 19,
                       interactionOptions: InteractionOptions(
@@ -674,12 +745,16 @@ class _FullScreenPinPage extends StatefulWidget {
   final LatLng? initialPin;
   final LatLng initialCentre;
   final double initialZoom;
+  final String city;
+  final String state;
   final String Function()? addressResolver;
 
   const _FullScreenPinPage({
     required this.initialPin,
     required this.initialCentre,
     required this.initialZoom,
+    this.city = '',
+    this.state = '',
     this.addressResolver,
   });
 
@@ -714,6 +789,14 @@ class _FullScreenPinPageState extends State<_FullScreenPinPage> {
                 child: PropertyLocationPicker(
                   isFullScreen: true,
                   initialPin: widget.initialPin,
+                  // The four lines that were missing. Without them this
+                  // opened on the Lagos fallback however far the inline map
+                  // had already travelled, and the state was unknown here so
+                  // it could not recover on its own either.
+                  initialCentre: widget.initialCentre,
+                  initialZoom: widget.initialZoom,
+                  city: widget.city,
+                  state: widget.state,
                   addressResolver: widget.addressResolver,
                   onChanged: (pin) => setState(() => _pin = pin),
                 ),
