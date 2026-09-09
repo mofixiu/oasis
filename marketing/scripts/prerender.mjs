@@ -3,7 +3,7 @@ import { loadEnv } from "vite";
 import { render } from "../.prerender/entry-server.js";
 import { resolveOrigin } from "../site.config.mjs";
 const origin = resolveOrigin(
-  loadEnv("production", process.cwd(), "").SITE_URL || "https://landaos.com",
+  loadEnv("production", process.cwd(), "").SITE_URL || "https://landaos.vercel.app",
 );
 const template = await readFile("dist/index.html", "utf8");
 if (!template.includes('<div id="root"></div>'))

@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { resolveOrigin } from "./site.config.mjs";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const origin = resolveOrigin(env.SITE_URL || "https://landaos.com");
+  const origin = resolveOrigin(env.SITE_URL || "https://landaos.vercel.app");
   return {
     plugins: [
       react(),
