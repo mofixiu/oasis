@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:landa_app/core/utils/nigeria_locations.dart';
 import 'package:landa_app/features/properties/services/geocoding_service.dart';
 
 /// The address lookup gives up detail rather than giving up.
@@ -15,6 +16,8 @@ import 'package:landa_app/features/properties/services/geocoding_service.dart';
 /// mapped in OpenStreetMap, and one missing street was taking the whole state
 /// down with it.
 void main() {
+  _bundledCentres();
+
   http.Response jsonBody(Object body) =>
       http.Response(jsonEncode(body), 200, headers: {
         'content-type': 'application/json',
@@ -123,5 +126,60 @@ void main() {
       ),
       isNull,
     );
+  });
+}
+
+/// The bundled state centres, which are what make the map work when the
+/// lookup service will not.
+void _bundledCentres() {
+  group('every state has somewhere to open the map', () {
+    test('all 37 canonical states carry a centre', () {
+      // A state in the picker with no centre is a landlord who selects their
+      // state and watches the map stay in Lagos — the original bug, back
+      // again for one state instead of all of them.
+      final missing = NigeriaLocations.states
+          .where((s) => NigeriaLocations.stateCentres[s] == null)
+          .toList();
+      expect(missing, isEmpty, reason: 'no map centre for: $missing');
+      expect(NigeriaLocations.stateCentres, hasLength(37));
+    });
+
+    test('every centre is actually inside Nigeria', () {
+      // Guards a transposed pair or a dropped minus sign, which would put a
+      // landlord in the Gulf of Guinea with no error to explain it.
+      NigeriaLocations.stateCentres.forEach((state, centre) {
+        expect(
+          centre.$1,
+          inInclusiveRange(4.0, 14.0),
+          reason: '$state latitude looks wrong',
+        );
+        expect(
+          centre.$2,
+          inInclusiveRange(2.5, 14.8),
+          reason: '$state longitude looks wrong',
+        );
+      });
+    });
+
+    test('centres resolve through the spellings the picker accepts', () {
+      // The lookup goes via canonicalState, so the aliases must work too.
+      expect(NigeriaLocations.centreOf('Oyo')!.$1, closeTo(7.377, 0.01));
+      expect(NigeriaLocations.centreOf('oyo state')!.$1, closeTo(7.377, 0.01));
+      expect(NigeriaLocations.centreOf('FCT')!.$1, closeTo(9.076, 0.01));
+      expect(
+        NigeriaLocations.centreOf('federal capital territory')!.$2,
+        closeTo(7.398, 0.01),
+      );
+      expect(NigeriaLocations.centreOf('Atlantis'), isNull);
+    });
+
+    test('Oyo opens on Ibadan, not Lagos', () {
+      // The tester's exact case, as a one-line assertion.
+      final oyo = NigeriaLocations.centreOf('Oyo')!;
+      final lagos = NigeriaLocations.centreOf('Lagos')!;
+      expect(oyo, isNot(lagos));
+      // Ibadan sits well north of Lagos — roughly 95km inland.
+      expect(oyo.$1, greaterThan(lagos.$1));
+    });
   });
 }

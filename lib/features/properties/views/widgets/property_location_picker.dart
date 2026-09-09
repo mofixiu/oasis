@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/nigeria_locations.dart';
 import '../../../../core/utils/landa_haptics.dart';
 import '../../../../core/widgets/landa_pressable.dart';
 import '../../../../core/widgets/landa_sheet.dart';
@@ -70,6 +71,9 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
   /// Only ever the *view* the map opens on, never a value we report upwards.
   static const _fallbackCenter = LatLng(6.5244, 3.3792);
   static const _pinZoom = 17.0;
+
+  /// Wide enough to show a whole state, for the bundled-centre step.
+  static const _stateZoom = 9.0;
 
   final _mapController = MapController();
   final _geocoder = GeocodingService();
@@ -154,12 +158,36 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
   /// This is what stops a landlord in Ibadan being shown Lagos. The default
   /// centre is Lagos because it has to be something, but the moment the form
   /// knows better, so should the map.
+  ///
+  /// Two steps, and the first one cannot fail. The bundled
+  /// [NigeriaLocations.centreOf] moves the map to the state's capital
+  /// immediately — no request, no wait, works offline. Only then does it ask
+  /// the network to refine that to the actual town.
+  ///
+  /// That order is the point. Nominatim rate-limits sporadically: two
+  /// identically shaped queries seconds apart returned `429` and `200` while
+  /// this was being written, and [GeocodingService] treats any non-200 as
+  /// "not found". A network-first design therefore left a throttled landlord
+  /// looking at Lagos with no way to tell that anything had gone wrong —
+  /// which is almost certainly what the tester in Ibadan actually hit, rather
+  /// than the unmapped estate it looked like. Now the worst a throttled
+  /// lookup can do is leave them at their state capital instead of their
+  /// town.
   Future<void> _centreOnRegion() async {
     final city = widget.city.trim();
     final state = widget.state.trim();
     if (city.isEmpty && state.isEmpty) return;
 
     final token = ++_regionToken;
+
+    // Step one: instant, offline, cannot fail.
+    final centre = NigeriaLocations.centreOf(state);
+    if (centre != null && _pin == null) {
+      _mapController.move(LatLng(centre.$1, centre.$2), _stateZoom);
+    }
+
+    // Step two: refine to the town, if the network is willing.
+    if (city.isEmpty) return;
     final hit = await _geocoder.searchProgressive(city: city, state: state);
     // Guards against a slow lookup landing after the landlord has moved on,
     // or has placed a pin in the meantime.
@@ -272,9 +300,17 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
     setState(() => _isSearching = false);
 
     if (hit == null) {
+      // Every level missed — an unmapped address, or the lookup service
+      // throttling us. Either way the state is still known locally, so the
+      // landlord is taken there rather than left wherever the map happened
+      // to be.
+      final centre = NigeriaLocations.centreOf(widget.state);
+      if (centre != null) {
+        _mapController.move(LatLng(centre.$1, centre.$2), _stateZoom);
+      }
       LandaToast.error(
         context,
-        'No match for that address. Tap the map to drop the pin instead.',
+        'Could not find that address. Tap the map to drop the pin instead.',
       );
       return;
     }

@@ -17,6 +17,73 @@ class NigeriaLocations {
   /// Every state, alphabetical, with the FCT under the name people use for
   /// it. "Abuja" rather than "Federal Capital Territory": it is what the
   /// address says, and it is what a tenant types into the search box.
+  /// Where each state's map view should open, as (latitude, longitude).
+  ///
+  /// The capital, or the city the state is actually known by — Edo points at
+  /// Benin City, Oyo at Ibadan, Rivers at Port Harcourt.
+  ///
+  /// Bundled rather than looked up, for three reasons. A state's centre never
+  /// changes, so asking a third party for it every time is a request that can
+  /// only fail. Nominatim rate-limits hard — this machine collected a `429`
+  /// probing four of these in a row — and the geocoder treats any non-200 as
+  /// "not found", so a throttled landlord got no answer and a map still
+  /// showing Lagos. And it is instant and works offline, which matters on the
+  /// connections this app is used over.
+  ///
+  /// The network is still asked for the *street*, which is the part that
+  /// genuinely varies. This only answers "roughly where is this state".
+  ///
+  /// Kept as a record rather than a `LatLng` so this file stays free of the
+  /// mapping package: it is a data table, not a map widget.
+  static const Map<String, (double, double)> stateCentres = {
+    'Abia': (5.5320, 7.4860),
+    'Abuja (FCT)': (9.0765, 7.3986),
+    'Adamawa': (9.2035, 12.4954),
+    'Akwa Ibom': (5.0377, 7.9128),
+    'Anambra': (6.2109, 7.0741),
+    'Bauchi': (10.3158, 9.8442),
+    'Bayelsa': (4.9267, 6.2676),
+    'Benue': (7.7322, 8.5391),
+    'Borno': (11.8311, 13.1510),
+    'Cross River': (4.9757, 8.3417),
+    'Delta': (6.1980, 6.7370),
+    'Ebonyi': (6.3249, 8.1137),
+    'Edo': (6.3350, 5.6037),
+    'Ekiti': (7.6211, 5.2214),
+    'Enugu': (6.4584, 7.5464),
+    'Gombe': (10.2897, 11.1673),
+    'Imo': (5.4836, 7.0333),
+    'Jigawa': (11.7568, 9.3389),
+    'Kaduna': (10.5222, 7.4383),
+    'Kano': (12.0022, 8.5920),
+    'Katsina': (12.9908, 7.6018),
+    'Kebbi': (12.4539, 4.1975),
+    'Kogi': (7.8023, 6.7333),
+    'Kwara': (8.4966, 4.5421),
+    'Lagos': (6.5244, 3.3792),
+    'Nasarawa': (8.4939, 8.5157),
+    'Niger': (9.6139, 6.5569),
+    'Ogun': (7.1475, 3.3619),
+    'Ondo': (7.2571, 5.2058),
+    'Osun': (7.7827, 4.5418),
+    'Oyo': (7.3775, 3.9470),
+    'Plateau': (9.8965, 8.8583),
+    'Rivers': (4.8156, 7.0498),
+    'Sokoto': (13.0059, 5.2476),
+    'Taraba': (8.8900, 11.3660),
+    'Yobe': (11.7480, 11.9608),
+    'Zamfara': (12.1628, 6.6641),
+  };
+
+  /// The map centre for a state name in any spelling the picker accepts.
+  ///
+  /// Goes through [canonicalState] first, so "lagos state", "FCT" and
+  /// "Federal Capital Territory" all resolve.
+  static (double, double)? centreOf(String? state) {
+    final canonical = canonicalState(state);
+    return canonical == null ? null : stateCentres[canonical];
+  }
+
   static const Map<String, List<String>> statesWithCities = {
     'Abia': [
       'Aba',
