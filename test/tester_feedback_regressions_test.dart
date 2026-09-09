@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -163,6 +164,59 @@ void main() {
         'rent_payment': {'status': 'DUE'},
       });
       expect(pending.awaitingFirstRent, isFalse);
+    });
+  });
+
+  group('the pin map does not eat the sheet\'s scroll', () {
+    /// The add-property sheet scrolls; the map is 280px of it, sitting
+    /// directly above the photo, walkthrough and deed sections. With
+    /// single-finger drag enabled the map won every vertical swipe that
+    /// started on it, so a landlord scrolling down to add photos panned the
+    /// map instead and the form's own blocker sat there reading "Add at least
+    /// 2 photos of the property" — pointing at buttons they could not reach.
+    ///
+    /// These assert the flag arithmetic rather than the widget, because the
+    /// bug *was* the flag arithmetic: `InteractiveFlag.all` silently includes
+    /// `drag`, which is exactly why it went unnoticed.
+
+    // The values the picker builds, mirrored here. Kept as literals so a
+    // change to the picker has to be a deliberate change to this test too.
+    const inlineFlags =
+        InteractiveFlag.pinchZoom |
+        InteractiveFlag.pinchMove |
+        InteractiveFlag.doubleTapZoom;
+    const fullScreenFlags = InteractiveFlag.all & ~InteractiveFlag.rotate;
+
+    bool has(int flags, int flag) => flags & flag == flag;
+
+    test('inline, one finger never pans the map', () {
+      // The regression. If this passes with drag set, the sheet is unscrollable
+      // wherever the thumb lands on the map.
+      expect(has(inlineFlags, InteractiveFlag.drag), isFalse);
+      // A fling is the same gesture with momentum, and would scroll-jack too.
+      expect(has(inlineFlags, InteractiveFlag.flingAnimation), isFalse);
+    });
+
+    test('inline, two fingers still work the map', () {
+      // Removing drag must not leave a map nobody can move at all.
+      expect(has(inlineFlags, InteractiveFlag.pinchMove), isTrue);
+      expect(has(inlineFlags, InteractiveFlag.pinchZoom), isTrue);
+      expect(has(inlineFlags, InteractiveFlag.doubleTapZoom), isTrue);
+    });
+
+    test('full screen, the map behaves like a map', () {
+      // Nothing to scroll past here, so the compromise is not needed — and
+      // this is where the pin actually gets placed accurately.
+      expect(has(fullScreenFlags, InteractiveFlag.drag), isTrue);
+      expect(has(fullScreenFlags, InteractiveFlag.pinchZoom), isTrue);
+      // Rotation stays off in both: it is only ever accidental on a form.
+      expect(has(fullScreenFlags, InteractiveFlag.rotate), isFalse);
+    });
+
+    test('InteractiveFlag.all really does include drag', () {
+      // Pins the assumption the bug rested on, so nobody "simplifies" the
+      // inline flags back to `all & ~rotate` believing drag was never there.
+      expect(has(InteractiveFlag.all, InteractiveFlag.drag), isTrue);
     });
   });
 

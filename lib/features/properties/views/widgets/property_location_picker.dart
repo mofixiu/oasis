@@ -37,12 +37,18 @@ class PropertyLocationPicker extends StatefulWidget {
 
   final LatLng? initialPin;
 
+  /// Whether this is the full-screen picker rather than the one embedded in
+  /// the property form. Decides gesture handling and the map's height: see
+  /// [_PropertyLocationPickerState._gestureFlags].
+  final bool isFullScreen;
+
   const PropertyLocationPicker({
     super.key,
     required this.onChanged,
     this.addressResolver,
     this.onAddressResolved,
     this.initialPin,
+    this.isFullScreen = false,
   });
 
   @override
@@ -56,6 +62,36 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
 
   final _mapController = MapController();
   final _geocoder = GeocodingService();
+
+  /// Which gestures the map answers.
+  ///
+  /// **`InteractiveFlag.drag` is deliberately absent when inlined**, which is
+  /// why this is a getter rather than the const it used to be.
+  ///
+  /// Inline, this map lives inside the add-property sheet's
+  /// `SingleChildScrollView`: 280px of map in a viewport of roughly 580,
+  /// sitting directly above the photo, walkthrough and deed sections. With
+  /// single-finger drag enabled the map won every vertical swipe that started
+  /// on it, so a landlord scrolling down to add photos panned the map and the
+  /// sheet did not move. The form's own blocker line then sat there reading
+  /// "Add at least 2 photos of the property", pointing at buttons they could
+  /// not reach. Testers reported the sheet as stuck; it was a gesture
+  /// conflict, and it made the form unfinishable one-handed.
+  ///
+  /// So inline: two fingers move the map, one finger scrolls the sheet, and a
+  /// tap still drops the pin — a tap is not a drag. Full-screen there is
+  /// nothing to scroll past, so drag comes back and the map behaves the way a
+  /// map should. That is where the pin actually gets placed accurately, which
+  /// matters: it is an anti-fraud control, not decoration.
+  int get _gestureFlags {
+    if (widget.isFullScreen) {
+      // Rotation is only ever accidental on a form like this.
+      return InteractiveFlag.all & ~InteractiveFlag.rotate;
+    }
+    return InteractiveFlag.pinchZoom |
+        InteractiveFlag.pinchMove |
+        InteractiveFlag.doubleTapZoom;
+  }
 
   LatLng? _pin;
   _PinSource? _source;
@@ -238,7 +274,9 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
       final resolved = await _geocoder.describe(point);
       if (!mounted || token != _nameToken) return;
       setState(() {
-        _placeName = resolved?.label.isNotEmpty == true ? resolved!.label : null;
+        _placeName = resolved?.label.isNotEmpty == true
+            ? resolved!.label
+            : null;
         _isNaming = false;
       });
       final address = resolved?.address;
@@ -260,6 +298,35 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
       _isNaming = false;
     });
     widget.onChanged(null);
+  }
+
+  /// Opens the same picker on its own page, handing back whatever pin comes
+  /// out of it.
+  ///
+  /// The full-screen map starts wherever this one is looking, so opening it
+  /// is a continuation rather than a restart — a landlord who has already
+  /// panned to their street does not arrive back at the country view.
+  Future<void> _openFullScreen() async {
+    LandaHaptics.tap();
+    final navigator = Navigator.of(context);
+    final camera = _mapController.camera;
+    final result = await navigator.push<_FullScreenPinResult>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _FullScreenPinPage(
+          initialPin: _pin,
+          initialCentre: camera.center,
+          initialZoom: camera.zoom,
+          addressResolver: widget.addressResolver,
+        ),
+      ),
+    );
+    if (!mounted || result == null) return;
+    if (result.pin == null) {
+      _clearPin();
+      return;
+    }
+    _applyPin(result.pin!, source: _PinSource.tap);
   }
 
   void _zoomBy(double delta) {
@@ -290,138 +357,279 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
         ),
         Text(
           _pin == null
-              ? 'Tap the map to drop the pin on the property entrance, or use one of the shortcuts.'
-              : 'Drag the map and tap again to fine-tune the entrance.',
+              ? 'Tap the map to drop the pin on the property entrance, or use '
+                    'one of the shortcuts.'
+              : 'Tap again to fine-tune the entrance.',
           style: AppTheme.bodyText(context),
         ),
-        const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: AppTheme.cornerMd,
-          child: Container(
-            height: 280,
-            foregroundDecoration: BoxDecoration(
-              borderRadius: AppTheme.cornerMd,
-              border: Border.all(color: AppTheme.borderColor(context)),
-            ),
-            child: Stack(
-              children: [
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: _pin ?? _fallbackCenter,
-                    initialZoom: _pin == null ? 12 : _pinZoom,
-                    minZoom: 3,
-                    maxZoom: 19,
-                    interactionOptions: const InteractionOptions(
-                      // Rotation is only ever accidental on a form like this.
-                      flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                    ),
-                    onTap: (_, point) => _applyPin(
-                      point,
-                      source: _PinSource.tap,
-                      recentre: false,
-                    ),
-                    onLongPress: (_, point) =>
-                        _applyPin(point, source: _PinSource.tap),
+        // Says the gesture out loud, because a map that ignores a one-finger
+        // drag is otherwise indistinguishable from a broken one. Only inline:
+        // full-screen the map drags normally and there is nothing to explain.
+        if (!widget.isFullScreen) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                Icons.pinch_outlined,
+                size: 14,
+                color: AppTheme.secondaryTextColor(context),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Use two fingers to move the map, or open it full screen.',
+                  style: AppTheme.labelText(
+                    context,
+                    color: AppTheme.secondaryTextColor(context),
                   ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.landa.landa_app',
-                      maxNativeZoom: 19,
-                    ),
-                    if (_pin != null && _accuracy != null && _accuracy! > 15)
-                      CircleLayer(
-                        circles: [
-                          CircleMarker(
-                            point: _pin!,
-                            radius: _accuracy!,
-                            useRadiusInMeter: true,
-                            color: AppTheme.actionColor.withValues(alpha: 0.12),
-                            borderColor: AppTheme.actionColor.withValues(
-                              alpha: 0.45,
-                            ),
-                            borderStrokeWidth: 1,
-                          ),
-                        ],
-                      ),
-                    if (_pin != null)
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: _pin!,
-                            width: 40,
-                            height: 52,
-                            // Puts the pin's tip, not its middle, on the
-                            // coordinate, so what you see is what you save.
-                            alignment: Alignment.topCenter,
-                            child: const _MapPin(),
-                          ),
-                        ],
-                      ),
-                  ],
                 ),
-                Positioned(left: 8, top: 8, child: const _Attribution()),
-                Positioned(
-                  right: 10,
-                  top: 10,
-                  child: Column(
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 10),
+        // Flexible full-screen, fixed inline. It must not be a `Container`
+        // with `height: double.infinity`: this sits in a `Column`, which
+        // gives an unbounded child exactly what it asks for and then throws a
+        // RenderFlex overflow. `Expanded` is how a Column child fills.
+        _flexMap(
+          ClipRRect(
+            borderRadius: AppTheme.cornerMd,
+            child: Container(
+              height: widget.isFullScreen ? null : 280,
+              foregroundDecoration: BoxDecoration(
+                borderRadius: AppTheme.cornerMd,
+                border: Border.all(color: AppTheme.borderColor(context)),
+              ),
+              child: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: _pin ?? _fallbackCenter,
+                      initialZoom: _pin == null ? 12 : _pinZoom,
+                      minZoom: 3,
+                      maxZoom: 19,
+                      interactionOptions: InteractionOptions(
+                        flags: _gestureFlags,
+                      ),
+                      onTap: (_, point) => _applyPin(
+                        point,
+                        source: _PinSource.tap,
+                        recentre: false,
+                      ),
+                      onLongPress: (_, point) =>
+                          _applyPin(point, source: _PinSource.tap),
+                    ),
                     children: [
-                      _MapButton(
-                        icon: Icons.add_rounded,
-                        tooltip: 'Zoom in',
-                        onTap: () => _zoomBy(1),
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.landa.landa_app',
+                        maxNativeZoom: 19,
                       ),
-                      const SizedBox(height: 8),
-                      _MapButton(
-                        icon: Icons.remove_rounded,
-                        tooltip: 'Zoom out',
-                        onTap: () => _zoomBy(-1),
-                      ),
+                      if (_pin != null && _accuracy != null && _accuracy! > 15)
+                        CircleLayer(
+                          circles: [
+                            CircleMarker(
+                              point: _pin!,
+                              radius: _accuracy!,
+                              useRadiusInMeter: true,
+                              color: AppTheme.actionColor.withValues(
+                                alpha: 0.12,
+                              ),
+                              borderColor: AppTheme.actionColor.withValues(
+                                alpha: 0.45,
+                              ),
+                              borderStrokeWidth: 1,
+                            ),
+                          ],
+                        ),
+                      if (_pin != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: _pin!,
+                              width: 40,
+                              height: 52,
+                              // Puts the pin's tip, not its middle, on the
+                              // coordinate, so what you see is what you save.
+                              alignment: Alignment.topCenter,
+                              child: const _MapPin(),
+                            ),
+                          ],
+                        ),
                     ],
                   ),
-                ),
-                Positioned(
-                  right: 10,
-                  bottom: 78,
-                  child: Column(
-                    children: [
-                      if (_pin != null) ...[
+                  Positioned(left: 8, top: 8, child: const _Attribution()),
+                  Positioned(
+                    right: 10,
+                    top: 10,
+                    child: Column(
+                      children: [
                         _MapButton(
-                          icon: Icons.close_rounded,
-                          tooltip: 'Clear pin',
-                          onTap: _clearPin,
+                          icon: Icons.add_rounded,
+                          tooltip: 'Zoom in',
+                          onTap: () => _zoomBy(1),
                         ),
                         const SizedBox(height: 8),
+                        _MapButton(
+                          icon: Icons.remove_rounded,
+                          tooltip: 'Zoom out',
+                          onTap: () => _zoomBy(-1),
+                        ),
+                        // The way out of the cramped inline map. Placing a pin
+                        // on your own gate wants the whole screen, and there
+                        // one finger drags normally.
+                        if (!widget.isFullScreen) ...[
+                          const SizedBox(height: 8),
+                          _MapButton(
+                            icon: Icons.open_in_full_rounded,
+                            tooltip: 'Open full screen',
+                            onTap: _openFullScreen,
+                          ),
+                        ],
                       ],
-                      _MapButton(
-                        icon: Icons.my_location_rounded,
-                        tooltip: 'Use my location',
-                        isBusy: _isLocating,
-                        highlighted: _source == _PinSource.device,
-                        onTap: _isLocating ? null : _useLiveLocation,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                Positioned(
-                  left: 10,
-                  right: 10,
-                  bottom: 10,
-                  child: _Readout(
-                    pin: _pin,
-                    placeName: _placeName,
-                    isNaming: _isNaming,
-                    accuracy: _accuracy,
-                    source: _source,
+                  Positioned(
+                    right: 10,
+                    bottom: 78,
+                    child: Column(
+                      children: [
+                        if (_pin != null) ...[
+                          _MapButton(
+                            icon: Icons.close_rounded,
+                            tooltip: 'Clear pin',
+                            onTap: _clearPin,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        _MapButton(
+                          icon: Icons.my_location_rounded,
+                          tooltip: 'Use my location',
+                          isBusy: _isLocating,
+                          highlighted: _source == _PinSource.device,
+                          onTap: _isLocating ? null : _useLiveLocation,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  Positioned(
+                    left: 10,
+                    right: 10,
+                    bottom: 10,
+                    child: _Readout(
+                      pin: _pin,
+                      placeName: _placeName,
+                      isNaming: _isNaming,
+                      accuracy: _accuracy,
+                      source: _source,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// Fills the page full-screen, holds 280px inline.
+  ///
+  /// [Expanded] only works as a direct child of the [Column] in `build`, and
+  /// only when that Column has a bounded height — which it does full-screen,
+  /// where the page wraps this picker in one. Inline the Column is inside a
+  /// scroll view and therefore unbounded, so `Expanded` there would be the
+  /// same crash from the other direction.
+  Widget _flexMap(Widget map) =>
+      widget.isFullScreen ? Expanded(child: map) : map;
+}
+
+/// What the full-screen picker hands back.
+///
+/// A class rather than a bare `LatLng?`, because null has to mean two
+/// different things at this boundary: backing out (change nothing) and
+/// clearing the pin (change it to none). Popping null is the former; popping
+/// a result whose [pin] is null is the latter.
+class _FullScreenPinResult {
+  final LatLng? pin;
+
+  const _FullScreenPinResult(this.pin);
+}
+
+/// The pin map with the whole screen to itself.
+///
+/// Exists because the inline map cannot have single-finger drag — it would
+/// swallow the sheet's scroll — and placing a pin on your own gate with two
+/// fingers in a 280px window is a worse job than the anti-fraud control
+/// deserves. Here there is nothing to scroll past, so the map drags, flings
+/// and pinches like any other.
+class _FullScreenPinPage extends StatefulWidget {
+  final LatLng? initialPin;
+  final LatLng initialCentre;
+  final double initialZoom;
+  final String Function()? addressResolver;
+
+  const _FullScreenPinPage({
+    required this.initialPin,
+    required this.initialCentre,
+    required this.initialZoom,
+    this.addressResolver,
+  });
+
+  @override
+  State<_FullScreenPinPage> createState() => _FullScreenPinPageState();
+}
+
+class _FullScreenPinPageState extends State<_FullScreenPinPage> {
+  late LatLng? _pin = widget.initialPin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.pageBackground(context),
+      appBar: AppBar(
+        backgroundColor: AppTheme.surfaceColor(context),
+        surfaceTintColor: Colors.transparent,
+        title: Text('Place the pin', style: AppTheme.sectionTitle(context)),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          // Backing out changes nothing, which is why this pops null rather
+          // than the pin currently on screen.
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            children: [
+              Expanded(
+                child: PropertyLocationPicker(
+                  isFullScreen: true,
+                  initialPin: widget.initialPin,
+                  addressResolver: widget.addressResolver,
+                  onChanged: (pin) => setState(() => _pin = pin),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: LandaSheetButton(
+                  label: _pin == null ? 'Done without a pin' : 'Use this pin',
+                  icon: _pin == null
+                      ? Icons.close_rounded
+                      : Icons.check_rounded,
+                  onPressed: () =>
+                      Navigator.pop(context, _FullScreenPinResult(_pin)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
