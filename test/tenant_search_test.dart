@@ -4,20 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/core/widgets/landa_search_field.dart';
-import 'package:landa_app/features/auth/controllers/auth_controller.dart';
-import 'package:landa_app/features/auth/services/api_auth_service.dart';
-import 'package:landa_app/features/fix/services/fix_service.dart';
-import 'package:landa_app/features/marketplace/controllers/marketplace_controller.dart';
-import 'package:landa_app/features/marketplace/models/marketplace_models.dart';
-import 'package:landa_app/features/marketplace/services/marketplace_service.dart';
-import 'package:landa_app/features/shortlets/controllers/shortlet_controller.dart';
-import 'package:landa_app/features/shortlets/models/shortlet_models.dart';
-import 'package:landa_app/features/shortlets/services/shortlet_service.dart';
-import 'package:landa_app/features/shortlets/views/shortlet_browse_screen.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/core/widgets/oasis_search_field.dart';
+import 'package:oasis_app/features/auth/controllers/auth_controller.dart';
+import 'package:oasis_app/features/auth/services/api_auth_service.dart';
+import 'package:oasis_app/features/fix/services/fix_service.dart';
+import 'package:oasis_app/features/marketplace/controllers/marketplace_controller.dart';
+import 'package:oasis_app/features/marketplace/models/marketplace_models.dart';
+import 'package:oasis_app/features/marketplace/services/marketplace_service.dart';
+import 'package:oasis_app/features/shortlets/controllers/shortlet_controller.dart';
+import 'package:oasis_app/features/shortlets/models/shortlet_models.dart';
+import 'package:oasis_app/features/shortlets/services/shortlet_service.dart';
+import 'package:oasis_app/features/shortlets/views/shortlet_browse_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -365,7 +365,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: LandaSearchField(
+          body: OasisSearchField(
             controller: textController,
             hintText: 'Search by area',
             debounce: const Duration(milliseconds: 200),
@@ -395,7 +395,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: LandaSearchField(
+          body: OasisSearchField(
             controller: textController,
             hintText: 'Search by area',
             onChanged: queries.add,
@@ -419,7 +419,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: LandaSearchField(
+          body: OasisSearchField(
             controller: textController,
             hintText: 'Search by area',
             onChanged: (_) {},
@@ -523,7 +523,7 @@ void main() {
     await tester.pumpAndSettle();
     while (tester.takeException() != null) {}
 
-    expect(find.byType(LandaSearchField), findsOneWidget);
+    expect(find.byType(OasisSearchField), findsOneWidget);
     expect(find.text('Near me'), findsOneWidget);
     // The listing still came through: a refused location narrows nothing.
     expect(find.textContaining('Sunset House'), findsOneWidget);

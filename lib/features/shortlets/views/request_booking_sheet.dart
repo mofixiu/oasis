@@ -3,9 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
 
@@ -96,7 +96,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
     final last = windowEnd ?? today.add(const Duration(days: 365));
 
     if (last.isBefore(first)) {
-      LandaToast.error(context, 'This place is not taking bookings right now.');
+      OasisToast.error(context, 'This place is not taking bookings right now.');
       return;
     }
 
@@ -115,7 +115,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
   Future<void> _submit() async {
     final problem = _problem;
     if (problem != null) {
-      LandaToast.error(context, problem);
+      OasisToast.error(context, problem);
       return;
     }
 
@@ -132,7 +132,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
     if (booking == null) {
       // The backend owns availability, clashes and limits, so its sentence is
       // shown as written rather than second-guessed here.
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not send that request. Try again in a moment.',
@@ -148,24 +148,24 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
     final stay = _stay;
     final total = widget.listing.totalFor(_nights);
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.calendar_month_outlined,
       title: 'Ask for these dates',
       subtitle:
           'The host has to approve before anything is charged. '
           '${widget.listing.title}.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Send request',
         icon: Icons.send_rounded,
         isLoading: controller.isSubmitting,
         onPressed: controller.isSubmitting || _problem != null ? null : _submit,
       ),
       children: [
-        const LandaFieldLabel('Your stay'),
+        const OasisFieldLabel('Your stay'),
         _DateField(stay: stay, nights: _nights, onTap: _pickDates),
         const SizedBox(height: 20),
 
-        LandaFieldLabel('Guests (up to ${widget.listing.maximumGuests})'),
+        OasisFieldLabel('Guests (up to ${widget.listing.maximumGuests})'),
         _GuestStepper(
           value: _guests,
           max: widget.listing.maximumGuests,
@@ -193,7 +193,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
                 child: Text(
                   '${widget.listing.cancellationPolicy.label} cancellation: '
                   '${widget.listing.resolvedCancellationPolicySummary} '
-                  'Landa confirms the exact refund before a paid cancellation.',
+                  'Oasis confirms the exact refund before a paid cancellation.',
                   style: AppTheme.labelText(
                     context,
                     color: AppTheme.secondaryTextColor(context),
@@ -205,13 +205,13 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
         ),
         const SizedBox(height: 20),
 
-        const LandaFieldLabel('Note to the host (optional)'),
+        const OasisFieldLabel('Note to the host (optional)'),
         TextField(
           controller: _messageController,
           maxLines: 3,
           maxLength: 1000,
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Arriving late on Friday, leaving Sunday morning.',
           ),
@@ -232,9 +232,9 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
               children: [
                 _QuoteRow(
                   label:
-                      '${LandaCurrency.format(widget.listing.nightlyPrice)} '
+                      '${OasisCurrency.format(widget.listing.nightlyPrice)} '
                       '× $_nights ${_nights == 1 ? 'night' : 'nights'}',
-                  amount: LandaCurrency.format(total),
+                  amount: OasisCurrency.format(total),
                 ),
                 // The deposit is its own line rather than folded into the
                 // total. A guest comparing two places needs to see which part
@@ -243,7 +243,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
                   const SizedBox(height: 8),
                   _QuoteRow(
                     label: 'Refundable caution fee',
-                    amount: LandaCurrency.format(widget.listing.cautionFee),
+                    amount: OasisCurrency.format(widget.listing.cautionFee),
                     tone: AppTheme.vacantColor,
                   ),
                   const SizedBox(height: 8),
@@ -251,7 +251,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
                   const SizedBox(height: 8),
                   _QuoteRow(
                     label: 'To pay when approved',
-                    amount: LandaCurrency.format(
+                    amount: OasisCurrency.format(
                       widget.listing.totalWithDepositFor(_nights) ?? total,
                     ),
                     emphasise: true,

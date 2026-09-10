@@ -4,7 +4,7 @@
 /// accepted and quoted it, the tenant paid into escrow, and confirming the
 /// work released the money. API guide 18 removed every endpoint behind that
 /// (§7B), and the models that described it (`FixJob`, `FixJobStatus`,
-/// `FixUrgency`) went with them. Landa does not broker repairs any more.
+/// `FixUrgency`) went with them. Oasis does not broker repairs any more.
 ///
 /// What is left describes people rather than work: a trade, an artisan, and
 /// the artisan a landlord vouches for on a unit. The repair itself is
@@ -119,7 +119,7 @@ class ArtisanProfile {
   /// Mean rating out of 5 from tenants whose jobs this artisan completed, and
   /// how many rated them.
   ///
-  /// Null rather than 0.0 when nobody has: an artisan new to Landa is
+  /// Null rather than 0.0 when nobody has: an artisan new to Oasis is
   /// unrated, and a zero-star badge would end their week before it started.
   final double? averageRating;
   final int reviewCount;

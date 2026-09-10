@@ -4,14 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_search_field.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_search_field.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../agreements/controllers/agreement_controller.dart';
 import '../../properties/controllers/landlord_controller.dart';
 import '../controllers/fix_controller.dart';
@@ -31,7 +31,7 @@ class _UnitOption {
 /// This screen used to be a marketplace with two halves: browse an artisan,
 /// and then track the job you asked them for, from request through accept,
 /// quote, pay into escrow, confirm and release. API guide 18 removed every endpoint behind
-/// the second half (§7B), and Landa no longer brokers repairs or handles
+/// the second half (§7B), and Oasis no longer brokers repairs or handles
 /// artisan money at all.
 ///
 /// So the screen is now what the first half always was: a directory. The
@@ -177,7 +177,7 @@ class _FixScreenState extends State<FixScreen>
   Future<void> _call(ArtisanProfile artisan) async {
     final phone = artisan.phone;
     if (phone == null || phone.isEmpty) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         '${artisan.displayName} has no phone number on their profile yet.',
       );
@@ -195,7 +195,7 @@ class _FixScreenState extends State<FixScreen>
 
   Future<void> _copyPhone(String phone) async {
     await Clipboard.setData(ClipboardData(text: phone));
-    if (mounted) LandaToast.success(context, 'Phone number copied');
+    if (mounted) OasisToast.success(context, 'Phone number copied');
   }
 
   // ------------------------------------------------------------------- build
@@ -206,7 +206,7 @@ class _FixScreenState extends State<FixScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const LandaAppBar(showBackButton: true),
+      appBar: const OasisAppBar(showBackButton: true),
       body: Column(
         children: [
           Padding(
@@ -222,7 +222,7 @@ class _FixScreenState extends State<FixScreen>
                   ),
                 ),
                 const SizedBox(height: 4),
-                // Says plainly that the arrangement happens off Landa. The
+                // Says plainly that the arrangement happens off Oasis. The
                 // screen used to promise escrow and a quote first, and a
                 // tenant who remembers that needs to be told it changed
                 // rather than left to discover it on a phone call.
@@ -274,7 +274,7 @@ class _FixScreenState extends State<FixScreen>
         // Below the trade rather than above it: the trade is the required
         // choice, there is no artisan list without one, and area is the
         // optional narrowing on top of it.
-        LandaSearchField(
+        OasisSearchField(
           controller: _searchController,
           hintText: 'Search by area or name',
           onChanged: _searchArtisans,
@@ -283,9 +283,9 @@ class _FixScreenState extends State<FixScreen>
 
         if (!controller.hasLoaded(FixController.kArtisansKey) ||
             (controller.isLoading && artisans.isEmpty))
-          const LandaSkeletonList(count: 3, padding: EdgeInsets.zero)
+          const OasisSkeletonList(count: 3, padding: EdgeInsets.zero)
         else if (controller.hasError && artisans.isEmpty)
-          LandaErrorState(
+          OasisErrorState(
             message: controller.errorMessage,
             isConnectionError: controller.errorIsConnection,
             onRetry: _reload,
@@ -293,7 +293,7 @@ class _FixScreenState extends State<FixScreen>
             padding: const EdgeInsets.fromLTRB(8, 24, 8, 24),
           )
         else if (artisans.isEmpty)
-          LandaEmptyState(
+          OasisEmptyState(
             icon: controller.hasArtisanSearch
                 ? Icons.search_off_rounded
                 : Icons.handyman_outlined,
@@ -317,7 +317,7 @@ class _FixScreenState extends State<FixScreen>
           for (var index = 0; index < artisans.length; index++)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: LandaEntrance(
+              child: OasisEntrance(
                 index: index,
                 child: ArtisanCard(
                   artisan: artisans[index],
@@ -372,7 +372,7 @@ class _CallButton extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        LandaButton(
+        OasisButton(
           label: 'Call',
           icon: Icons.call_rounded,
           expand: false,
@@ -459,7 +459,7 @@ class _Chip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     pressedScale: 0.96,
     child: Container(

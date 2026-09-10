@@ -3,16 +3,16 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
 import '../../../core/widgets/custom_bottom_navbar.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_segmented_tabs.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_segmented_tabs.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../messaging/views/widgets/message_action_button.dart';
 import '../../reviews/views/widgets/rating_stars.dart';
 import '../controllers/shortlet_controller.dart';
@@ -20,7 +20,7 @@ import '../models/shortlet_models.dart';
 import 'create_shortlet_sheet.dart';
 import 'edit_nightly_price_sheet.dart';
 import 'widgets/shortlet_booking_card.dart';
-import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/utils/oasis_input_formatters.dart';
 
 /// The host's side of short lets: requests to decide on, and the places on
 /// offer.
@@ -49,7 +49,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
   /// the blocker on all of them: a request sitting unseen is a booking not
   /// made, and it should not need a pull to appear.
   @override
-  Duration? get autoRefreshInterval => kLandaPollInterval;
+  Duration? get autoRefreshInterval => kOasisPollInterval;
 
   @override
   Future<void> onAutoRefresh() => _reload();
@@ -74,7 +74,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
     if (!mounted) return;
 
     if (ok) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Approved. ${booking.guestLabel} has 24 hours to pay.',
       );
@@ -83,7 +83,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
       // decision endpoint happened to echo back.
       await refreshNow();
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not approve that booking. Try again in a moment.',
@@ -103,10 +103,10 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
     if (!mounted) return;
 
     if (ok) {
-      LandaToast.success(context, 'Request declined.');
+      OasisToast.success(context, 'Request declined.');
       await refreshNow();
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not decline that booking. Try again in a moment.',
@@ -197,7 +197,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const LandaAppBar(),
+      appBar: const OasisAppBar(),
       body: Column(
         children: [
           Padding(
@@ -222,12 +222,12 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
               ],
             ),
           ),
-          LandaSegmentedTabs(
+          OasisSegmentedTabs(
             controller: _tabs,
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 2),
             segments: [
-              LandaSegment('Requests', badgeCount: pending),
-              const LandaSegment('My places'),
+              OasisSegment('Requests', badgeCount: pending),
+              const OasisSegment('My places'),
             ],
           ),
           Expanded(
@@ -271,17 +271,17 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
 
     if (!controller.hasLoaded(ShortLetController.kBookingsKey) ||
         (controller.isLoading && controller.bookings.isEmpty)) {
-      return const LandaSkeletonList(count: 3);
+      return const OasisSkeletonList(count: 3);
     }
     if (controller.hasError && controller.bookings.isEmpty) {
-      return LandaErrorState(
+      return OasisErrorState(
         message: controller.errorMessage,
         isConnectionError: controller.errorIsConnection,
         onRetry: _reload,
       );
     }
     if (controller.bookings.isEmpty) {
-      return LandaEmptyState(
+      return OasisEmptyState(
         icon: Icons.calendar_month_outlined,
         title: 'No booking requests yet',
         message:
@@ -300,7 +300,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
         for (var index = 0; index < live.length; index++)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
-            child: LandaEntrance(
+            child: OasisEntrance(
               index: index,
               child: ShortLetBookingCard(
                 booking: live[index],
@@ -337,7 +337,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
         Row(
           children: [
             Expanded(
-              child: LandaButton(
+              child: OasisButton(
                 label: 'Decline',
                 icon: Icons.close_rounded,
                 outlined: true,
@@ -347,7 +347,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: LandaButton(
+              child: OasisButton(
                 label: 'Approve',
                 icon: Icons.check_rounded,
                 isBusy: busy,
@@ -379,7 +379,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
     if (booking.canBeCancelledByHost) {
       if (actions.isNotEmpty) actions.add(const SizedBox(height: 8));
       actions.add(
-        LandaButton(
+        OasisButton(
           label: 'Cancel booking',
           icon: Icons.event_busy_outlined,
           outlined: true,
@@ -392,7 +392,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
     if (booking.canClaimCautionFee) {
       if (actions.isNotEmpty) actions.add(const SizedBox(height: 8));
       actions.add(
-        LandaButton(
+        OasisButton(
           label: 'Claim caution fee',
           icon: Icons.shield_outlined,
           outlined: true,
@@ -470,13 +470,13 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
     if (!mounted) return;
 
     if (ok) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         '${booking.guestLabel} has been told and refunded.',
       );
       await refreshNow();
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not cancel that booking. Try again in a moment.',
@@ -508,7 +508,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Up to ${LandaCurrency.format(booking.cautionFee)} is held. '
+              'Up to ${OasisCurrency.format(booking.cautionFee)} is held. '
               'Leave the amount blank to claim all of it. Whatever you do '
               'not claim goes back to the guest right away.',
               style: AppTheme.bodyText(dialogContext),
@@ -517,7 +517,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
-              inputFormatters: const [LandaThousandsFormatter()],
+              inputFormatters: const [OasisThousandsFormatter()],
               style: AppTheme.bodyText(dialogContext),
               decoration: InputDecoration(
                 hintText: 'Amount (₦). Optional, defaults to the full fee',
@@ -561,11 +561,11 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
 
     final reason = reasonController.text.trim();
     if (reason.isEmpty) {
-      LandaToast.error(context, 'Say what the claim is for.');
+      OasisToast.error(context, 'Say what the claim is for.');
       return;
     }
 
-    final rawAmount = LandaThousandsFormatter.digitsOf(
+    final rawAmount = OasisThousandsFormatter.digitsOf(
       amountController.text,
     );
     final controller = context.read<ShortLetController>();
@@ -577,14 +577,14 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
     if (!mounted) return;
 
     if (ok) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Claim sent. ${booking.guestLabel} has to respond before anything '
         'moves.',
       );
       await refreshNow();
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not send that claim. Try again in a moment.',
@@ -597,17 +597,17 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
 
     if (!controller.hasLoaded(ShortLetController.kListingsKey) ||
         (controller.isLoading && listings.isEmpty)) {
-      return const LandaSkeletonList(count: 3);
+      return const OasisSkeletonList(count: 3);
     }
     if (controller.hasError && listings.isEmpty) {
-      return LandaErrorState(
+      return OasisErrorState(
         message: controller.errorMessage,
         isConnectionError: controller.errorIsConnection,
         onRetry: _reload,
       );
     }
     if (listings.isEmpty) {
-      return LandaEmptyState(
+      return OasisEmptyState(
         icon: Icons.holiday_village_outlined,
         title: 'Nothing listed yet',
         message:
@@ -626,7 +626,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
         for (var index = 0; index < listings.length; index++)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
-            child: LandaEntrance(
+            child: OasisEntrance(
               index: index,
               child: _ListingRow(
                 listing: listings[index],
@@ -643,7 +643,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
 /// The pencil beside a listing's nightly rate.
 ///
 /// Its own widget so the tap does not fall through to the row's own
-/// [LandaPressable], which opens the nine-field editor: two different
+/// [OasisPressable], which opens the nine-field editor: two different
 /// destinations a millimetre apart, and getting the wrong one is a host
 /// scrolling a form they did not ask for.
 class _PriceEditButton extends StatelessWidget {
@@ -681,7 +681,7 @@ class _ListingRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     pressedScale: 0.99,
     child: Container(
@@ -736,7 +736,7 @@ class _ListingRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '${LandaCurrency.format(listing.nightlyPrice)} / night · '
+                  '${OasisCurrency.format(listing.nightlyPrice)} / night · '
                   'min ${listing.minimumNights} '
                   '${listing.minimumNights == 1 ? 'night' : 'nights'} · '
                   'sleeps ${listing.maximumGuests}',
@@ -755,7 +755,7 @@ class _ListingRow extends StatelessWidget {
           if (listing.hasCautionFee) ...[
             const SizedBox(height: 4),
             Text(
-              '${LandaCurrency.format(listing.cautionFee)} refundable caution '
+              '${OasisCurrency.format(listing.cautionFee)} refundable caution '
               'fee',
               style: AppTheme.labelText(context, color: AppTheme.vacantColor),
             ),

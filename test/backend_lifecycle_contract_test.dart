@@ -4,22 +4,22 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
-import 'package:landa_app/features/agreements/services/agreement_service.dart';
-import 'package:landa_app/features/auth/controllers/auth_controller.dart';
-import 'package:landa_app/features/auth/models/user_model.dart';
-import 'package:landa_app/features/auth/services/api_auth_service.dart';
-import 'package:landa_app/features/marketplace/models/marketplace_models.dart';
-import 'package:landa_app/features/marketplace/services/marketplace_service.dart';
-import 'package:landa_app/features/notifications/models/notification_model.dart';
-import 'package:landa_app/features/notifications/services/notification_service.dart';
-import 'package:landa_app/features/payments/controllers/payment_controller.dart';
-import 'package:landa_app/features/payments/models/payment_model.dart';
-import 'package:landa_app/features/payments/services/payment_service.dart';
-import 'package:landa_app/features/properties/services/property_service.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/agreements/services/agreement_service.dart';
+import 'package:oasis_app/features/auth/controllers/auth_controller.dart';
+import 'package:oasis_app/features/auth/models/user_model.dart';
+import 'package:oasis_app/features/auth/services/api_auth_service.dart';
+import 'package:oasis_app/features/marketplace/models/marketplace_models.dart';
+import 'package:oasis_app/features/marketplace/services/marketplace_service.dart';
+import 'package:oasis_app/features/notifications/models/notification_model.dart';
+import 'package:oasis_app/features/notifications/services/notification_service.dart';
+import 'package:oasis_app/features/payments/controllers/payment_controller.dart';
+import 'package:oasis_app/features/payments/models/payment_model.dart';
+import 'package:oasis_app/features/payments/services/payment_service.dart';
+import 'package:oasis_app/features/properties/services/property_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -231,7 +231,7 @@ void main() {
       // MultipartFile.fromPath reads the file from disk, so this needs to
       // actually exist: content is irrelevant since the backend is mocked.
       final selfieFile = File(
-        '${Directory.systemTemp.path}/landa_consent_test_selfie.jpg',
+        '${Directory.systemTemp.path}/oasis_consent_test_selfie.jpg',
       )..writeAsBytesSync(const [0xFF, 0xD8, 0xFF, 0xE0]);
       addTearDown(() {
         if (selfieFile.existsSync()) selfieFile.deleteSync();

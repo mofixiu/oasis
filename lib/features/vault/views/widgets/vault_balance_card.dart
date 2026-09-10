@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/widgets/landa_pressable.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
 import '../../../agreements/controllers/agreement_controller.dart';
 import '../../../auth/controllers/auth_controller.dart';
 import '../../../payouts/controllers/payout_controller.dart';
@@ -13,7 +13,7 @@ import '../top_up_sheet.dart';
 import '../vault_ledger_screen.dart';
 import '../withdraw_sheet.dart';
 import '../../../../core/utils/fade_page_route.dart';
-import '../../../../core/widgets/landa_animated_value.dart';
+import '../../../../core/widgets/oasis_animated_value.dart';
 
 /// The user's money, at the top of the payments screen.
 ///
@@ -99,8 +99,8 @@ class VaultBalanceCard extends StatelessWidget {
           // the one number in the app somebody is looking straight at when it
           // changes. A top-up that simply replaces the figure between frames
           // reads as a redraw; this reads as money arriving.
-          LandaAnimatedValue(
-            value: LandaCurrency.format(vault.availableBalance),
+          OasisAnimatedValue(
+            value: OasisCurrency.format(vault.availableBalance),
             style: AppTheme.screenTitle(
               context,
               color: AppTheme.whiteColor,
@@ -186,7 +186,7 @@ class VaultBalanceCard extends StatelessWidget {
   /// over anything else, whoever is looking.
   static String _caption(VaultSummary vault, {required bool isTenant}) {
     if (vault.hasPendingWithdrawal) {
-      return '${LandaCurrency.format(vault.pendingWithdrawalBalance)} on its '
+      return '${OasisCurrency.format(vault.pendingWithdrawalBalance)} on its '
           'way to your bank';
     }
     return isTenant
@@ -272,7 +272,7 @@ class _SetAsideBreakdown extends StatelessWidget {
     final rows = <({String label, String amount})>[];
     for (final id in allocations.agreementIds) {
       final amount = vault.setAsideFor(id);
-      if ((LandaCurrency.minorUnits(amount) ?? 0) <= 0) continue;
+      if ((OasisCurrency.minorUnits(amount) ?? 0) <= 0) continue;
       final agreement = agreements.where((a) => a.id == id).firstOrNull;
       rows.add((
         label: agreement == null || agreement.unitNumber.isEmpty
@@ -311,7 +311,7 @@ class _SetAsideBreakdown extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    LandaCurrency.format(row.amount),
+                    OasisCurrency.format(row.amount),
                     style:
                         AppTheme.labelText(
                           context,
@@ -368,7 +368,7 @@ class _HistoryLink extends StatelessWidget {
   const _HistoryLink({required this.onTap});
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -479,7 +479,7 @@ class _VaultAction extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     child: Container(
       height: 44,

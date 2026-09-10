@@ -49,7 +49,7 @@ class DeviceLocation {
       case LocationOutcome.denied:
         return null;
       case LocationOutcome.blocked:
-        return 'Location is blocked for Landa. Turn it on in Settings, or '
+        return 'Location is blocked for Oasis. Turn it on in Settings, or '
             'search by area name instead.';
       case LocationOutcome.servicesOff:
         return 'Location Services are off. Turn them on in Settings, or '

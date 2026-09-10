@@ -5,11 +5,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/landa_pressable.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../controllers/landlord_controller.dart';
 import '../../models/property_model.dart';
-import '../../../../core/widgets/landa_busy.dart';
+import '../../../../core/widgets/oasis_busy.dart';
 
 /// Shown on a landlord's own property card when the listing has no photos.
 ///
@@ -37,7 +37,7 @@ class _MissingPhotosPromptState extends State<MissingPhotosPrompt> {
     try {
       picked = await _picker.pickMultiImage(maxWidth: 1600, imageQuality: 85);
     } catch (error) {
-      if (mounted) LandaToast.error(context, 'Unable to select photos.');
+      if (mounted) OasisToast.error(context, 'Unable to select photos.');
       return;
     }
     if (picked.isEmpty || !mounted) return;
@@ -52,12 +52,12 @@ class _MissingPhotosPromptState extends State<MissingPhotosPrompt> {
     setState(() => _isUploading = false);
 
     if (uploaded) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         '${widget.property.name} is back in the marketplace.',
       );
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ?? 'Could not upload those photos.',
       );
@@ -100,7 +100,7 @@ class _MissingPhotosPromptState extends State<MissingPhotosPrompt> {
                 ),
               ),
               const SizedBox(height: 10),
-              LandaPressable(
+              OasisPressable(
                 onTap: _isUploading ? null : _addPhotos,
                 child: Container(
                   height: 36,
@@ -114,7 +114,7 @@ class _MissingPhotosPromptState extends State<MissingPhotosPrompt> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (_isUploading)
-                        const LandaBusyDots(color: AppTheme.whiteColor, size: 4)
+                        const OasisBusyDots(color: AppTheme.whiteColor, size: 4)
                       else
                         const Icon(
                           Icons.add_photo_alternate_outlined,

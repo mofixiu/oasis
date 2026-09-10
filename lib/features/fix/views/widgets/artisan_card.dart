@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/landa_pressable.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
 import '../../../reviews/views/widgets/rating_stars.dart';
 import '../../models/fix_models.dart';
 
@@ -12,7 +12,7 @@ import '../../models/fix_models.dart';
 /// whether they are around today, and how long they have been doing it.
 ///
 /// The rating only appears once somebody has actually left one. An unrated
-/// artisan shows no stars rather than zero of them: new on Landa is not the
+/// artisan shows no stars rather than zero of them: new on Oasis is not the
 /// same as bad at the job, and a row of empty stars says the second.
 class ArtisanCard extends StatelessWidget {
   final ArtisanProfile artisan;
@@ -40,7 +40,7 @@ class ArtisanCard extends StatelessWidget {
     // share the accent; nothing else on the card competes with it.
     final highlighted = recommended || selected;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: onTap,
       pressedScale: 0.99,
       child: Container(

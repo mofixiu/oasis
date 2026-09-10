@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
-import 'package:landa_app/features/payments/controllers/payment_controller.dart';
-import 'package:landa_app/features/payments/views/widgets/rent_due_card.dart';
-import 'package:landa_app/features/vault/controllers/vault_controller.dart';
-import 'package:landa_app/features/vault/services/vault_service.dart';
-import 'package:landa_app/core/network/api_client.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/payments/controllers/payment_controller.dart';
+import 'package:oasis_app/features/payments/views/widgets/rent_due_card.dart';
+import 'package:oasis_app/features/vault/controllers/vault_controller.dart';
+import 'package:oasis_app/features/vault/services/vault_service.dart';
+import 'package:oasis_app/core/network/api_client.dart';
 import 'package:http/testing.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/fade_page_route.dart';
 
-/// AppTheme defines the global styling for Landa OS.
+/// AppTheme defines the global styling for Oasis.
 /// It implements the strict color palette defined for the prop-tech platform.
 class AppTheme {
-  // Landa OS palette
+  // Oasis palette
   static const Color blackColor = Color(0xFF101010);
   static const Color whiteColor = Color(0xFFFFFFFF);
   static const Color terracottaColor = Color(0xFFB65F3C);

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../controllers/messaging_controller.dart';
 import '../models/conversation_models.dart';
 import 'conversation_screen.dart';
@@ -30,7 +30,7 @@ class _ConversationsScreenState extends State<ConversationsScreen>
   /// list, where a new message on a thread the user is not reading would
   /// otherwise only appear on a manual pull.
   @override
-  Duration? get autoRefreshInterval => kLandaPollInterval;
+  Duration? get autoRefreshInterval => kOasisPollInterval;
 
   @override
   Future<void> onAutoRefresh() => _reload();
@@ -64,11 +64,11 @@ class _ConversationsScreenState extends State<ConversationsScreen>
 
     if (!controller.hasLoaded(MessagingController.kInboxKey) ||
         (controller.isLoading && conversations.isEmpty)) {
-      return const LandaSkeletonList(count: 4);
+      return const OasisSkeletonList(count: 4);
     }
 
     if (controller.hasError && conversations.isEmpty) {
-      return LandaErrorState(
+      return OasisErrorState(
         message: controller.errorMessage,
         isConnectionError: controller.errorIsConnection,
         onRetry: _reload,
@@ -76,7 +76,7 @@ class _ConversationsScreenState extends State<ConversationsScreen>
     }
 
     if (conversations.isEmpty) {
-      return LandaEmptyState(
+      return OasisEmptyState(
         icon: Icons.forum_outlined,
         title: 'No conversations yet',
         message:
@@ -95,7 +95,7 @@ class _ConversationsScreenState extends State<ConversationsScreen>
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
       itemCount: conversations.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) => LandaEntrance(
+      itemBuilder: (context, index) => OasisEntrance(
         index: index,
         child: _ConversationRow(conversation: conversations[index]),
       ),
@@ -113,7 +113,7 @@ class _ConversationRow extends StatelessWidget {
     final last = conversation.lastMessage;
     final isClosed = conversation.status.isClosed;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: () => Navigator.push(
         context,
         FadePageRoute(page: ConversationScreen(conversation: conversation)),

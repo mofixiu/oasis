@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/marketplace/models/marketplace_models.dart';
-import 'package:landa_app/features/marketplace/views/marketplace_filter_sheet.dart';
+import 'package:oasis_app/features/marketplace/models/marketplace_models.dart';
+import 'package:oasis_app/features/marketplace/views/marketplace_filter_sheet.dart';
 
 /// The one rule the backend itself enforces (a max price below the min
 /// returns `400 Bad Request`) has to be impossible to submit from here, not

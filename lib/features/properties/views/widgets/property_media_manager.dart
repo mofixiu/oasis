@@ -5,12 +5,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/landa_network_image.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/widgets/oasis_network_image.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../controllers/landlord_controller.dart';
 import '../../models/property_model.dart';
-import '../../../../core/widgets/landa_busy.dart';
-import '../../../../core/widgets/landa_shimmer.dart';
+import '../../../../core/widgets/oasis_busy.dart';
+import '../../../../core/widgets/oasis_shimmer.dart';
 
 /// Landlord-facing manager for a property's listing photos.
 ///
@@ -47,7 +47,7 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
   Future<void> _addPhotos(int currentCount) async {
     final remaining = PropertyMediaLimits.maxPhotos - currentCount;
     if (remaining <= 0) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'This property already has the maximum of ${PropertyMediaLimits.maxPhotos} photos.',
       );
@@ -58,7 +58,7 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
     if (picked.isEmpty || !mounted) return;
 
     if (picked.length > remaining) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'You can add $remaining more ${remaining == 1 ? 'photo' : 'photos'}. Select fewer and try again.',
       );
@@ -72,7 +72,7 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
       final file = File(image.path);
       if (await file.length() > PropertyMediaLimits.maxPhotoBytes) {
         if (!mounted) return;
-        LandaToast.error(
+        OasisToast.error(
           context,
           '"${image.name}" is larger than 5MB. Please choose a smaller image.',
         );
@@ -89,12 +89,12 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
     );
     if (!mounted) return;
     if (success) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         files.length == 1 ? 'Photo added.' : '${files.length} photos added.',
       );
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -147,9 +147,9 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
     );
     if (!mounted) return;
     if (success) {
-      LandaToast.success(context, 'Photo removed.');
+      OasisToast.success(context, 'Photo removed.');
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -286,7 +286,7 @@ class _PropertyMediaManagerState extends State<PropertyMediaManager> {
         ),
         if (busy) ...[
           const SizedBox(height: 12),
-          const LandaBusyLine(label: 'Uploading'),
+          const OasisBusyLine(label: 'Uploading'),
         ],
       ],
     );
@@ -348,7 +348,7 @@ class _PhotoTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          LandaNetworkImage(
+          OasisNetworkImage(
             url: photo.imageUrl,
             placeholderIcon: Icons.image_outlined,
           ),
@@ -454,7 +454,7 @@ class _PhotoGridSkeleton extends StatelessWidget {
   const _PhotoGridSkeleton();
 
   @override
-  Widget build(BuildContext context) => LandaShimmer(
+  Widget build(BuildContext context) => OasisShimmer(
     child: GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),

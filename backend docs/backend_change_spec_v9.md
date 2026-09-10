@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v9
+# Oasis Backend Change Specification — v9
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >
@@ -14,7 +14,7 @@ v8 §1 asked for the accommodation payout to be **released immediately** on succ
 
 The app is built against what shipped — a booking's journey (`status`) and its money (`host_payout_status`) are tracked as two separate fields, shown as two separate lines in the UI, which was the actual point of v8 (never let "the booking is paid" imply "the host has been paid"). That part is intact. Only the *timing* is different: v8's landlord got their payout the moment a guest paid; the shipped version has them waiting until the guest is due to arrive.
 
-This is very plausibly the better design — it gives Landa a window to act if a payment turns out to be fraudulent, and it means a tenant who cancels the day before check-in is not clawing money back out of a landlord's account. But it is a real behaviour change from what was asked for, so: **please confirm the hold-until-check-in model is the intended final design**, not an intermediate step. If it is intentional, no action needed — the app already matches it. If v8's immediate-release was actually the goal, say so and the app's copy (`host_payout_status_description` rendering, the Stays tab subtitle) will need to change to match.
+This is very plausibly the better design — it gives Oasis a window to act if a payment turns out to be fraudulent, and it means a tenant who cancels the day before check-in is not clawing money back out of a landlord's account. But it is a real behaviour change from what was asked for, so: **please confirm the hold-until-check-in model is the intended final design**, not an intermediate step. If it is intentional, no action needed — the app already matches it. If v8's immediate-release was actually the goal, say so and the app's copy (`host_payout_status_description` rendering, the Stays tab subtitle) will need to change to match.
 
 ---
 
@@ -36,7 +36,7 @@ The app assumes this returns the same refund-breakdown fields the guide's §9 "I
 }
 ```
 
-If the real response is shaped differently, the app will silently show no refund quote (it degrades to the generic "Landa will confirm the refund before completing cancellation" wording) rather than breaking — but the number a tenant actually wants to see before they tap Cancel is worth getting right. Please confirm or correct this shape.
+If the real response is shaped differently, the app will silently show no refund quote (it degrades to the generic "Oasis will confirm the refund before completing cancellation" wording) rather than breaking — but the number a tenant actually wants to see before they tap Cancel is worth getting right. Please confirm or correct this shape.
 
 ### 2.2 `POST /landlord/short-let-bookings/{id}/caution-claims/` and `POST /tenant/short-let-caution-claims/{claim_id}/respond/`
 

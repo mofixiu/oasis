@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/widgets/landa_pressable.dart';
-import '../../../../core/widgets/landa_sheet.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
+import '../../../../core/widgets/oasis_sheet.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../../agreements/controllers/agreement_controller.dart';
 import '../../../agreements/models/agreement_model.dart';
 import '../../../agreements/models/tenancy_import.dart';
 import '../../../agreements/views/widgets/rent_plan_picker.dart';
 import '../../../properties/controllers/landlord_controller.dart';
 import '../../../properties/models/property_model.dart';
-import '../../../../core/utils/landa_input_formatters.dart';
+import '../../../../core/utils/oasis_input_formatters.dart';
 
 /// Records the tenants already living in a property.
 ///
-/// The gap this closes: Landa's whole tenancy flow assumes a tenancy *starts*
+/// The gap this closes: Oasis's whole tenancy flow assumes a tenancy *starts*
 /// here, with the landlord inviting, the tenant applying, and an agreement
 /// written from today forward. A landlord signing up with a full building has none of
 /// that. Their tenants moved in years ago, paid a year up front, and are
@@ -136,7 +136,7 @@ class _MoveInTenantsModalState extends State<MoveInTenantsModal> {
           unitId: draft.unit!.id,
           unitLabel: 'Unit ${draft.unit!.unitNumber}',
           tenantContact: draft.contact.text,
-          rentAmount: LandaThousandsFormatter.digitsOf(draft.rent.text),
+          rentAmount: OasisThousandsFormatter.digitsOf(draft.rent.text),
           startDate: draft.startDate!,
           endDate: draft.endDate,
           rentPlan: _rentPlan,
@@ -149,7 +149,7 @@ class _MoveInTenantsModalState extends State<MoveInTenantsModal> {
   Future<void> _submit() async {
     final rows = _readyRows();
     if (rows.isEmpty || rows.length != _pendingDrafts.length) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'Give every tenant a unit, a contact, a rent amount and a start date.',
       );
@@ -163,7 +163,7 @@ class _MoveInTenantsModalState extends State<MoveInTenantsModal> {
     setState(() => _isSubmitting = false);
 
     if (report == null) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ?? 'Could not record these tenancies.',
       );
@@ -187,7 +187,7 @@ class _MoveInTenantsModalState extends State<MoveInTenantsModal> {
       final count =
           _drafts.where((draft) => draft.isDone).length +
           report.succeeded.length;
-      LandaToast.success(
+      OasisToast.success(
         context,
         '$count tenanc${count == 1 ? 'y' : 'ies'} recorded. Each tenant gets '
         'their agreement to sign.',
@@ -226,13 +226,13 @@ class _MoveInTenantsModalState extends State<MoveInTenantsModal> {
     final pending = _pendingDrafts;
     final ready = pending.isNotEmpty && _readyRows().length == pending.length;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.groups_2_outlined,
       title: 'Move in existing tenants',
       subtitle:
           'Record the people already living in ${widget.property.name}. Their '
           'agreements start on the day they really moved in.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: pending.length == 1
             ? 'Record this tenancy'
             : 'Record ${pending.length} tenancies',
@@ -277,18 +277,18 @@ class _MoveInTenantsModalState extends State<MoveInTenantsModal> {
 
         Text('Applies to everyone here', style: AppTheme.sectionTitle(context)),
         const SizedBox(height: 14),
-        const LandaFieldLabel('How often rent is due'),
+        const OasisFieldLabel('How often rent is due'),
         RentPlanPicker(
           selected: _rentPlan,
           onChanged: (plan) => setState(() => _rentPlan = plan),
         ),
         const SizedBox(height: 18),
-        const LandaFieldLabel('House rules'),
+        const OasisFieldLabel('House rules'),
         TextField(
           controller: _rulesController,
           maxLines: 3,
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'The terms every tenancy here carries.',
           ),
@@ -324,7 +324,7 @@ class _BackdatingNotice extends StatelessWidget {
         Expanded(
           child: Text(
             'Each tenant is sent the agreement to sign, dated from when they '
-            'moved in. Say the term is already paid and Landa will not ask '
+            'moved in. Say the term is already paid and Oasis will not ask '
             'them for rent until it runs out.',
             style: AppTheme.bodyText(context),
           ),
@@ -416,7 +416,7 @@ class _TenancyDraftCard extends StatelessWidget {
               ],
               const Spacer(),
               if (canRemove)
-                LandaPressable(
+                OasisPressable(
                   onTap: enabled ? onRemove : null,
                   child: Icon(
                     Icons.close_rounded,
@@ -444,7 +444,7 @@ class _TenancyDraftCard extends StatelessWidget {
               ),
             ),
             style: AppTheme.cardTitle(context),
-            decoration: landaInputDecoration(
+            decoration: oasisInputDecoration(
               context,
               prefixIcon: Icons.meeting_room_outlined,
             ),
@@ -454,7 +454,7 @@ class _TenancyDraftCard extends StatelessWidget {
                     value: unit,
                     child: Text(
                       'Unit ${unit.unitNumber} · '
-                      '${LandaCurrency.format(unit.rentAmount)}',
+                      '${OasisCurrency.format(unit.rentAmount)}',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -468,7 +468,7 @@ class _TenancyDraftCard extends StatelessWidget {
                     // but only where the landlord has not already typed
                     // something, which would be the real figure.
                     if (unit != null && draft.rent.text.trim().isEmpty) {
-                      draft.rent.text = LandaThousandsFormatter.groupAmount(
+                      draft.rent.text = OasisThousandsFormatter.groupAmount(
                         unit.rentAmount,
                       );
                     }
@@ -484,7 +484,7 @@ class _TenancyDraftCard extends StatelessWidget {
             keyboardType: TextInputType.emailAddress,
             style: AppTheme.cardTitle(context),
             onChanged: (_) => onChanged(),
-            decoration: landaInputDecoration(
+            decoration: oasisInputDecoration(
               context,
               hint: 'Their email or phone number',
               prefixIcon: Icons.alternate_email_rounded,
@@ -503,10 +503,10 @@ class _TenancyDraftCard extends StatelessWidget {
                   // unnoticed extra zero here writes the wrong rent into a
                   // signed tenancy.
                   keyboardType: TextInputType.number,
-                  inputFormatters: const [LandaThousandsFormatter()],
+                  inputFormatters: const [OasisThousandsFormatter()],
                   style: AppTheme.cardTitle(context),
                   onChanged: (_) => onChanged(),
-                  decoration: landaInputDecoration(
+                  decoration: oasisInputDecoration(
                     context,
                     hint: 'Rent per year',
                     prefixIcon: Icons.payments_outlined,
@@ -579,7 +579,7 @@ class _DateField extends StatelessWidget {
   const _DateField({required this.label, required this.isSet, this.onTap});
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     pressedScale: 0.98,
     child: Container(
@@ -620,7 +620,7 @@ class _DateField extends StatelessWidget {
 ///
 /// The single most consequential switch on the row, which is why it is a
 /// visible toggle with the date spelled out rather than a checkbox with a
-/// label. Left off, the tenant's first act in Landa is being billed for rent
+/// label. Left off, the tenant's first act in Oasis is being billed for rent
 /// they handed over in cash last year.
 class _PaidUpToggle extends StatelessWidget {
   final DateTime endDate;
@@ -681,7 +681,7 @@ class _ImportReportSheet extends StatelessWidget {
     final failed = report.failed;
     final succeeded = report.succeeded;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: report.isCompleteFailure
           ? Icons.error_outline_rounded
           : Icons.fact_check_outlined,
@@ -694,7 +694,7 @@ class _ImportReportSheet extends StatelessWidget {
       subtitle: failed.isEmpty
           ? 'Every tenant has been sent their agreement.'
           : 'Fix the ones below and send them again. The rest are done.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Back to the list',
         onPressed: () => Navigator.pop(context),
       ),
@@ -705,7 +705,7 @@ class _ImportReportSheet extends StatelessWidget {
             color: AppTheme.successColor,
             title: outcome.row.unitLabel,
             detail: outcome.tenantWasInvited
-                ? '${outcome.row.tenantContact} has no Landa account yet, '
+                ? '${outcome.row.tenantContact} has no Oasis account yet, '
                       'they have been invited to claim this tenancy.'
                 : 'Agreement sent to ${outcome.row.tenantContact}.',
           ),
@@ -784,7 +784,7 @@ class _TenancyDraft {
   bool get isComplete =>
       unit != null &&
       contact.text.trim().isNotEmpty &&
-      double.tryParse(LandaThousandsFormatter.digitsOf(rent.text)) != null &&
+      double.tryParse(OasisThousandsFormatter.digitsOf(rent.text)) != null &&
       startDate != null;
 
   static const List<String> _months = [

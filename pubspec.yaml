@@ -1,4 +1,4 @@
-name: landa_app
+name: oasis_app
 description: "A new Flutter project."
 publish_to: 'none'
 
@@ -40,11 +40,13 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/iconlogo.png
-    - assets/images/newlogo.png
-    - assets/images/newlogonobackground.png
-    # White-on-transparent variant of the wordmark, for dark backgrounds.
-    - assets/images/logo_wordmark_light.png
+    # Stacked logo (mark over name) for the splash; wordmark (side by side)
+    # for headers; the _dark variants have white lettering for dark mode.
+    - assets/images/oasis_logo.png
+    - assets/images/oasis_logo_dark.png
+    - assets/images/oasis_wordmark.png
+    - assets/images/oasis_wordmark_dark.png
+    - assets/images/oasis_mark.png
     - assets/images/profile_avatar.png
     - assets/images/artisan_bisi.png
     - assets/images/artisan_emeka.png

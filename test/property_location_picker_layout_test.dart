@@ -3,7 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:landa_app/features/properties/views/widgets/property_location_picker.dart';
+import 'package:oasis_app/features/properties/views/widgets/property_location_picker.dart';
 
 /// The pin map renders in both of its shapes without throwing.
 ///

@@ -44,7 +44,7 @@ class PaymentService {
   /// Pays rent out of the tenant's own vault balance instead of a card.
   ///
   /// There is no provider checkout and no verify step: the money is already
-  /// inside Landa, so the backend debits the vault and puts the payment into
+  /// inside Oasis, so the backend debits the vault and puts the payment into
   /// escrow in one call. A response that is *not* in escrow therefore means
   /// the debit did not happen, and the caller must not report success.
   ///

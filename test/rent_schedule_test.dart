@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
 
 /// The rent schedule decides what a tenant is told about money they owe, so
 /// these cover the two failures that actually cost them: being told rent is

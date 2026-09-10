@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
-import '../../../core/widgets/landa_popup_notification.dart';
+import '../../../core/widgets/oasis_popup_notification.dart';
 import '../controllers/messaging_controller.dart';
 import '../models/conversation_models.dart';
-import '../../../core/widgets/landa_busy.dart';
-import '../../../core/widgets/landa_shimmer.dart';
+import '../../../core/widgets/oasis_busy.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
 
 /// One thread between a landlord and a tenant.
 ///
@@ -56,7 +56,7 @@ class _ConversationScreenState extends State<ConversationScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _messaging = context.read<MessagingController>();
-    LandaPopups.suppress();
+    OasisPopups.suppress();
     // Post-frame, not inline: openConversation notifies its listeners
     // immediately, and notifying a provider during the first build throws.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -71,7 +71,7 @@ class _ConversationScreenState extends State<ConversationScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    LandaPopups.resume();
+    OasisPopups.resume();
     // Closed here rather than in `deactivate`, which is where it used to be.
     // `deactivate` runs while the route is still animating out, so clearing
     // the thread there made the screen repaint itself empty on the way off
@@ -162,7 +162,7 @@ class _ConversationScreenState extends State<ConversationScreen>
             if (controller.hasError && controller.messages.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: LandaErrorBanner(
+                child: OasisErrorBanner(
                   message: controller.errorMessage!,
                   isConnectionError: controller.errorIsConnection,
                 ),
@@ -210,11 +210,11 @@ class _ConversationScreenState extends State<ConversationScreen>
         (controller.isLoading && controller.messages.isEmpty)) {
       // Message-shaped, not a wheel in the middle of an empty screen: the
       // thread is about to be a column of bubbles, so that is what waits here.
-      return const LandaSkeletonList(count: 4, padding: EdgeInsets.all(16));
+      return const OasisSkeletonList(count: 4, padding: EdgeInsets.all(16));
     }
 
     if (controller.hasError && controller.messages.isEmpty) {
-      return LandaErrorState(
+      return OasisErrorState(
         message: controller.errorMessage,
         isConnectionError: controller.errorIsConnection,
         onRetry: () =>
@@ -226,7 +226,7 @@ class _ConversationScreenState extends State<ConversationScreen>
       final isStay =
           controller.activeConversation?.context ==
           ConversationContext.shortLet;
-      return LandaEmptyState(
+      return OasisEmptyState(
         icon: Icons.chat_bubble_outline_rounded,
         title: 'Say hello',
         message: isStay
@@ -324,7 +324,7 @@ class _Bubble extends StatelessWidget {
                   ),
                 ),
                 if (message.hasFailed)
-                  LandaPressable(
+                  OasisPressable(
                     onTap: onRetry,
                     child: Padding(
                       padding: const EdgeInsets.only(top: 4, right: 4),
@@ -439,7 +439,7 @@ class _Composer extends StatelessWidget {
               maxLength: 2000,
               textCapitalization: TextCapitalization.sentences,
               style: AppTheme.bodyText(context),
-              decoration: landaInputDecoration(context, hint: 'Write a message')
+              decoration: oasisInputDecoration(context, hint: 'Write a message')
                   .copyWith(
                     counterText: '',
                     // Tighter than the shared form padding so the field matches
@@ -449,7 +449,7 @@ class _Composer extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          LandaPressable(
+          OasisPressable(
             onTap: isSending ? null : onSend,
             child: Container(
               width: 44,
@@ -461,7 +461,7 @@ class _Composer extends StatelessWidget {
               child: isSending
                   ? const Padding(
                       padding: EdgeInsets.all(17),
-                      child: LandaBusyDots(color: AppTheme.whiteColor),
+                      child: OasisBusyDots(color: AppTheme.whiteColor),
                     )
                   : const Icon(
                       Icons.send_rounded,

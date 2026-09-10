@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'package:landa_app/core/utils/nigeria_locations.dart';
-import 'package:landa_app/features/properties/services/geocoding_service.dart';
+import 'package:oasis_app/core/utils/nigeria_locations.dart';
+import 'package:oasis_app/features/properties/services/geocoding_service.dart';
 
 /// The address lookup gives up detail rather than giving up.
 ///

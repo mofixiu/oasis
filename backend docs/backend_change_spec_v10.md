@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v10
+# Oasis Backend Change Specification — v10
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >
@@ -92,7 +92,7 @@ The v17 guide, §"Messaging", is explicit: *"Messaging is available only after t
 
 ### Why
 
-The questions a tenant has are the ones they need answered *before* they commit, not after: can I come and inspect on Saturday, what does the service charge cover, will you take the rent monthly. Under the current rule, the channel opens at the exact moment those questions stop being useful. In practice the conversation still happens — it happens on WhatsApp, off-platform, which is precisely the thing Landa exists to replace, and it takes the payment with it.
+The questions a tenant has are the ones they need answered *before* they commit, not after: can I come and inspect on Saturday, what does the service charge cover, will you take the rent monthly. Under the current rule, the channel opens at the exact moment those questions stop being useful. In practice the conversation still happens — it happens on WhatsApp, off-platform, which is precisely the thing Oasis exists to replace, and it takes the payment with it.
 
 It matters in the other direction too. A landlord deciding on an applicant usually wants to ask them something first — when they want to move in, whether they have actually seen the flat. Today they have to *approve* someone to ask them a question, which is the wrong way round: approval creates a tenancy agreement, and it should not be the price of a sentence.
 

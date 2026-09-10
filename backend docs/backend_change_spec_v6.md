@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v6
+# Oasis Backend Change Specification — v6
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >
@@ -6,7 +6,7 @@
 >
 > **Base URL (staging):** `https://landa-os-staging.onrender.com/api/users`
 >
-> **Status:** One blocking gap and one enhancement. §1 blocks a landlord with an existing building from onboarding truthfully — today the API offers them no way to record a tenancy that started before they found Landa. §2 makes Discover answer the location question Stays already answers. Both have Flutter shipped against them with a degraded fallback; see §1.6 and §2.4 for exactly what the app does until each lands.
+> **Status:** One blocking gap and one enhancement. §1 blocks a landlord with an existing building from onboarding truthfully — today the API offers them no way to record a tenancy that started before they found Oasis. §2 makes Discover answer the location question Stays already answers. Both have Flutter shipped against them with a degraded fallback; see §1.6 and §2.4 for exactly what the app does until each lands.
 
 ---
 
@@ -14,7 +14,7 @@
 
 ### 1.1 The problem
 
-Every tenancy path in the API assumes the tenancy **begins on Landa**:
+Every tenancy path in the API assumes the tenancy **begins on Oasis**:
 
 | Path | What it assumes |
 | :--- | :--- |
@@ -24,11 +24,11 @@ Every tenancy path in the API assumes the tenancy **begins on Landa**:
 A landlord signing up with a twelve-flat building has neither. Their tenants moved in two years ago, paid a year up front in cash, and are seven months into a term. There is no endpoint that describes that situation, and the two workarounds both produce false records:
 
 1. **Invite each tenant with `POST /agreements/`.** Two things break.
-   - The tenant must already hold a `TENANT` account. §2 of the guide is explicit: *"The matched account must have `role: "TENANT"`. If no tenant account matches, the backend returns `400 Bad Request`."* A landlord's existing tenants have never heard of Landa, so **every row fails**. This alone makes the flow impossible, not merely awkward.
+   - The tenant must already hold a `TENANT` account. §2 of the guide is explicit: *"The matched account must have `role: "TENANT"`. If no tenant account matches, the backend returns `400 Bad Request`."* A landlord's existing tenants have never heard of Oasis, so **every row fails**. This alone makes the flow impossible, not merely awkward.
    - Even where the tenant does have an account, the agreement starts today. The real tenancy started 2025-03-01 and renews 2026-02-28; the recorded one starts 2026-09-02 and renews 2027-09-01. Every renewal reminder, every rent schedule and every expiry is then wrong by seven months, permanently.
 2. **Leave them out and mark the flats vacant.** The landlord's own dashboard then disagrees with their building, and the units appear on the tenant marketplace as available to apply for — homes that somebody is living in.
 
-There is a third failure lying under both, and it is the one that will actually cost trust. If a backdated agreement is created and the rent schedule is generated from `start_date` as it is today, an existing tenant's **first experience of Landa is being told they owe rent they already paid**, possibly several instalments of it. The backend must be told what has already been settled.
+There is a third failure lying under both, and it is the one that will actually cost trust. If a backdated agreement is created and the rent schedule is generated from `start_date` as it is today, an existing tenant's **first experience of Oasis is being told they owe rent they already paid**, possibly several instalments of it. The backend must be told what has already been settled.
 
 ### 1.2 What to add
 
@@ -36,7 +36,7 @@ There is a third failure lying under both, and it is the one that will actually 
 
 - **Authentication:** Required
 - **Roles:** `OWNER`, verified
-- **Purpose:** Record tenancies that predate Landa, in one batch, inviting tenants who have no account yet.
+- **Purpose:** Record tenancies that predate Oasis, in one batch, inviting tenants who have no account yet.
 
 #### Request body
 
@@ -67,7 +67,7 @@ There is a third failure lying under both, and it is the one that will actually 
 | `end_date` | ISO date | Yes | After `start_date`. May also be in the past — see §1.5 on expired terms. |
 | `rent_plan` | enum | No | `ANNUAL` \| `SIX_MONTHLY` \| `QUARTERLY` \| `MONTHLY` \| `WEEKLY`. Defaults to `ANNUAL`. |
 | `rules` | string | No | As on `POST /agreements/`. |
-| `is_existing_tenancy` | boolean | Yes | Always `true` from this route. Marks the agreement as a record of something that happened off-platform, not a tenancy Landa brokered. |
+| `is_existing_tenancy` | boolean | Yes | Always `true` from this route. Marks the agreement as a record of something that happened off-platform, not a tenancy Oasis brokered. |
 | `rent_paid_until` | ISO date | No | Rent is settled **up to and including** this date. Absent means nothing has been paid. See §1.5. |
 
 Cap the batch at **50** rows. A landlord entering more than that in one sheet is a data import, not a form.
@@ -103,7 +103,7 @@ One result per requested row, **in request order**. The app matches results to r
 | Field | Values | Notes |
 | :--- | :--- | :--- |
 | `status` | `CREATED` \| `FAILED` | |
-| `tenant_status` | `EXISTING` \| `INVITED` | Whether the tenant already had a Landa account. Absent on a failure. |
+| `tenant_status` | `EXISTING` \| `INVITED` | Whether the tenant already had an Oasis account. Absent on a failure. |
 | `agreement` | object | Present on `CREATED`. The same serializer `POST /agreements/` returns, so the app needs no second shape. |
 | `error` | string | Present on `FAILED`. **User-presentable** — the app shows it verbatim against the flat. "That unit is already assigned to another tenant", not "IntegrityError on units_unit.tenant_id". |
 
@@ -140,14 +140,14 @@ This is the part most likely to be implemented in a way that looks correct and i
 
 **`start_date` in the past must be accepted from this route.** The current validation (`end_date > start_date`) is sufficient; do not add a "not in the past" rule for imports.
 
-**The agreement is still signed.** Status `PENDING`, `awaiting_signature_from: "TENANT"`, exactly as an invitation. Landa's entire premise is that a tenancy agreement is a document both parties actually signed — auto-executing an imported one because the landlord asserted it exists would forge the tenant's signature, on the one product that exists to stop that happening. The tenant signs a backdated document, which is normal and legally ordinary; the landlord signs after them as usual.
+**The agreement is still signed.** Status `PENDING`, `awaiting_signature_from: "TENANT"`, exactly as an invitation. Oasis's entire premise is that a tenancy agreement is a document both parties actually signed — auto-executing an imported one because the landlord asserted it exists would forge the tenant's signature, on the one product that exists to stop that happening. The tenant signs a backdated document, which is normal and legally ordinary; the landlord signs after them as usual.
 
 **`rent_paid_until` governs the rent schedule.** For an imported agreement:
 
 - Every instalment falling due **on or before** `rent_paid_until` is treated as settled. It must not be billed, must not be counted in `is_overdue`, and must not trigger a rent reminder (v3 §5).
 - `rent_schedule.next_due_date` is the first instalment falling **after** `rent_paid_until`.
 - `rent_schedule.instalments_paid` counts the settled ones, so `instalments_paid: 1, instalments_total: 1` is the correct answer for a fully paid annual term.
-- These instalments are **settled, not paid through Landa**. No `Payment` record, no receipt, no escrow, no platform fee, and nothing that would make them appear in the landlord's vault or payout figures. Money that never moved through Landa must never show up in Landa's ledger. If a marker is useful, `"source": "OFF_PLATFORM"` on the schedule entry is the honest one.
+- These instalments are **settled, not paid through Oasis**. No `Payment` record, no receipt, no escrow, no platform fee, and nothing that would make them appear in the landlord's vault or payout figures. Money that never moved through Oasis must never show up in Oasis's ledger. If a marker is useful, `"source": "OFF_PLATFORM"` on the schedule entry is the honest one.
 
 Worked example — the common Nigerian case. Tenant moved in 2025-03-01, paid ₦450,000 for the year in cash:
 
@@ -182,7 +182,7 @@ On the fallback path the app already sends `is_existing_tenancy` and `rent_paid_
 
 What the landlord sees until §1 ships:
 
-- Tenants who **already have** a Landa account: recorded correctly, with backdated dates — but billed from `start_date`, because nothing reads `rent_paid_until` yet. This is the arrears problem in §1.1, live.
+- Tenants who **already have** an Oasis account: recorded correctly, with backdated dates — but billed from `start_date`, because nothing reads `rent_paid_until` yet. This is the arrears problem in §1.1, live.
 - Tenants who **do not**: the row fails with the backend's own `400` on `tenant`, shown against that flat. The landlord is told exactly which tenants could not be added and why. That is the best the app can do, and it is not good enough — it is most of the building.
 
 ### 1.7 Acceptance checklist

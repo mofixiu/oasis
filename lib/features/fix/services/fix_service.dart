@@ -9,14 +9,14 @@ import '../models/fix_models.dart';
 /// Fix is a **directory**. It was a marketplace: a tenant raised a request,
 /// an artisan accepted and quoted it, the tenant paid into escrow, and
 /// confirming the work released the money, and API guide 18 removed every
-/// endpoint behind that (§7B). Landa no longer brokers repairs or artisan
+/// endpoint behind that (§7B). Oasis no longer brokers repairs or artisan
 /// payments.
 ///
 /// What is left: find a verified artisan, see their phone number, ring them.
 /// The phone number is the point. It used to be released only once a job was
 /// accepted, and most of the vanished workflow existed to gate it; now it is
 /// on the card, and the repair is arranged off-app like every repair was
-/// before Landa existed.
+/// before Oasis existed.
 ///
 /// Still role-branched, for the one reason that survives: a tenant and a
 /// landlord read the same directory from different paths, and a landlord

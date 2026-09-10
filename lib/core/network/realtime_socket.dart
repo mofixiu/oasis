@@ -73,7 +73,7 @@ enum RealtimeStatus {
 
 /// The app's single WebSocket to the backend.
 ///
-/// Everything live in Landa (a message landing in an open thread, a
+/// Everything live in Oasis (a message landing in an open thread, a
 /// notification being raised) arrives here. One socket rather than one per
 /// feature, because a phone on mobile data pays for every connection it
 /// holds, and both of those events are the same thing to the user: something
@@ -185,7 +185,7 @@ class RealtimeSocket {
     try {
       // IOWebSocketChannel rather than the platform-agnostic constructor:
       // only the dart:io implementation can send headers on the opening
-      // handshake, and the header is where the token belongs. Landa ships to
+      // handshake, and the header is where the token belongs. Oasis ships to
       // iOS and Android, so this is the implementation that runs.
       final socket = await WebSocket.connect(
         uri.toString(),

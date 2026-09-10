@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import '../widgets/landa_toast.dart';
+import '../widgets/oasis_toast.dart';
 import 'device_location.dart';
 
 /// The "where am I, and what do I do when the answer is no" half of a Near me
@@ -54,7 +54,7 @@ mixin NearbySearchMixin<T extends StatefulWidget> on State<T> {
       // Location Services, so those two get a route there rather than a dead
       // end. Everything else is a toast: there is nothing to decide.
       if (location.isRetryable) {
-        LandaToast.info(context, message);
+        OasisToast.info(context, message);
       } else {
         await _offerSettings(message, location.outcome);
       }

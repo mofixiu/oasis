@@ -6,7 +6,7 @@
 /// counter-signs, and the whole thing is over in a weekend.
 ///
 /// Money arrives from the backend as decimal strings and stays that way all
-/// the way to `LandaCurrency`, for the same reason it does in the vault: a
+/// the way to `OasisCurrency`, for the same reason it does in the vault: a
 /// price rendered a naira out is worse than one that fails to render.
 ///
 /// The guide documents the request bodies for these endpoints but not the
@@ -18,7 +18,7 @@ library;
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_constants.dart';
-import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/oasis_currency.dart';
 
 /// The cancellation terms a host selects for a short-let listing.
 ///
@@ -67,7 +67,7 @@ enum ShortLetCancellationPolicy {
     ShortLetCancellationPolicy.strict =>
       'Free cancellation until 14 days before check-in; 50% until 7 days before.',
     ShortLetCancellationPolicy.nonRefundable =>
-      'No accommodation refund after payment, except where Landa or the host cancels.',
+      'No accommodation refund after payment, except where Oasis or the host cancels.',
   };
 }
 
@@ -609,7 +609,7 @@ class ShortLetListing {
   /// Tested against the parsed minor units rather than the string, because
   /// "0.00", "0" and "" all mean the same thing and only one of them is
   /// what the backend happens to send.
-  bool get hasCautionFee => (LandaCurrency.minorUnits(cautionFee) ?? 0) > 0;
+  bool get hasCautionFee => (OasisCurrency.minorUnits(cautionFee) ?? 0) > 0;
 
   String get resolvedCancellationPolicySummary {
     final summary = cancellationPolicySummary.trim();
@@ -651,9 +651,9 @@ class ShortLetListing {
   /// the price is unreadable: better no figure than a wrong one.
   String? totalFor(int nights) {
     if (nights <= 0) return null;
-    final perNight = LandaCurrency.minorUnits(nightlyPrice);
+    final perNight = OasisCurrency.minorUnits(nightlyPrice);
     if (perNight == null) return null;
-    return LandaCurrency.fromMinorUnits(perNight * nights);
+    return OasisCurrency.fromMinorUnits(perNight * nights);
   }
 
   /// Nights plus the deposit: what the guest will actually be asked for,
@@ -665,10 +665,10 @@ class ShortLetListing {
     final stay = totalFor(nights);
     if (stay == null) return null;
     if (!hasCautionFee) return stay;
-    final sum = LandaCurrency.minorUnits(stay);
-    final deposit = LandaCurrency.minorUnits(cautionFee);
+    final sum = OasisCurrency.minorUnits(stay);
+    final deposit = OasisCurrency.minorUnits(cautionFee);
     if (sum == null || deposit == null) return stay;
-    return LandaCurrency.fromMinorUnits(sum + deposit);
+    return OasisCurrency.fromMinorUnits(sum + deposit);
   }
 
   /// Whether [date] (ISO `YYYY-MM-DD`) is inside the availability window and
@@ -1067,7 +1067,7 @@ class ShortLetBooking {
       authorizationUrl != null && authorizationUrl!.trim().isNotEmpty;
 
   /// Whether a refundable deposit forms part of this booking.
-  bool get hasCautionFee => (LandaCurrency.minorUnits(cautionFee) ?? 0) > 0;
+  bool get hasCautionFee => (OasisCurrency.minorUnits(cautionFee) ?? 0) > 0;
 
   /// Whether the deposit has already come back.
   bool get isCautionFeeRefunded =>
@@ -1076,7 +1076,7 @@ class ShortLetBooking {
   /// The backend's current refund quote is meaningful only when it contains a
   /// positive amount. It is a disclosure, not a local eligibility decision.
   bool get hasRefundQuote =>
-      (LandaCurrency.minorUnits(totalRefundAmount) ?? 0) > 0;
+      (OasisCurrency.minorUnits(totalRefundAmount) ?? 0) > 0;
 
   /// The booking has not started and is in a state the tenant can cancel.
   /// The server still decides the actual refund and may refuse stale data.
@@ -1130,7 +1130,7 @@ class ShortLetBooking {
   /// The guest is told one number to pay, but two things are inside it, and
   /// only one of them is money they are spending.
   String get amountExcludingCautionFee => hasCautionFee
-      ? (LandaCurrency.subtract(totalAmount, cautionFee) ?? totalAmount)
+      ? (OasisCurrency.subtract(totalAmount, cautionFee) ?? totalAmount)
       : totalAmount;
 
   /// The backend's status word, tidied for display: "PAYMENT_FAILED"

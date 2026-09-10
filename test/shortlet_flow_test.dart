@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/features/shortlets/controllers/shortlet_controller.dart';
-import 'package:landa_app/features/shortlets/models/shortlet_models.dart';
-import 'package:landa_app/features/shortlets/services/shortlet_service.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/features/shortlets/controllers/shortlet_controller.dart';
+import 'package:oasis_app/features/shortlets/models/shortlet_models.dart';
+import 'package:oasis_app/features/shortlets/services/shortlet_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// A short let takes real money for a real trip, so these cover what would

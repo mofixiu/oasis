@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v12
+# Oasis Backend Change Specification — v12
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >
@@ -26,7 +26,7 @@
 
 A price is the only thing on a listing a landlord changes because the *world* changed rather than because they got it wrong. Everything else on a unit — the number, the room count, the photos — is right or wrong from the day it is typed. The rent is a position in a market.
 
-Until now the app had no answer to that. A rent was set once, in the units sheet, during the add-property flow, and was then fixed for ever. A landlord who mispriced a flat, or who wanted to drop it ₦200,000 to fill a two-month vacancy, had exactly one option inside Landa: delete the unit and add it again — which throws away its photos, its walkthrough, its artisan recommendations and any applications against it.
+Until now the app had no answer to that. A rent was set once, in the units sheet, during the add-property flow, and was then fixed for ever. A landlord who mispriced a flat, or who wanted to drop it ₦200,000 to fill a two-month vacancy, had exactly one option inside Oasis: delete the unit and add it again — which throws away its photos, its walkthrough, its artisan recommendations and any applications against it.
 
 The observable consequence is a listing that sits at a stale price until the landlord gives up on the app and lets the flat through an agent instead. That is the growth argument for this change, and it is the reason §1 is worth doing before the rest of v11.
 
@@ -48,7 +48,7 @@ Authorization: Bearer <access token>
 
 That is the whole body. **Rent and nothing else** — deliberately, and please enforce it rather than accepting a general-purpose unit update. A unit's number and room count are what a tenant matched against when they applied; a PATCH that can quietly rewrite them is a category of bug worth making impossible rather than careful.
 
-`rent_amount` is a **year's** rent as a decimal string, exactly as `POST /properties/{id}/units/` takes it. The app converts a monthly quote before it gets here (₦250,000/month → `"3000000.00"`) and shows the landlord the multiplication before they save, because Landa stores one number per unit.
+`rent_amount` is a **year's** rent as a decimal string, exactly as `POST /properties/{id}/units/` takes it. The app converts a monthly quote before it gets here (₦250,000/month → `"3000000.00"`) and shows the landlord the multiplication before they save, because Oasis stores one number per unit.
 
 ### Expected response
 
@@ -173,7 +173,7 @@ Worth being conservative about who receives one: a price *rise* is not news anyb
 
 Read this and decide; the app asks for nothing.
 
-Landa's proposition is that a rental is auditable — that is what the escrow, the agreements and the verification are all for. A rent that can be silently rewritten is a small hole in that. If a landlord raises a unit's rent between an application being made and it being approved, and §3 is implemented correctly, nothing bad happens to the tenant — but there is also no record that it happened.
+Oasis's proposition is that a rental is auditable — that is what the escrow, the agreements and the verification are all for. A rent that can be silently rewritten is a small hole in that. If a landlord raises a unit's rent between an application being made and it being approved, and §3 is implemented correctly, nothing bad happens to the tenant — but there is also no record that it happened.
 
 A small append-only row on each change (`unit`, `changed_by`, `old_rent`, `new_rent`, `changed_at`) costs almost nothing and answers a dispute in one query. The same applies to short-let nightly prices, which will change far more often.
 

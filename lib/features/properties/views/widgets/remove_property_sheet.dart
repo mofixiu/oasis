@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/landa_sheet.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/widgets/oasis_sheet.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../controllers/landlord_controller.dart';
 import '../../models/property_model.dart';
 
-/// Takes a property off Landa: ask, then prove it is you.
+/// Takes a property off Oasis: ask, then prove it is you.
 ///
 /// Two stages in one sheet, because they are one decision. Removing a
 /// property is the most destructive thing a landlord can do in this app and
@@ -81,7 +81,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
   Future<void> _requestRemoval() async {
     final reason = _reasonController.text.trim();
     if (reason.length < 4) {
-      LandaToast.error(context, 'Say why you are removing this property.');
+      OasisToast.error(context, 'Say why you are removing this property.');
       return;
     }
     final controller = context.read<LandlordController>();
@@ -95,7 +95,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
       // Blocked is rendered inline, per unit, by the body below. Anything
       // else is a plain failure and gets the backend's own sentence.
       if (controller.removalBlockers.isEmpty) {
-        LandaToast.error(
+        OasisToast.error(
           context,
           controller.errorMessage ??
               'Could not start the removal. Try again in a moment.',
@@ -112,7 +112,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
   Future<void> _confirmRemoval() async {
     final password = _passwordController.text;
     if (password.isEmpty) {
-      LandaToast.error(context, 'Enter your account password to confirm.');
+      OasisToast.error(context, 'Enter your account password to confirm.');
       return;
     }
     final request = _request;
@@ -129,7 +129,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
     if (!navigator.mounted) return;
 
     if (confirmed == null) {
-      LandaToast.error(
+      OasisToast.error(
         navigator.context,
         controller.errorMessage ??
             'That password was not accepted. Try again.',
@@ -137,7 +137,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
       return;
     }
     navigator.pop(true);
-    LandaToast.success(
+    OasisToast.success(
       navigator.context,
       '${widget.property.name} is hidden from tenants. You can undo this '
       'until it is archived.',
@@ -157,7 +157,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
 
   Widget _reasonStage(LandlordController controller) {
     final blockers = controller.removalBlockers;
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.domain_disabled_outlined,
       title: 'Remove ${widget.property.name}?',
       subtitle:
@@ -165,7 +165,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
           'deleted — your past agreements and payments keep working, and you '
           'have seven days to undo it.',
       accent: AppTheme.logoutColor,
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Continue',
         icon: Icons.arrow_forward_rounded,
         color: AppTheme.logoutColor,
@@ -177,14 +177,14 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
           _BlockedNotice(blockers: blockers),
           const SizedBox(height: 18),
         ],
-        const LandaFieldLabel('Why are you removing it?'),
+        const OasisFieldLabel('Why are you removing it?'),
         TextField(
           controller: _reasonController,
           maxLines: 3,
           autofocus: true,
           textCapitalization: TextCapitalization.sentences,
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Sold the building, taking it off the market…',
           ),
@@ -199,7 +199,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
 
   Widget _confirmStage(LandlordController controller) {
     final blockers = controller.removalBlockers;
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.lock_outline_rounded,
       title: 'Confirm it is you',
       subtitle:
@@ -207,7 +207,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
           '${widget.property.name} is hidden from tenants and archives in '
           'seven days unless you undo it.',
       accent: AppTheme.logoutColor,
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Remove this property',
         icon: Icons.domain_disabled_outlined,
         color: AppTheme.logoutColor,
@@ -221,7 +221,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
           _BlockedNotice(blockers: blockers),
           const SizedBox(height: 18),
         ],
-        const LandaFieldLabel('Account password'),
+        const OasisFieldLabel('Account password'),
         TextField(
           controller: _passwordController,
           obscureText: true,
@@ -229,7 +229,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => _confirmRemoval(),
           style: AppTheme.cardTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Your password',
             prefixIcon: Icons.lock_outline,

@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
-import 'package:landa_app/features/agreements/models/tenancy_import.dart';
-import 'package:landa_app/features/agreements/services/agreement_service.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/agreements/models/tenancy_import.dart';
+import 'package:oasis_app/features/agreements/services/agreement_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Moving a landlord's existing building onto Landa is the one flow where the
+/// Moving a landlord's existing building onto Oasis is the one flow where the
 /// app writes history rather than starting it, and the two ways it can go
 /// wrong are both silent: an agreement dated today instead of when the tenant
 /// really moved in, and a paid-up tenant being billed again. These pin the

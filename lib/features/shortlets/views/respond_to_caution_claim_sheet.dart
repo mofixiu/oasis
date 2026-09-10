@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/shortlet_controller.dart';
-import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/utils/oasis_input_formatters.dart';
 
 /// Answers a host's caution-fee claim: accept it, reject it, or counter with
 /// a smaller amount.
@@ -70,7 +70,7 @@ class _RespondToClaimSheetState extends State<_RespondToClaimSheet> {
 
     if (_choice == _ClaimResponse.counter &&
         _counterController.text.trim().isEmpty) {
-      LandaToast.error(context, 'Enter the amount you think is fair.');
+      OasisToast.error(context, 'Enter the amount you think is fair.');
       return;
     }
 
@@ -84,7 +84,7 @@ class _RespondToClaimSheetState extends State<_RespondToClaimSheet> {
       // Grouped for reading, stripped for the wire: "5,000" is a
       // display string and the API takes a decimal.
       counterAmount: _choice == _ClaimResponse.counter
-          ? '${LandaThousandsFormatter.digitsOf(_counterController.text)}.00'
+          ? '${OasisThousandsFormatter.digitsOf(_counterController.text)}.00'
           : null,
       note: _noteController.text.trim().isEmpty
           ? null
@@ -93,7 +93,7 @@ class _RespondToClaimSheetState extends State<_RespondToClaimSheet> {
     if (!mounted) return;
 
     if (!ok) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not send that response. Try again in a moment.',
@@ -101,7 +101,7 @@ class _RespondToClaimSheetState extends State<_RespondToClaimSheet> {
       return;
     }
     Navigator.pop(context, true);
-    LandaToast.success(
+    OasisToast.success(
       context,
       _choice == _ClaimResponse.accept
           ? 'Sent. The claimed amount goes to the host.'
@@ -115,14 +115,14 @@ class _RespondToClaimSheetState extends State<_RespondToClaimSheet> {
       (c) => c.isSubmitting,
     );
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.shield_outlined,
       title: 'Caution fee claim',
       subtitle: widget.claimedAmount == null
           ? 'Your host has asked to keep some of your deposit.'
           : 'Your host has asked to keep ₦${widget.claimedAmount} of your '
                 'deposit.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Send response',
         icon: Icons.send_rounded,
         isLoading: isSubmitting,
@@ -165,13 +165,13 @@ class _RespondToClaimSheetState extends State<_RespondToClaimSheet> {
 
         if (_choice == _ClaimResponse.counter) ...[
           const SizedBox(height: 16),
-          const LandaFieldLabel('Your offer'),
+          const OasisFieldLabel('Your offer'),
           TextField(
             controller: _counterController,
             keyboardType: TextInputType.number,
-            inputFormatters: const [LandaThousandsFormatter()],
+            inputFormatters: const [OasisThousandsFormatter()],
             style: AppTheme.cardTitle(context),
-            decoration: landaInputDecoration(
+            decoration: oasisInputDecoration(
               context,
               hint: '5000',
               prefixIcon: Icons.currency_exchange_outlined,
@@ -180,12 +180,12 @@ class _RespondToClaimSheetState extends State<_RespondToClaimSheet> {
         ],
 
         const SizedBox(height: 16),
-        const LandaFieldLabel('Note (optional)'),
+        const OasisFieldLabel('Note (optional)'),
         TextField(
           controller: _noteController,
           maxLines: 3,
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Say why, if it helps.',
           ),

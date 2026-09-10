@@ -3,12 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../controllers/agreement_controller.dart';
 import '../models/agreement_group.dart';
 import '../models/agreement_model.dart';
@@ -66,13 +66,13 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
     // list, so the first is asked about separately: otherwise the screen
     // claims there are no agreements before it has looked for any.
     if (!controller.hasLoaded() || (controller.isLoading && groups.isEmpty)) {
-      return const LandaSkeletonList(count: 3);
+      return const OasisSkeletonList(count: 3);
     }
 
     // A failure with nothing to show is a dead page; a failure with records
     // already on screen is a banner over them.
     if (controller.hasError && groups.isEmpty) {
-      return LandaErrorState(
+      return OasisErrorState(
         message: controller.errorMessage,
         isConnectionError: controller.errorIsConnection,
         onRetry: _reload,
@@ -80,7 +80,7 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
     }
 
     if (groups.isEmpty) {
-      return LandaEmptyState(
+      return OasisEmptyState(
         icon: Icons.folder_outlined,
         title: 'No signed agreements yet',
         message:
@@ -99,14 +99,14 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
         if (controller.hasError)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: LandaErrorBanner(
+            child: OasisErrorBanner(
               message: controller.errorMessage!,
               isConnectionError: controller.errorIsConnection,
               onRetry: _reload,
             ),
           ),
         for (final (index, group) in groups.indexed)
-          LandaEntrance(
+          OasisEntrance(
             index: index,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 24),
@@ -210,7 +210,7 @@ class _TenancyCardState extends State<_TenancyCard> {
       ),
       child: Column(
         children: [
-          LandaPressable(
+          OasisPressable(
             onTap: () => _open(context, latest),
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -236,7 +236,7 @@ class _TenancyCardState extends State<_TenancyCard> {
                         const SizedBox(height: 4),
                         Text(
                           '${_term(latest)} · '
-                          '${LandaCurrency.perYear(latest.rentAmount)}',
+                          '${OasisCurrency.perYear(latest.rentAmount)}',
                           style: AppTheme.labelText(
                             context,
                             color: AppTheme.secondaryTextColor(context),
@@ -258,7 +258,7 @@ class _TenancyCardState extends State<_TenancyCard> {
           // matters far less often than it takes up room.
           if (tenancy.hasHistory) ...[
             Divider(height: 1, color: AppTheme.borderColor(context)),
-            LandaPressable(
+            OasisPressable(
               onTap: () => setState(() => _expanded = !_expanded),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -318,7 +318,7 @@ class _HistoryRow extends StatelessWidget {
   const _HistoryRow({required this.agreement, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     child: Container(
       decoration: BoxDecoration(

@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v11
+# Oasis Backend Change Specification — v11
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
+import '../../../../core/utils/oasis_currency.dart';
 import '../../models/shortlet_models.dart';
 
 /// One booking, from either side of it.
@@ -59,7 +59,7 @@ class ShortLetBookingCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                LandaCurrency.format(booking.totalAmount),
+                OasisCurrency.format(booking.totalAmount),
                 style: AppTheme.cardTitle(context, color: AppTheme.actionColor),
               ),
             ],
@@ -153,11 +153,11 @@ class ShortLetBookingCard extends StatelessWidget {
             _Line(
               icon: Icons.shield_outlined,
               text: booking.isCautionFeeRefunded
-                  ? '${LandaCurrency.format(booking.cautionFee)} caution fee '
+                  ? '${OasisCurrency.format(booking.cautionFee)} caution fee '
                         'returned'
-                  : 'Includes ${LandaCurrency.format(booking.cautionFee)} '
+                  : 'Includes ${OasisCurrency.format(booking.cautionFee)} '
                         'refundable caution fee '
-                        '(${LandaCurrency.format(booking.amountExcludingCautionFee)} '
+                        '(${OasisCurrency.format(booking.amountExcludingCautionFee)} '
                         'for the stay)',
               tone: booking.isCautionFeeRefunded
                   ? AppTheme.successColor
@@ -179,7 +179,7 @@ class ShortLetBookingCard extends StatelessWidget {
             _Line(
               icon: Icons.currency_exchange_outlined,
               text:
-                  'Cancel now: ${LandaCurrency.format(booking.totalRefundAmount)} '
+                  'Cancel now: ${OasisCurrency.format(booking.totalRefundAmount)} '
                   'refund',
               tone: AppTheme.successColor,
             ),
@@ -406,7 +406,7 @@ class _HostPayoutBanner extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      '${LandaCurrency.format(booking.hostPayout)} · ',
+                      '${OasisCurrency.format(booking.hostPayout)} · ',
                       style: AppTheme.labelText(
                         context,
                         color: tone,

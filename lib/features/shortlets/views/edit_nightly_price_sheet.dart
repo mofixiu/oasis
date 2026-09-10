@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
-import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/utils/oasis_input_formatters.dart';
 
 /// Changes what a stay costs a night, and nothing else.
 ///
@@ -61,11 +61,11 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
   @override
   void initState() {
     super.initState();
-    _priceController.text = LandaThousandsFormatter.groupAmount(
+    _priceController.text = OasisThousandsFormatter.groupAmount(
       widget.listing.nightlyPrice,
     );
     if (widget.listing.hasCautionFee) {
-      _cautionController.text = LandaThousandsFormatter.groupAmount(
+      _cautionController.text = OasisThousandsFormatter.groupAmount(
         widget.listing.cautionFee,
       );
     }
@@ -95,14 +95,14 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
   /// True when neither number has moved. Saving then would spend a request to
   /// report a change that did not happen.
   bool get _isUnchanged =>
-      LandaCurrency.minorUnits(_nightlyPrice) ==
-          LandaCurrency.minorUnits(widget.listing.nightlyPrice) &&
-      LandaCurrency.minorUnits(_cautionFee) ==
-          LandaCurrency.minorUnits(widget.listing.cautionFee);
+      OasisCurrency.minorUnits(_nightlyPrice) ==
+          OasisCurrency.minorUnits(widget.listing.nightlyPrice) &&
+      OasisCurrency.minorUnits(_cautionFee) ==
+          OasisCurrency.minorUnits(widget.listing.cautionFee);
 
   Future<void> _save() async {
     if (!_hasPrice) {
-      LandaToast.error(context, 'Set a nightly price.');
+      OasisToast.error(context, 'Set a nightly price.');
       return;
     }
 
@@ -131,7 +131,7 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
     if (!mounted) return;
 
     if (saved == null) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not change that price. Try again in a moment.',
@@ -140,9 +140,9 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
     }
 
     Navigator.pop(context, true);
-    LandaToast.success(
+    OasisToast.success(
       context,
-      'Now ${LandaCurrency.format(_nightlyPrice)} a night.',
+      'Now ${OasisCurrency.format(_nightlyPrice)} a night.',
     );
   }
 
@@ -151,14 +151,14 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
     final controller = context.watch<ShortLetController>();
     final listing = widget.listing;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.sell_outlined,
       title: 'Change the price',
       subtitle:
           '${listing.title} is listed at '
-          '${LandaCurrency.format(listing.nightlyPrice)} a night. Guests '
+          '${OasisCurrency.format(listing.nightlyPrice)} a night. Guests '
           'browsing stays see the new price straight away.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Save new price',
         icon: Icons.check_rounded,
         isLoading: controller.isSubmitting,
@@ -167,15 +167,15 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
             : _save,
       ),
       children: [
-        const LandaFieldLabel('Price per night'),
+        const OasisFieldLabel('Price per night'),
         TextField(
           controller: _priceController,
           autofocus: true,
           keyboardType: TextInputType.number,
-          inputFormatters: const [LandaThousandsFormatter()],
+          inputFormatters: const [OasisThousandsFormatter()],
           onChanged: (_) => setState(() {}),
           style: AppTheme.cardTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: '50000',
             prefixIcon: Icons.payments_outlined,
@@ -187,7 +187,7 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
         ),
         const SizedBox(height: 18),
 
-        LandaFieldLabel(
+        OasisFieldLabel(
           'Caution fee',
           trailing: Text(
             _hasCaution ? 'Refundable' : 'None',
@@ -202,10 +202,10 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
         TextField(
           controller: _cautionController,
           keyboardType: TextInputType.number,
-          inputFormatters: const [LandaThousandsFormatter()],
+          inputFormatters: const [OasisThousandsFormatter()],
           onChanged: (_) => setState(() {}),
           style: AppTheme.cardTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Leave blank for none',
             prefixIcon: Icons.shield_outlined,
@@ -251,8 +251,8 @@ class _QuoteLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stay = LandaCurrency.scale(nightlyPrice, minimumNights);
-    final hasDeposit = (LandaCurrency.minorUnits(cautionFee) ?? 0) > 0;
+    final stay = OasisCurrency.scale(nightlyPrice, minimumNights);
+    final hasDeposit = (OasisCurrency.minorUnits(cautionFee) ?? 0) > 0;
     final nights = minimumNights == 1 ? 'night' : 'nights';
 
     return Container(
@@ -273,8 +273,8 @@ class _QuoteLine extends StatelessWidget {
           Expanded(
             child: Text(
               'A $minimumNights-$nights stay comes to '
-              '${LandaCurrency.format(stay)}'
-              '${hasDeposit ? ', plus ${LandaCurrency.format(cautionFee)} '
+              '${OasisCurrency.format(stay)}'
+              '${hasDeposit ? ', plus ${OasisCurrency.format(cautionFee)} '
                         'refundable' : ''}.',
               style: AppTheme.bodyText(context),
             ),

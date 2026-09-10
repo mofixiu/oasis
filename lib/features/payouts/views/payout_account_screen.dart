@@ -3,14 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/payout_controller.dart';
 import 'bank_picker_sheet.dart';
-import '../../../core/widgets/landa_busy.dart';
+import '../../../core/widgets/oasis_busy.dart';
 
 /// Payout setup, for whoever is withdrawing. Reachable from Settings, and
 /// pushed directly when an action is blocked for want of a verified account:
@@ -85,7 +85,7 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
     if (!mounted) return;
 
     if (controller.banks.isEmpty) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not load the bank list. Check your connection and try again.',
@@ -116,11 +116,11 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
     final number = _accountNumberController.text.trim();
 
     if (bank == null || bank.isEmpty) {
-      LandaToast.error(context, 'Choose your bank.');
+      OasisToast.error(context, 'Choose your bank.');
       return;
     }
     if (number.length != 10 || int.tryParse(number) == null) {
-      LandaToast.error(context, 'Account number must be 10 digits.');
+      OasisToast.error(context, 'Account number must be 10 digits.');
       return;
     }
 
@@ -128,7 +128,7 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
     // The confirmed resolution is the entire request. The backend rejects a
     // typed account name outright, so there is nothing to fall back to.
     if (controller.resolution == null) {
-      LandaToast.error(context, 'Confirm your account details before saving.');
+      OasisToast.error(context, 'Confirm your account details before saving.');
       return;
     }
     final verified = await controller.submitPayoutAccount();
@@ -139,10 +139,10 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
       // returning: the caller may immediately retry a gated action.
       await context.read<AuthController>().refreshProfile();
       if (!mounted) return;
-      LandaToast.success(context, 'Payout account verified.');
+      OasisToast.success(context, 'Payout account verified.');
       Navigator.pop(context, true);
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not verify this account. Check the details and try again.',
@@ -175,7 +175,7 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  LandaEntrance(
+                  OasisEntrance(
                     index: 0,
                     child: Column(
                       children: [
@@ -225,7 +225,7 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
 
                   if (widget.blockedReason != null) ...[
                     const SizedBox(height: 20),
-                    LandaEntrance(
+                    OasisEntrance(
                       index: 1,
                       child: _Banner(
                         icon: Icons.lock_outline,
@@ -238,7 +238,7 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
 
                   if (controller.isVerified && account != null) ...[
                     const SizedBox(height: 20),
-                    LandaEntrance(
+                    OasisEntrance(
                       index: 1,
                       child: _Banner(
                         icon: Icons.verified_rounded,
@@ -251,7 +251,7 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
                   ],
 
                   const SizedBox(height: 24),
-                  LandaEntrance(
+                  OasisEntrance(
                     index: 2,
                     child: Container(
                       padding: const EdgeInsets.all(18),
@@ -268,7 +268,7 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
                         children: [
                           _FieldLabel('BANK'),
                           const SizedBox(height: 8),
-                          LandaPressable(
+                          OasisPressable(
                             onTap: controller.isSubmitting ? null : _pickBank,
                             pressedScale: 0.995,
                             child: Container(
@@ -307,7 +307,7 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
                                   ),
                                   if (controller.isLoading &&
                                       controller.banks.isEmpty)
-                                    LandaBusyDots(
+                                    OasisBusyDots(
                                       color: AppTheme.mutedTextColor(context),
                                       size: 4,
                                     )
@@ -358,9 +358,9 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
                   ),
 
                   const SizedBox(height: 28),
-                  LandaEntrance(
+                  OasisEntrance(
                     index: 3,
-                    child: LandaButton(
+                    child: OasisButton(
                       label: isUpdate
                           ? 'Verify & update account'
                           : 'Verify & save account',
@@ -491,7 +491,7 @@ class _ResolvingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      LandaBusyDots(color: AppTheme.mutedTextColor(context)),
+      OasisBusyDots(color: AppTheme.mutedTextColor(context)),
       const SizedBox(width: 12),
       Text('Checking with your bank…', style: AppTheme.labelText(context)),
     ],

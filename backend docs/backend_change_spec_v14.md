@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v14
+# Oasis Backend Change Specification — v14
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >
@@ -16,12 +16,12 @@ Recorded so this document is read as six asks rather than thirteen.
 
 | Tester report | Cause | Fixed by |
 | --- | --- | --- |
-| "Auto comma on the numbers" | Every amount was an ungrouped digit field | `LandaThousandsFormatter` on all thirteen money inputs. Display only; the wire still gets `"450000.00"` |
+| "Auto comma on the numbers" | Every amount was an ungrouped digit field | `OasisThousandsFormatter` on all thirteen money inputs. Display only; the wire still gets `"450000.00"` |
 | "The map pin should fill in the state and address" | The reverse geocode produced a label and nothing else | `GeocodeAddress` — the pin now fills street, city and state, and never overwrites something typed |
 | "Remove Lagos as placeholder text" | The state box was prefilled `Lagos` | Both location boxes start empty and are filled from the pin |
 | "A dropdown / bottom sheet for cities and states" | Both were free text | `NigeriaLocations` (37 states, ~200 towns) behind a searchable sheet, on the add-property form and the marketplace filter. **See §4 — the backend half of this is not optional** |
 | "Error when listing the unit (it showed an error but it still listed)" | The save and the list refresh after it shared one `try`; a failed `GET` turned a successful `POST` into "could not save" | The refresh is outside the save. `POST /landlord/short-lets/` behaved correctly throughout |
-| "I have to refresh everything to see" | The bottom bar is an `IndexedStack`, so switching tabs mounts nothing, pops no route, and re-read nothing | `LandaTabVisibility`: becoming the visible tab now refreshes, and a tab nobody has opened defers its first fetch |
+| "I have to refresh everything to see" | The bottom bar is an `IndexedStack`, so switching tabs mounts nothing, pops no route, and re-read nothing | `OasisTabVisibility`: becoming the visible tab now refreshes, and a tab nobody has opened defers its first fetch |
 | "Remove this tour videos come next" | An explainer panel about the video moving onto units, sitting above a footer that already said what came next | Deleted |
 | "They can't see any picture in it" — *partly* | A refresh through `GET /properties/` was overwriting a freshly created property's photos with a payload that does not carry them | `PropertyModel.withMediaFrom` / `UnitModel.withMediaFrom`: a refresh may **add** media and may never remove it. **See §5 — the rest of this one is backend** |
 | "Forgot password is a waste of space" | Two full pushed screens, each a centred card with its own app bar and Back button | One staged bottom sheet over sign-in (`password_reset_sheet.dart`); both screens deleted |
@@ -174,7 +174,7 @@ No new taxonomy: the `notification_type` values in guide 18 are already the righ
   "data": {
     "notification_id": "d4067ff3-…",
     "notification_type": "RENT_DUE",
-    "deep_link": "landa://agreements/69be1df4-…"
+    "deep_link": "oasis://agreements/69be1df4-…"
   }
 }
 ```
@@ -198,7 +198,7 @@ If a push and an open WebSocket both deliver, the user gets a banner from the ap
 
 ### App-side work this unblocks
 
-`firebase_messaging` + `flutter_local_notifications`, a `google-services.json`, the `POST /devices/` call on sign-in and the `DELETE` on sign-out, and routing a tap through the existing `landaNavigatorKey`. It is a day's work and none of it can start before the endpoint exists.
+`firebase_messaging` + `flutter_local_notifications`, a `google-services.json`, the `POST /devices/` call on sign-in and the `DELETE` on sign-out, and routing a tap through the existing `oasisNavigatorKey`. It is a day's work and none of it can start before the endpoint exists.
 
 ---
 
@@ -415,7 +415,7 @@ can start first.
 | § | Ask | Size | Why it matters |
 | --- | --- | --- | --- |
 | 1 | First rent in escrow gates occupancy and execution; reservations expire | Large | A tenant can move into a yearly flat having paid nothing. This is the product's core promise |
-| 2 | Device registration + push fan-out | Medium | Close the app and nothing reaches you. Every time-sensitive thing Landa does is invisible |
+| 2 | Device registration + push fan-out | Medium | Close the app and nothing reaches you. Every time-sensitive thing Oasis does is invisible |
 | 3 | `active_agreement` on the unit payload | Small | A landlord can talk to an applicant and then loses the thread once they become a tenant |
 | 4 | Case-insensitive location matching, normalise on write, backfill | Small | Filtered searches silently miss listings, and neither side is told why |
 | 5B | Unit `photo_urls` / `cover_photo_url` / `video_url` in `GET /tenant/marketplace/` | **Small** | A tenant cannot see inside the flat they are applying for. The app already renders them; Stays already sends them |

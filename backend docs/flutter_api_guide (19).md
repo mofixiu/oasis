@@ -1,6 +1,6 @@
-# Landa OS Backend API Documentation & Flutter Integration Specification
+# Oasis Backend API Documentation & Flutter Integration Specification
 
-> **Audience:** Flutter developers building the Landa OS mobile experience for all supported roles.
+> **Audience:** Flutter developers building the Oasis mobile experience for all supported roles.
 >
 > **Source of truth:** This guide was generated from the current Django backend in this workspace: `landa_os/urls.py`, `users/urls.py`, `users/views.py`, `users/serializers.py`, and `users/models.py`.
 
@@ -47,7 +47,7 @@ Confirms the staging backend is online.
 ```json
 {
   "status": "ok",
-  "service": "Landa OS API"
+  "service": "Oasis API"
 }
 ```
 
@@ -66,7 +66,7 @@ Confirms the staging backend can connect to the database.
 ```json
 {
   "status": "ok",
-  "service": "Landa OS API",
+  "service": "Oasis API",
   "database": "ok"
 }
 ```
@@ -269,7 +269,7 @@ Recommended repository boundaries:
 [Flutter UI Widget] -> [Controller / Provider]
                   -> [Repository Interface]
                   -> [Dio/HTTP API Client]
-                  -> [Landa OS Django API]
+                  -> [Oasis Django API]
 ```
 
 Suggested repositories:
@@ -2716,11 +2716,11 @@ Response shape:
 
 #### `POST /landlord/tenancies/import/`
 
-Landlord imports existing tenants in batches, for example when they already have tenants before moving the property into Landa OS.
+Landlord imports existing tenants in batches, for example when they already have tenants before moving the property into Oasis.
 
 - **Authentication:** Landlord/owner only, verified users only.
 - **Maximum batch size:** 50 tenancies per request.
-- **Important:** This does not create old Paystack payments, vault movements, receipts, or fake escrow records. It only records the tenant's current agreement and how far rent has already been paid outside Landa OS.
+- **Important:** This does not create old Paystack payments, vault movements, receipts, or fake escrow records. It only records the tenant's current agreement and how far rent has already been paid outside Oasis.
 
 Request:
 
@@ -2736,7 +2736,7 @@ Request:
       "rent_plan": "QUARTERLY",
       "is_existing_tenancy": true,
       "rent_paid_until": "2026-09-30",
-      "rules": "Existing tenant imported into Landa OS."
+      "rules": "Existing tenant imported into Oasis."
     }
   ]
 }
@@ -2781,7 +2781,7 @@ Flutter should show a row-by-row result screen after import. Successful invited 
 }
 ```
 
-Imported active tenancies still require both tenant and landlord signatures inside Landa OS. Expired imported tenancies are saved as historical `EXPIRED` agreements.
+Imported active tenancies still require both tenant and landlord signatures inside Oasis. Expired imported tenancies are saved as historical `EXPIRED` agreements.
 
 #### `POST /tenant/applications/`
 
@@ -3205,7 +3205,7 @@ Example:
 Deep link format:
 
 ```text
-landa://agreements/{agreement_id}/rent
+oasis://agreements/{agreement_id}/rent
 ```
 
 Recommended Flutter behavior:
@@ -3577,7 +3577,7 @@ New notification types:
 
 ## 7B. Artisan Fix V1
 
-**2026-09-06 simplification:** the in-app job request/accept/quote/pay/vault-release workflow described below has been **removed entirely**. Landa no longer brokers artisan jobs or artisan payments. Artisan Fix is now a directory: a landlord or tenant can find a verified artisan's full details, including phone number, and contact them directly outside the app. All endpoints, models, and notification types under "Tenant Creates Artisan Request", "Artisan Request Dashboard", and "Tenant Cancels, Pays, And Confirms Completion" below **no longer exist** — remove any Flutter screens built against them.
+**2026-09-06 simplification:** the in-app job request/accept/quote/pay/vault-release workflow described below has been **removed entirely**. Oasis no longer brokers artisan jobs or artisan payments. Artisan Fix is now a directory: a landlord or tenant can find a verified artisan's full details, including phone number, and contact them directly outside the app. All endpoints, models, and notification types under "Tenant Creates Artisan Request", "Artisan Request Dashboard", and "Tenant Cancels, Pays, And Confirms Completion" below **no longer exist** — remove any Flutter screens built against them.
 
 Simple product rules (current):
 
@@ -3588,7 +3588,7 @@ Simple product rules (current):
 - Both tenant and landlord browse views show the artisan's full name, category, location, bio, experience, verification status, recently-online status, **and phone number** — the phone number is no longer hidden or gated behind any workflow.
 - Landlord can recommend one artisan per category for each unit.
 - Both the tenant Fix page and a new landlord artisan browse page can show all artisans in a category and highlight the landlord-recommended artisan for a given unit.
-- Contact between a landlord/tenant and an artisan happens outside the app (call/message using the phone number shown), not through Landa.
+- Contact between a landlord/tenant and an artisan happens outside the app (call/message using the phone number shown), not through Oasis.
 
 ### Artisan Registration
 
@@ -4409,7 +4409,7 @@ Previously, when a user's identity verification finished (via the Smile ID webho
 
 Now, the moment verification finishes, the user gets a notification:
 
-- **Success** — notification type `VERIFICATION_SUCCEEDED`. For an `ARTISAN` role specifically, the message reads: *"You're verified! Your Landa artisan registration is complete and landlords and tenants can now find and contact you."* For other roles: *"Your identity verification was successful."*
+- **Success** — notification type `VERIFICATION_SUCCEEDED`. For an `ARTISAN` role specifically, the message reads: *"You're verified! Your Oasis artisan registration is complete and landlords and tenants can now find and contact you."* For other roles: *"Your identity verification was successful."*
 - **Failure** — notification type `VERIFICATION_FAILED`, with the failure reason inline if one is available.
 
 This is the hook for the "registered successfully" screen requested for artisans: show that screen only once this notification (or a `GET /verify/status/` check showing `VERIFIED`) arrives — not immediately after `POST /register/` returns `201`. Before verification completes, the app should make clear that registration is not yet finished.
@@ -4508,7 +4508,7 @@ Call on sign-out. Also `GET /api/users/devices/` lists the current user's own re
   "data": {
     "notification_id": "d4067ff3-…",
     "notification_type": "RENT_DUE",
-    "deep_link": "landa://agreements/69be1df4-…",
+    "deep_link": "oasis://agreements/69be1df4-…",
     "suppress_if_foreground": "true"
   }
 }
@@ -4516,7 +4516,7 @@ Call on sign-out. Also `GET /api/users/devices/` lists the current user's own re
 
 Every push is sent with `suppress_if_foreground: "true"` in `data`. The backend always sends the push (it does not try to detect whether the app currently has a live socket) — **the app is expected to check its own foreground state and skip showing the system notification when the in-app banner already covered it.** No taxonomy change: `notification_type` is exactly the same set of values already documented for the REST/WebSocket notification feed.
 
-**Not yet live in production:** sending requires a Firebase service-account credential (`FIREBASE_CREDENTIALS_JSON`) that isn't configured yet — we're waiting to hear whether a Firebase project already exists for Landa OS. Until that credential is set, all the endpoints above work normally (register, list, delete, preference toggle), but no actual push is dispatched — it silently no-ops. Nothing on the Flutter side needs to wait for this: registering devices and building the receiving side (`firebase_messaging` + `flutter_local_notifications` + routing through `landaNavigatorKey`) can proceed now: the moment the credential lands, delivery turns on with no further backend change.
+**Not yet live in production:** sending requires a Firebase service-account credential (`FIREBASE_CREDENTIALS_JSON`) that isn't configured yet — we're waiting to hear whether a Firebase project already exists for Oasis. Until that credential is set, all the endpoints above work normally (register, list, delete, preference toggle), but no actual push is dispatched — it silently no-ops. Nothing on the Flutter side needs to wait for this: registering devices and building the receiving side (`firebase_messaging` + `flutter_local_notifications` + routing through `oasisNavigatorKey`) can proceed now: the moment the credential lands, delivery turns on with no further backend change.
 
 ### §3 — `active_agreement` On The Unit Payload
 

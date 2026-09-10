@@ -95,7 +95,7 @@ class Counterparty {
 
   /// Falls back to something addressable rather than rendering a blank row.
   String get displayName =>
-      fullName.trim().isEmpty ? 'Landa user' : fullName.trim();
+      fullName.trim().isEmpty ? 'Oasis user' : fullName.trim();
 
   String get initial =>
       displayName.isEmpty ? '?' : displayName[0].toUpperCase();

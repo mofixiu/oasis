@@ -4,19 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/core/theme/app_theme.dart';
-import 'package:landa_app/core/widgets/landa_pressable.dart';
-import 'package:landa_app/features/properties/controllers/landlord_controller.dart';
-import 'package:landa_app/features/properties/models/property_model.dart';
-import 'package:landa_app/features/properties/services/property_service.dart';
-import 'package:landa_app/features/properties/views/widgets/edit_unit_rent_sheet.dart';
-import 'package:landa_app/features/shortlets/controllers/shortlet_controller.dart';
-import 'package:landa_app/features/shortlets/models/shortlet_models.dart';
-import 'package:landa_app/features/shortlets/services/shortlet_service.dart';
-import 'package:landa_app/features/shortlets/views/edit_nightly_price_sheet.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/core/theme/app_theme.dart';
+import 'package:oasis_app/core/widgets/oasis_pressable.dart';
+import 'package:oasis_app/features/properties/controllers/landlord_controller.dart';
+import 'package:oasis_app/features/properties/models/property_model.dart';
+import 'package:oasis_app/features/properties/services/property_service.dart';
+import 'package:oasis_app/features/properties/views/widgets/edit_unit_rent_sheet.dart';
+import 'package:oasis_app/features/shortlets/controllers/shortlet_controller.dart';
+import 'package:oasis_app/features/shortlets/models/shortlet_models.dart';
+import 'package:oasis_app/features/shortlets/services/shortlet_service.dart';
+import 'package:oasis_app/features/shortlets/views/edit_nightly_price_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -234,11 +234,11 @@ void main() {
 
       // Seeded with the rent as it stands, so the button starts disabled:
       // a save that changes nothing would spend a request to announce it.
-      LandaPressable pressable() => tester.widget<LandaPressable>(
+      OasisPressable pressable() => tester.widget<OasisPressable>(
         find
             .ancestor(
               of: find.text('Save new rent'),
-              matching: find.byType(LandaPressable),
+              matching: find.byType(OasisPressable),
             )
             .first,
       );

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/auth_controller.dart';
 
 /// Resetting a forgotten password, start to finish, in one bottom sheet.
@@ -72,7 +72,7 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
 
   Future<void> _sendResetLink() async {
     if (_email.isEmpty || !_email.contains('@')) {
-      LandaToast.error(context, 'Enter the email address for your account.');
+      OasisToast.error(context, 'Enter the email address for your account.');
       return;
     }
     final auth = context.read<AuthController>();
@@ -80,7 +80,7 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
     if (!mounted) return;
 
     if (!success) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         auth.errorMessage ?? 'Could not request a password reset.',
       );
@@ -94,15 +94,15 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
     final password = _passwordController.text;
 
     if (token.isEmpty) {
-      LandaToast.error(context, 'Paste the reset token from your email.');
+      OasisToast.error(context, 'Paste the reset token from your email.');
       return;
     }
     if (password.length < 8) {
-      LandaToast.error(context, 'New password must be at least 8 characters.');
+      OasisToast.error(context, 'New password must be at least 8 characters.');
       return;
     }
     if (password != _confirmController.text) {
-      LandaToast.error(context, 'Passwords do not match.');
+      OasisToast.error(context, 'Passwords do not match.');
       return;
     }
 
@@ -117,7 +117,7 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
     if (!navigator.mounted) return;
 
     if (!success) {
-      LandaToast.error(
+      OasisToast.error(
         navigator.context,
         auth.errorMessage ??
             'Could not reset password. The token may be invalid or expired.',
@@ -125,7 +125,7 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
       return;
     }
     navigator.pop();
-    LandaToast.success(
+    OasisToast.success(
       navigator.context,
       'Password reset. Sign in with your new password.',
     );
@@ -154,20 +154,20 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
 
   // ------------------------------------------------------------- stage one
 
-  Widget _requestLink(AuthController auth) => LandaSheet(
+  Widget _requestLink(AuthController auth) => OasisSheet(
     icon: Icons.lock_reset_outlined,
     title: 'Forgot your password?',
     subtitle:
         'Enter your account email and we will send a secure reset link to '
         'it.',
-    footer: LandaSheetButton(
+    footer: OasisSheetButton(
       label: 'Send reset link',
       icon: Icons.send_rounded,
       isLoading: auth.isLoading,
       onPressed: auth.isLoading ? null : _sendResetLink,
     ),
     children: [
-      const LandaFieldLabel('Email address'),
+      const OasisFieldLabel('Email address'),
       TextField(
         controller: _emailController,
         autofocus: true,
@@ -175,7 +175,7 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _sendResetLink(),
         style: AppTheme.cardTitle(context),
-        decoration: landaInputDecoration(
+        decoration: oasisInputDecoration(
           context,
           hint: 'user@example.com',
           prefixIcon: Icons.email_outlined,
@@ -194,14 +194,14 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
 
   // ------------------------------------------------------------- stage two
 
-  Widget _linkSent() => LandaSheet(
+  Widget _linkSent() => OasisSheet(
     icon: Icons.mark_email_read_outlined,
     title: 'Check your inbox',
     subtitle:
         'If an account exists for $_email, the reset instructions are on '
         'their way. Check spam too.',
     accent: AppTheme.successColor,
-    footer: LandaSheetButton(
+    footer: OasisSheetButton(
       label: 'I have the token',
       icon: Icons.vpn_key_outlined,
       onPressed: () => setState(() => _stage = _Stage.setPassword),
@@ -218,49 +218,49 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
 
   // ----------------------------------------------------------- stage three
 
-  Widget _setPassword(AuthController auth) => LandaSheet(
+  Widget _setPassword(AuthController auth) => OasisSheet(
     icon: Icons.password_outlined,
     title: 'Set a new password',
     subtitle: 'Paste the token from your email and choose a new password.',
-    footer: LandaSheetButton(
+    footer: OasisSheetButton(
       label: 'Reset password',
       icon: Icons.check_rounded,
       isLoading: auth.isLoading,
       onPressed: auth.isLoading ? null : _setNewPassword,
     ),
     children: [
-      const LandaFieldLabel('Reset token'),
+      const OasisFieldLabel('Reset token'),
       TextField(
         controller: _tokenController,
         autofocus: true,
         style: AppTheme.cardTitle(context),
-        decoration: landaInputDecoration(
+        decoration: oasisInputDecoration(
           context,
           hint: 'Paste the token from your email',
           prefixIcon: Icons.vpn_key_outlined,
         ),
       ),
       const SizedBox(height: 14),
-      const LandaFieldLabel('New password'),
+      const OasisFieldLabel('New password'),
       TextField(
         controller: _passwordController,
         obscureText: true,
         style: AppTheme.cardTitle(context),
-        decoration: landaInputDecoration(
+        decoration: oasisInputDecoration(
           context,
           hint: 'At least 8 characters',
           prefixIcon: Icons.lock_outline,
         ),
       ),
       const SizedBox(height: 14),
-      const LandaFieldLabel('Confirm new password'),
+      const OasisFieldLabel('Confirm new password'),
       TextField(
         controller: _confirmController,
         obscureText: true,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _setNewPassword(),
         style: AppTheme.cardTitle(context),
-        decoration: landaInputDecoration(
+        decoration: oasisInputDecoration(
           context,
           hint: 'Re-enter your new password',
           prefixIcon: Icons.lock_outline,

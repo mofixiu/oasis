@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/reviews/models/review_models.dart';
-import 'package:landa_app/features/shortlets/models/shortlet_models.dart';
+import 'package:oasis_app/features/reviews/models/review_models.dart';
+import 'package:oasis_app/features/shortlets/models/shortlet_models.dart';
 
 /// Money and reputation: the two things it is worst to render slightly wrong.
 ///
@@ -359,7 +359,7 @@ void main() {
     test('an author with no name is still addressable', () {
       final review = Review.fromJson(const {'id': 'r1', 'rating': 4});
 
-      expect(review.displayAuthor, 'A Landa user');
+      expect(review.displayAuthor, 'An Oasis user');
       expect(review.initial, 'A');
     });
   });

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
-import 'package:landa_app/features/agreements/views/widgets/rent_plan_picker.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/agreements/views/widgets/rent_plan_picker.dart';
 
 /// The plan a landlord picks here decides how a tenant is billed for a year,
 /// so these cover what would mislead either party: an option the backend does

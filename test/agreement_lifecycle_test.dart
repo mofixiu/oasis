@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
-import 'package:landa_app/features/auth/controllers/auth_controller.dart';
-import 'package:landa_app/features/auth/models/consent_model.dart';
-import 'package:landa_app/features/auth/models/user_model.dart';
-import 'package:landa_app/features/auth/services/i_auth_service.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/auth/controllers/auth_controller.dart';
+import 'package:oasis_app/features/auth/models/consent_model.dart';
+import 'package:oasis_app/features/auth/models/user_model.dart';
+import 'package:oasis_app/features/auth/services/i_auth_service.dart';
 
 void main() {
   TenancyAgreementModel agreement(Map<String, dynamic> overrides) {

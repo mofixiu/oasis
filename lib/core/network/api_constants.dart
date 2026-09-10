@@ -114,13 +114,13 @@ class ApiConstants {
 
   // Artisan Fix: a directory, not a marketplace.
   //
-  // Landa used to broker the whole repair: a tenant raised a request, an
+  // Oasis used to broker the whole repair: a tenant raised a request, an
   // artisan accepted and quoted it, the tenant paid into escrow, and
   // confirming the work released the money. API guide 18 removed all of it
   // (§7B, "2026-09-06 simplification"). Every one of those endpoints is gone
   // from the backend.
   //
-  // What is left is smaller and honest about what Landa is for: a verified
+  // What is left is smaller and honest about what Oasis is for: a verified
   // artisan can be found, and their phone number is shown to whoever finds
   // them. The repair itself is arranged on the phone, outside the app. The
   // phone number used to be released only once a job was accepted, which is
@@ -196,7 +196,7 @@ class ApiConstants {
   static String propertyVideoEndpoint(String propertyId) =>
       '/properties/$propertyId/video/';
 
-  /// Taking a property off Landa. Three calls, deliberately: a property is
+  /// Taking a property off Oasis. Three calls, deliberately: a property is
   /// not a leaf, and a plain `DELETE` on one with a signed tenancy under it
   /// would delete somebody's home, their agreement and the record of the
   /// rent they paid into escrow.
@@ -256,7 +256,7 @@ class ApiConstants {
 
   static const String agreementsEndpoint = '/agreements/';
 
-  /// Batch import of tenancies that predate Landa. Proposed in
+  /// Batch import of tenancies that predate Oasis. Proposed in
   /// `backend docs/backend_change_spec_v6.md` §1 and not live yet: the
   /// service falls back to one `POST /agreements/` per row until it is.
   static const String landlordTenancyImportEndpoint =

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/fix_controller.dart';
 import '../models/fix_models.dart';
 
@@ -66,14 +66,14 @@ class _ArtisanProfileSheetState extends State<_ArtisanProfileSheet> {
   Future<void> _save() async {
     final location = _location.text.trim();
     if (location.isEmpty) {
-      LandaToast.error(context, 'Tell tenants where you work.');
+      OasisToast.error(context, 'Tell tenants where you work.');
       return;
     }
 
     final typed = _experience.text.trim();
     final experience = typed.isEmpty ? 0 : int.tryParse(typed);
     if (experience == null || experience < 0) {
-      LandaToast.error(context, 'Years of experience must be a whole number.');
+      OasisToast.error(context, 'Years of experience must be a whole number.');
       return;
     }
 
@@ -86,7 +86,7 @@ class _ArtisanProfileSheetState extends State<_ArtisanProfileSheet> {
     if (!mounted) return;
 
     if (!saved) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         _controller.errorMessage ??
             'Could not save that. Try again in a moment.',
@@ -94,7 +94,7 @@ class _ArtisanProfileSheetState extends State<_ArtisanProfileSheet> {
       return;
     }
     Navigator.pop(context, true);
-    LandaToast.success(context, 'Profile updated.');
+    OasisToast.success(context, 'Profile updated.');
   }
 
   @override
@@ -104,18 +104,18 @@ class _ArtisanProfileSheetState extends State<_ArtisanProfileSheet> {
         ? ArtisanCategory.defaults
         : controller.categories;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.tune_rounded,
       title: 'Your trade',
       subtitle: 'What tenants see when they are choosing an artisan.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Save',
         icon: Icons.check_rounded,
         isLoading: controller.isSubmitting,
         onPressed: controller.isSubmitting ? null : _save,
       ),
       children: [
-        const LandaFieldLabel('Trade'),
+        const OasisFieldLabel('Trade'),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -130,12 +130,12 @@ class _ArtisanProfileSheetState extends State<_ArtisanProfileSheet> {
         ),
         const SizedBox(height: 24),
 
-        const LandaFieldLabel('Where you work'),
+        const OasisFieldLabel('Where you work'),
         TextField(
           controller: _location,
           textCapitalization: TextCapitalization.words,
           style: AppTheme.cardTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Lekki Phase 1',
             prefixIcon: Icons.place_outlined,
@@ -143,12 +143,12 @@ class _ArtisanProfileSheetState extends State<_ArtisanProfileSheet> {
         ),
         const SizedBox(height: 20),
 
-        const LandaFieldLabel('Years of experience'),
+        const OasisFieldLabel('Years of experience'),
         TextField(
           controller: _experience,
           keyboardType: TextInputType.number,
           style: AppTheme.cardTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: '5',
             prefixIcon: Icons.workspace_premium_outlined,
@@ -156,7 +156,7 @@ class _ArtisanProfileSheetState extends State<_ArtisanProfileSheet> {
         ),
         const SizedBox(height: 20),
 
-        const LandaFieldLabel('About you'),
+        const OasisFieldLabel('About you'),
         TextField(
           controller: _bio,
           maxLines: 3,
@@ -165,7 +165,7 @@ class _ArtisanProfileSheetState extends State<_ArtisanProfileSheet> {
             context,
             color: AppTheme.readingTextColor(context),
           ),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Reliable plumber for home repairs.',
           ),
@@ -196,7 +196,7 @@ class _CategoryChip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     pressedScale: 0.96,
     child: Container(

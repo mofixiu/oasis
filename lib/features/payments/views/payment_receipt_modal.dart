@@ -3,15 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
 import '../../payouts/views/payout_account_screen.dart';
 import '../controllers/payment_controller.dart';
 import '../models/payment_model.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/widgets/landa_busy.dart';
+import '../../../core/widgets/oasis_busy.dart';
 
 class PaymentReceiptModal extends StatefulWidget {
   final PaymentModel payment;
@@ -92,7 +92,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
         _payment = disputed;
         _secondsRemaining = disputed.escrowSecondsRemaining;
       });
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Dispute submitted. Your landlord has been notified and this payment is on hold.',
       );
@@ -100,7 +100,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
       // re-read the full receipt to keep those rows populated.
       await _refreshReceipt();
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -115,7 +115,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
     if (!mounted) return;
 
     if (success) {
-      LandaToast.success(context, 'Escrow released successfully!');
+      OasisToast.success(context, 'Escrow released successfully!');
       Navigator.pop(context);
       return;
     }
@@ -137,7 +137,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
     }
 
     if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -216,7 +216,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
               child: Column(
                 children: [
                   Text(
-                    LandaCurrency.format(_payment.amount),
+                    OasisCurrency.format(_payment.amount),
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -265,17 +265,17 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
             _receiptRow(
               context,
               'Rent amount:',
-              LandaCurrency.format(_payment.amount),
+              OasisCurrency.format(_payment.amount),
             ),
             _receiptRow(
               context,
               'Platform fee:',
-              LandaCurrency.format(_payment.platformFee),
+              OasisCurrency.format(_payment.platformFee),
             ),
             _receiptRow(
               context,
               'Total paid:',
-              LandaCurrency.format(_payment.totalAmount),
+              OasisCurrency.format(_payment.totalAmount),
             ),
 
             // Property/unit context, returned by GET /payments/{id}/.
@@ -366,7 +366,7 @@ class _PaymentReceiptModalState extends State<PaymentReceiptModal> {
                           ? const SizedBox()
                           : const Icon(Icons.key, color: Colors.white),
                       label: controller.isLoading
-                          ? const LandaBusyDots(color: Colors.white, size: 6)
+                          ? const OasisBusyDots(color: Colors.white, size: 6)
                           : const Text(
                               'Release Escrow (Demo Override)',
                               style: TextStyle(

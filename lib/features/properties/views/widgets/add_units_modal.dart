@@ -6,16 +6,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/widgets/landa_pressable.dart';
-import '../../../../core/widgets/landa_sheet.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
+import '../../../../core/widgets/oasis_sheet.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../../fix/controllers/fix_controller.dart';
 import '../../../fix/models/fix_models.dart';
 import '../../../fix/views/unit_recommendations_sheet.dart';
 import '../../controllers/landlord_controller.dart';
 import '../../models/property_model.dart';
-import '../../../../core/utils/landa_input_formatters.dart';
+import '../../../../core/utils/oasis_input_formatters.dart';
 
 /// What the units sheet hands back.
 ///
@@ -146,7 +146,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
   Future<void> _addPhotos(_UnitDraft draft) async {
     final remaining = PropertyMediaLimits.maxUnitPhotos - draft.photos.length;
     if (remaining <= 0) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'That unit already has the maximum of '
         '${PropertyMediaLimits.maxUnitPhotos} photos.',
@@ -163,7 +163,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
       if (picked.isEmpty || !mounted) return;
 
       if (picked.length > remaining) {
-        LandaToast.error(
+        OasisToast.error(
           context,
           'You can add $remaining more '
           '${remaining == 1 ? 'photo' : 'photos'} to that unit.',
@@ -179,7 +179,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
         final file = File(image.path);
         if (await file.length() > PropertyMediaLimits.maxPhotoBytes) {
           if (!mounted) return;
-          LandaToast.error(
+          OasisToast.error(
             context,
             '"${image.name}" is larger than 5MB. Choose a smaller image.',
           );
@@ -190,7 +190,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
       if (!mounted) return;
       setState(() => draft.photos.addAll(files));
     } catch (error) {
-      if (mounted) LandaToast.error(context, 'Unable to select photos.');
+      if (mounted) OasisToast.error(context, 'Unable to select photos.');
     }
   }
 
@@ -206,7 +206,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
       final file = File(path);
       if (await file.length() > PropertyMediaLimits.maxVideoBytes) {
         if (!mounted) return;
-        LandaToast.error(
+        OasisToast.error(
           context,
           'That video is larger than 50MB. Choose a shorter clip.',
         );
@@ -215,7 +215,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
       if (!mounted) return;
       setState(() => draft.tourVideo = file);
     } catch (error) {
-      if (mounted) LandaToast.error(context, 'Unable to select that video.');
+      if (mounted) OasisToast.error(context, 'Unable to select that video.');
     }
   }
 
@@ -362,7 +362,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
   Future<void> _submit() async {
     final problem = _problem;
     if (problem != null) {
-      LandaToast.error(context, problem);
+      OasisToast.error(context, problem);
       return;
     }
 
@@ -395,7 +395,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
         _isSubmitting = false;
         _progressLabel = null;
       });
-      LandaToast.error(
+      OasisToast.error(
         context,
         context.read<LandlordController>().errorMessage ??
             'Could not add units.',
@@ -417,7 +417,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
       context,
       AddUnitsResult(units: created, nightlyPrices: _nightlyPricesFor(created)),
     );
-    LandaToast.success(
+    OasisToast.success(
       context,
       '${created.length} unit${created.length == 1 ? '' : 's'} added to '
       '${widget.property.name}.',
@@ -425,13 +425,13 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
     // Said separately, because the two failures have different fixes: media
     // is re-attached from the unit, a recommendation is re-picked.
     if (mediaFailures > 0) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'Some photos or videos did not upload. Open the unit to add them '
         'again. The units themselves are saved.',
       );
     } else if (recommendationFailures > 0) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'Some recommended artisans could not be saved. You can set them on '
         'each unit.',
@@ -443,7 +443,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
   Widget build(BuildContext context) {
     final ready = _problem == null;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.meeting_room_outlined,
       title: widget.purpose.isShortLet ? 'Add the places' : 'Add units',
       subtitle: widget.purpose.isShortLet
@@ -493,7 +493,7 @@ class _AddUnitsModalState extends State<AddUnitsModal> {
             ),
             const SizedBox(height: 10),
           ],
-          LandaSheetButton(
+          OasisSheetButton(
             label:
                 'Save ${_drafts.length} unit${_drafts.length == 1 ? '' : 's'}',
             icon: Icons.check_rounded,
@@ -574,13 +574,13 @@ class _UnitDraft {
   /// quotes ₦250,000 a month is storing ₦3,000,000 a year, and the sheet says
   /// so under the field rather than converting behind their back.
   String? get annualRent =>
-      LandaCurrency.scale(rent.text.trim(), interval.periodsPerYear);
+      OasisCurrency.scale(rent.text.trim(), interval.periodsPerYear);
 
   /// The nightly price, for a host who quoted one. Null for every other
   /// interval: deriving a nightly rate from a yearly rent would be inventing
   /// a number the host never agreed to.
   String? get nightlyPrice => interval == RentInterval.perNight
-      ? LandaCurrency.scale(rent.text.trim(), 1)
+      ? OasisCurrency.scale(rent.text.trim(), 1)
       : null;
 
   void dispose() {
@@ -650,7 +650,7 @@ class _UnitDraftCard extends StatelessWidget {
               ),
               const Spacer(),
               if (canRemove)
-                LandaPressable(
+                OasisPressable(
                   onTap: enabled ? onRemove : null,
                   pressedScale: 0.88,
                   child: Icon(
@@ -672,7 +672,7 @@ class _UnitDraftCard extends StatelessWidget {
                   enabled: enabled,
                   onChanged: (_) => onChanged(),
                   style: AppTheme.cardTitle(context),
-                  decoration: landaInputDecoration(context, hint: 'Number'),
+                  decoration: oasisInputDecoration(context, hint: 'Number'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -683,7 +683,7 @@ class _UnitDraftCard extends StatelessWidget {
                   enabled: enabled,
                   keyboardType: TextInputType.number,
                   style: AppTheme.cardTitle(context),
-                  decoration: landaInputDecoration(context, hint: 'Beds'),
+                  decoration: oasisInputDecoration(context, hint: 'Beds'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -694,7 +694,7 @@ class _UnitDraftCard extends StatelessWidget {
                   enabled: enabled,
                   keyboardType: TextInputType.number,
                   style: AppTheme.cardTitle(context),
-                  decoration: landaInputDecoration(context, hint: 'Baths'),
+                  decoration: oasisInputDecoration(context, hint: 'Baths'),
                 ),
               ),
             ],
@@ -712,10 +712,10 @@ class _UnitDraftCard extends StatelessWidget {
                   // fills in six of them in a row, and an extra zero in an
                   // ungrouped seven-digit number is invisible.
                   keyboardType: TextInputType.number,
-                  inputFormatters: const [LandaThousandsFormatter()],
+                  inputFormatters: const [OasisThousandsFormatter()],
                   onChanged: (_) => onChanged(),
                   style: AppTheme.cardTitle(context),
-                  decoration: landaInputDecoration(
+                  decoration: oasisInputDecoration(
                     context,
                     hint: 'Price (₦)',
                     prefixIcon: Icons.payments_outlined,
@@ -740,14 +740,14 @@ class _UnitDraftCard extends StatelessWidget {
               ),
             ],
           ),
-          // Says what will actually be stored. Landa keeps one rent per unit
+          // Says what will actually be stored. Oasis keeps one rent per unit
           // , a year's, and a landlord who typed a monthly figure is owed
           // the multiplication in front of them rather than a surprise on
           // the listing.
           if (annualRent != null && draft.interval != RentInterval.perYear) ...[
             const SizedBox(height: 6),
             Text(
-              'Saved as ${LandaCurrency.perYear(annualRent)}'
+              'Saved as ${OasisCurrency.perYear(annualRent)}'
               '${draft.interval == RentInterval.perNight ? ' if let every night' : ''}.',
               style: AppTheme.labelText(
                 context,
@@ -818,7 +818,7 @@ class _UnitDraftCard extends StatelessWidget {
                     Positioned(
                       top: 3,
                       right: 3,
-                      child: LandaPressable(
+                      child: OasisPressable(
                         onTap: enabled ? () => onRemovePhoto(photoIndex) : null,
                         pressedScale: 0.88,
                         child: Container(
@@ -842,7 +842,7 @@ class _UnitDraftCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
           ],
-          LandaSheetChipButton(
+          OasisSheetChipButton(
             icon: Icons.add_photo_alternate_outlined,
             label: draft.photos.isEmpty ? 'Add photos' : 'Add more photos',
             onTap: enabled ? onAddPhotos : () {},
@@ -895,7 +895,7 @@ class _IntervalPicker extends StatelessWidget {
     isExpanded: true,
     borderRadius: AppTheme.cornerMd,
     style: AppTheme.cardTitle(context),
-    decoration: landaInputDecoration(context),
+    decoration: oasisInputDecoration(context),
     items: [
       for (final option in options)
         DropdownMenuItem(
@@ -930,7 +930,7 @@ class _TourVideoTile extends StatelessWidget {
     // yet done, not a mistake the landlord has made.
     final accent = attached ? AppTheme.successColor : AppTheme.actionColor;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: enabled ? onTap : null,
       pressedScale: 0.99,
       child: Container(
@@ -1047,7 +1047,7 @@ class _RecommendedArtisansSection extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Artisans already on Landa. Your tenants see them marked as '
+          'Artisans already on Oasis. Your tenants see them marked as '
           'recommended by you, on every unit added here.',
           style: AppTheme.bodyText(context),
         ),
@@ -1068,7 +1068,7 @@ class _RecommendedArtisansSection extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 12),
-        LandaPressable(
+        OasisPressable(
           onTap: onAdd,
           child: Container(
             height: 44,
@@ -1130,7 +1130,7 @@ class _ChosenChip extends StatelessWidget {
           ).copyWith(fontSize: AppTheme.textSm, letterSpacing: 0),
         ),
         const SizedBox(width: 6),
-        LandaPressable(
+        OasisPressable(
           onTap: onRemove,
           pressedScale: 0.88,
           child: Icon(

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
 
 /// Where an agreement is rendered is now decided by [AgreementBucket] rather
 /// than by `status ==` checks inside each screen. That makes this mapping a

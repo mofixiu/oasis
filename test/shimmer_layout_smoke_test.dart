@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/core/widgets/landa_shimmer.dart';
+import 'package:oasis_app/core/widgets/oasis_shimmer.dart';
 
 void main() {
-  testWidgets('LandaSkeletonList renders inside an unbounded Column', (
+  testWidgets('OasisSkeletonList renders inside an unbounded Column', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -13,7 +13,7 @@ void main() {
             child: Column(
               children: [
                 Text('MY PROPERTIES'),
-                LandaSkeletonList(
+                OasisSkeletonList(
                   count: 2,
                   hasThumbnail: true,
                   padding: EdgeInsets.zero,
@@ -25,7 +25,7 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
-    expect(find.byType(LandaCardSkeleton), findsNWidgets(2));
-    expect(find.byType(LandaShimmer), findsNWidgets(2));
+    expect(find.byType(OasisCardSkeleton), findsNWidgets(2));
+    expect(find.byType(OasisShimmer), findsNWidgets(2));
   });
 }

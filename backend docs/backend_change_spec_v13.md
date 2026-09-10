@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v13
+# Oasis Backend Change Specification — v13
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >
@@ -131,7 +131,7 @@ Guide 18 §12 asks the app team for this, so here is the current state and what 
 
 **Already true.** Registration has never dropped an artisan into the app as though they were finished: `POST /register/` succeeding routes straight to the identity verification screen, and `MainScaffold` refuses every product screen until the profile reads `VERIFIED`. The gate was already there.
 
-**Changed today, because of `VERIFICATION_SUCCEEDED`.** The app used to learn about clearance only by polling `GET /verify/status/`, which meant an artisan could sit on the verification screen for minutes after being approved. It now re-reads the profile the moment that notification lands over the socket, and the shell lets them through on the next frame. Your artisan-specific wording — *"You're verified! Your Landa artisan registration is complete and landlords and tenants can now find and contact you."* — is shown as sent, in an in-app banner.
+**Changed today, because of `VERIFICATION_SUCCEEDED`.** The app used to learn about clearance only by polling `GET /verify/status/`, which meant an artisan could sit on the verification screen for minutes after being approved. It now re-reads the profile the moment that notification lands over the socket, and the shell lets them through on the next frame. Your artisan-specific wording — *"You're verified! Your Oasis artisan registration is complete and landlords and tenants can now find and contact you."* — is shown as sent, in an in-app banner.
 
 The post-signup message was also reworded, because it overstated things: "Account created successfully!" now reads *"Account created. Verify your identity to start taking jobs."*
 

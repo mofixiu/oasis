@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
-import 'package:landa_app/features/payments/controllers/payment_controller.dart';
-import 'package:landa_app/features/payments/services/payment_service.dart';
-import 'package:landa_app/features/vault/controllers/vault_controller.dart';
-import 'package:landa_app/features/vault/models/vault_models.dart';
-import 'package:landa_app/features/vault/services/vault_service.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/payments/controllers/payment_controller.dart';
+import 'package:oasis_app/features/payments/services/payment_service.dart';
+import 'package:oasis_app/features/vault/controllers/vault_controller.dart';
+import 'package:oasis_app/features/vault/models/vault_models.dart';
+import 'package:oasis_app/features/vault/services/vault_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The vault PIN is the last thing standing between a stolen, already-unlocked
@@ -63,7 +63,7 @@ void main() {
   });
 
   test('a vault rent payment sends the PIN and its idempotency key', () async {
-    // Money already inside Landa moves with no checkout to fall back on, so
+    // Money already inside Oasis moves with no checkout to fall back on, so
     // both of these have to be on the one request that does it.
     Map<String, dynamic>? sentBody;
     String? sentKey;

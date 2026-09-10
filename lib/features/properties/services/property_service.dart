@@ -431,7 +431,7 @@ class PropertyService {
 
   // -------------------------------------------------------- removing one
 
-  /// Asks to take a property off Landa.
+  /// Asks to take a property off Oasis.
   ///
   /// Returns the created request, or throws [PropertyRemovalBlocked] when
   /// the backend refuses because something on the property is still live.

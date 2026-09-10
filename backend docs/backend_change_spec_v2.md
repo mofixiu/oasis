@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v2
+# Oasis Backend Change Specification — v2
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >
@@ -517,7 +517,7 @@ def post_entry(vault_id, *, type, direction, amount, source_reference, **kw):
 
 #### What gets credited
 
-The landlord receives `payment.amount` — the rent. `payment.platform_fee` is Landa's, charged on top to the tenant, and is never credited to the vault. With the numbers already in the guide: tenant pays `472500.00`, vault is credited `450000.00`.
+The landlord receives `payment.amount` — the rent. `payment.platform_fee` is Oasis's, charged on top to the tenant, and is never credited to the vault. With the numbers already in the guide: tenant pays `472500.00`, vault is credited `450000.00`.
 
 #### `POST /payments/{payment_id}/release/` — changed
 
@@ -778,7 +778,7 @@ This is the part most likely to be missed. Three places currently gate on a payo
 
 ### 4.8 Limits, Fees And Security
 
-**The withdrawal fee is whatever the provider charges.** Landa does not add a margin and does not hardcode a figure. `GET /vault/withdrawals/quote/` resolves the fee for the requested amount from Paystack's transfer-fee schedule at quote time and returns it; the app renders that number and nothing else. `VAULT_WITHDRAWAL_FEE_FALLBACK` exists only for the case where the provider cannot be reached to quote — and when that happens, prefer failing the quote with `PROVIDER_UNAVAILABLE` over guessing, since the landlord is about to be charged the difference.
+**The withdrawal fee is whatever the provider charges.** Oasis does not add a margin and does not hardcode a figure. `GET /vault/withdrawals/quote/` resolves the fee for the requested amount from Paystack's transfer-fee schedule at quote time and returns it; the app renders that number and nothing else. `VAULT_WITHDRAWAL_FEE_FALLBACK` exists only for the case where the provider cannot be reached to quote — and when that happens, prefer failing the quote with `PROVIDER_UNAVAILABLE` over guessing, since the landlord is about to be charged the difference.
 
 Fees are banded in Nigeria (roughly ₦10 / ₦25 / ₦50 by amount), so the fee must be resolved per amount rather than fixed per account.
 
@@ -1034,9 +1034,9 @@ Without it the app matches payments to agreements by id and treats anything not 
 
 ### 7.1 What "Uber-like" Means Here, Concretely
 
-In Uber a chat is not a social feature. It exists **because a trip exists**, it is scoped to that trip, the rider starts it, the driver replies, and it closes when the trip ends. Applied to Landa:
+In Uber a chat is not a social feature. It exists **because a trip exists**, it is scoped to that trip, the rider starts it, the driver replies, and it closes when the trip ends. Applied to Oasis:
 
-| Uber | Landa |
+| Uber | Oasis |
 | :--- | :--- |
 | A trip creates the thread | An **application** or an **agreement** creates the thread |
 | Rider or driver can open the thread | **Either party can start it** — but only against a live relationship |
@@ -1579,7 +1579,7 @@ Checked against the current Flutter source. Avoid these:
 | Paginate `GET /payments/`, `/agreements/`, `/notifications/`, `/properties/`, `/tenant/marketplace/` | `PaymentService`, `AgreementService` and friends do `if (response is List)` and return `[]` for anything else. A `{results: []}` wrapper renders as an empty screen with no error. |
 | Add a `payout_account_status` value outside the documented six | `PayoutAccountStatus.fromString` maps anything unknown to `UNKNOWN`, which the UI treats as "needs setup" and blocks the landlord. |
 | Return an unmasked account number | The UI renders `account_number` verbatim. |
-| Change money fields to numbers | `LandaCurrency` formats decimal **strings** textually and never parses to double. A JSON number changes the rendered value. |
+| Change money fields to numbers | `OasisCurrency` formats decimal **strings** textually and never parses to double. A JSON number changes the rendered value. |
 | Drop `detail` from the payout `MISSING` envelope | It is shown as the explanatory line on the payout screen. |
 | Return `403 CONSENT_REQUIRED` from a new endpoint without meaning it | `ApiClient` routes that specific shape to the consent screen. |
 
@@ -1624,7 +1624,7 @@ Every open question from the first draft has been answered. Recorded here so the
 | Payout and agreements | **Landlords create, send and execute agreements with no payout account.** §4.7 |
 | Signed agreements | **No PDF.** They move off the dashboard into the profile as a filtered list. §6 |
 | Where rent is paid | **The Payments page.** Already shipped in the app. §6.3 |
-| Withdrawal fee | **Whatever the provider charges**, resolved per amount at quote time. No Landa margin, no hardcoded figure. §4.8 |
+| Withdrawal fee | **Whatever the provider charges**, resolved per amount at quote time. No Oasis margin, no hardcoded figure. §4.8 |
 | Escrow release | **Automatic** when the dispute window closes. The landlord never taps anything to be paid. §4.4 |
 | Listings with no photos | **Hidden from the marketplace**, with a landlord-facing prompt and one-tap upload to fix it. Both ship together. §5.4 |
 | Minimum photo count | **2**, enforced at creation and on deletion. §5.1 |

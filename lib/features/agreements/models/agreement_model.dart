@@ -610,7 +610,7 @@ class TenancyAgreementModel {
   /// The tenancy is signed by both parties and the first rent has not
   /// reached escrow.
   ///
-  /// Landa's whole promise is that rent goes through escrow, and testers
+  /// Oasis's whole promise is that rent goes through escrow, and testers
   /// found the gap in it: sign the agreement and the flat is yours, on the
   /// app's own screens, before a naira has moved. The backend marks a unit
   /// occupied when the application is approved and executes the agreement on
@@ -631,7 +631,7 @@ class TenancyAgreementModel {
   /// * `NOT_DUE`, and a payload with no `rent_payment` block at all, clear it
   ///   too. That is the case for a tenancy the landlord imported with rent
   ///   already collected off-platform, which is a normal way to arrive on
-  ///   Landa and must not be branded unpaid.
+  ///   Oasis and must not be branded unpaid.
   ///
   /// So it fires only when the backend itself says rent is owed and nothing
   /// has been paid.

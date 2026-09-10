@@ -73,7 +73,7 @@ class AgreementService {
   ///
   /// Tries the batch route first and falls back to one `POST /agreements/`
   /// per row on a routing answer. The batch route is the one that can do the
-  /// whole job: it invites tenants who have no Landa account yet, which
+  /// whole job: it invites tenants who have no Oasis account yet, which
   /// `POST /agreements/` rejects outright, so the fallback is a degraded
   /// mode, not an equal alternative. See §1 of `backend_change_spec_v6.md`.
   ///
@@ -176,7 +176,7 @@ class AgreementService {
         outcomes.add(
           TenancyImportOutcome(
             row: row,
-            error: 'Could not reach Landa. Try this one again.',
+            error: 'Could not reach Oasis. Try this one again.',
           ),
         );
         debugPrint('[AGREEMENT SERVICE] Row ${row.unitLabel} failed: $e');

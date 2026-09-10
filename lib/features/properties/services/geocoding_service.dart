@@ -111,7 +111,7 @@ class GeocodingService {
 
   /// Nominatim's usage policy requires an identifying User-Agent.
   static const _headers = {
-    'User-Agent': 'LandaApp/1.0 (com.landa.landa_app)',
+    'User-Agent': 'OasisApp/1.0 (com.oasis.oasisapp)',
     'Accept': 'application/json',
   };
 
@@ -285,7 +285,7 @@ class GeocodingService {
     }
   }
 
-  /// Splits Nominatim's `address` block into the fields a Landa property
+  /// Splits Nominatim's `address` block into the fields an Oasis property
   /// form actually has.
   ///
   /// Nominatim names the same thing differently depending on how a place is

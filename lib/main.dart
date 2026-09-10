@@ -7,9 +7,9 @@ import 'core/session/realtime_hub.dart';
 import 'core/session/session_scope.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
-import 'core/utils/landa_error_guard.dart';
-import 'core/utils/landa_navigator.dart';
-import 'core/utils/landa_refresh.dart';
+import 'core/utils/oasis_error_guard.dart';
+import 'core/utils/oasis_navigator.dart';
+import 'core/utils/oasis_refresh.dart';
 import 'features/agreements/controllers/agreement_controller.dart';
 import 'features/auth/controllers/auth_controller.dart';
 import 'features/auth/services/api_auth_service.dart';
@@ -31,7 +31,7 @@ Future<void> main() async {
   // Before anything else, so a failure during startup is caught too. Errors
   // are logged under one tag and a widget that throws leaves a small card
   // behind instead of taking the screen down with it.
-  LandaErrorGuard.install();
+  OasisErrorGuard.install();
 
   final apiAuthService = ApiAuthService();
   final themeController = ThemeController();
@@ -122,20 +122,20 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: reviewController),
         Provider<RealtimeHub>.value(value: realtimeHub),
       ],
-      child: const LandaApp(),
+      child: const OasisApp(),
     ),
   );
 }
 
-/// The root widget of Landa OS.
-class LandaApp extends StatefulWidget {
-  const LandaApp({super.key});
+/// The root widget of Oasis.
+class OasisApp extends StatefulWidget {
+  const OasisApp({super.key});
 
   @override
-  State<LandaApp> createState() => _LandaAppState();
+  State<OasisApp> createState() => _OasisAppState();
 }
 
-class _LandaAppState extends State<LandaApp> with WidgetsBindingObserver {
+class _OasisAppState extends State<OasisApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -169,25 +169,25 @@ class _LandaAppState extends State<LandaApp> with WidgetsBindingObserver {
     final themeController = context.watch<ThemeController?>();
 
     return MaterialApp(
-      title: 'Landa OS',
+      title: 'Oasis',
       debugShowCheckedModeBanner: false,
       // One scroll feel on both platforms. Flutter's default gives iOS a
       // rubber-band and Android a clamped stop with a colour-bleed glow at
       // the edge: the same list behaving two different ways, and the glow in
       // particular reads as an artefact of somebody else's design system
       // sitting on top of this one.
-      scrollBehavior: const _LandaScrollBehavior(),
+      scrollBehavior: const _OasisScrollBehavior(),
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeController?.themeMode ?? ThemeMode.system,
       // Lets every screen using AutoRefreshMixin know when it is back on top
       // after a pushed route pops: the moment its data is most likely stale.
-      navigatorObservers: [landaRouteObserver],
+      navigatorObservers: [oasisRouteObserver],
       // Lets things that happen *to* the user, such as a message arriving over
       // the socket, find an Overlay to pop up in and a route to push when the
-      // popup is tapped. See [landaNavigatorKey] for why this is the only
+      // popup is tapped. See [oasisNavigatorKey] for why this is the only
       // sanctioned use of a global navigator.
-      navigatorKey: landaNavigatorKey,
+      navigatorKey: oasisNavigatorKey,
       home: const SplashScreen(),
     );
   }
@@ -195,8 +195,8 @@ class _LandaAppState extends State<LandaApp> with WidgetsBindingObserver {
 
 /// The app's scroll feel: rubber-band overscroll, no edge glow, and a drag
 /// that starts from a touch or a trackpad alike.
-class _LandaScrollBehavior extends MaterialScrollBehavior {
-  const _LandaScrollBehavior();
+class _OasisScrollBehavior extends MaterialScrollBehavior {
+  const _OasisScrollBehavior();
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) =>

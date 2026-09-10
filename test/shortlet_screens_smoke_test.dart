@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/features/shortlets/controllers/shortlet_controller.dart';
-import 'package:landa_app/features/shortlets/models/shortlet_models.dart';
-import 'package:landa_app/features/shortlets/services/shortlet_service.dart';
-import 'package:landa_app/features/shortlets/views/widgets/shortlet_booking_card.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/features/shortlets/controllers/shortlet_controller.dart';
+import 'package:oasis_app/features/shortlets/models/shortlet_models.dart';
+import 'package:oasis_app/features/shortlets/services/shortlet_service.dart';
+import 'package:oasis_app/features/shortlets/views/widgets/shortlet_booking_card.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

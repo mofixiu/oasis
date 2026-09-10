@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
-import 'package:landa_app/features/payments/models/payment_model.dart';
-import 'package:landa_app/features/payments/models/pending_rent.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/payments/models/payment_model.dart';
+import 'package:oasis_app/features/payments/models/pending_rent.dart';
 
 /// A tenant with two unpaid units was shown one pending payment. The backend
 /// reported the second as `NOT_DUE`, its term starts next year, and letting

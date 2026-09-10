@@ -3,16 +3,16 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
-import 'package:landa_app/features/payments/controllers/payment_controller.dart';
-import 'package:landa_app/features/payments/models/payment_model.dart';
-import 'package:landa_app/features/payments/services/payment_service.dart';
-import 'package:landa_app/features/vault/controllers/vault_controller.dart';
-import 'package:landa_app/features/vault/models/vault_models.dart';
-import 'package:landa_app/features/vault/services/vault_service.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/payments/controllers/payment_controller.dart';
+import 'package:oasis_app/features/payments/models/payment_model.dart';
+import 'package:oasis_app/features/payments/services/payment_service.dart';
+import 'package:oasis_app/features/vault/controllers/vault_controller.dart';
+import 'package:oasis_app/features/vault/models/vault_models.dart';
+import 'package:oasis_app/features/vault/services/vault_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The tenant vault is savings, so these cover what would actually cost a

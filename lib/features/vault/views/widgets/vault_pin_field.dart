@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_haptics.dart';
-import '../../../../core/widgets/landa_pressable.dart';
+import '../../../../core/utils/oasis_haptics.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
 
 /// Four boxes for a vault PIN.
 ///
@@ -56,7 +56,7 @@ class VaultPinFieldState extends State<VaultPinField> {
     setState(() {});
     widget.onChanged(value);
     if (value.length == _length) {
-      LandaHaptics.tap();
+      OasisHaptics.tap();
       widget.onCompleted?.call(value);
     }
   }
@@ -69,7 +69,7 @@ class VaultPinFieldState extends State<VaultPinField> {
       children: [
         // The boxes are what the user sees and taps; the field beneath them is
         // sized to match so the tap target is the whole row.
-        LandaPressable(
+        OasisPressable(
           onTap: widget.enabled ? _focusNode.requestFocus : null,
           pressedScale: 1,
           child: Row(

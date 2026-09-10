@@ -1,17 +1,17 @@
-# Landa OS — Marketing Website Brief
+# Oasis — Marketing Website Brief
 
-Everything a designer or developer needs to build landaos.com without opening the
+Everything a designer or developer needs to build the Oasis website without opening the
 Flutter project. Written for a **minimal** site: a lot of white space, few colours,
 big screenshots, short sentences.
 
 ---
 
-## 1. What Landa is
+## 1. What Oasis is
 
-Landa OS is a Nigerian prop-tech app for **rentals without fraud**. Three roles share
+Oasis is a Nigerian prop-tech app for **rentals without fraud**. Three roles share
 one app:
 
-| Role | What they do in Landa |
+| Role | What they do in Oasis |
 |---|---|
 | **Landlord (owner)** | Lists verified properties and units, reviews applications, signs tenancies, collects rent, runs short lets, gets paid out to a bank account |
 | **Tenant** | Browses the marketplace, applies for a unit, signs the agreement in-app, pays rent into escrow, books short stays, finds artisans |
@@ -33,7 +33,7 @@ the same thing:
 | Eyebrow | Headline | Body |
 |---|---|---|
 | MARKETPLACE | **Homes you can trust** | Browse listings with real photos, real prices and a landlord who has been checked. Apply in a few taps. |
-| AGREEMENTS | **Sign the lease right here** | Tenancy agreements are drafted, reviewed and signed inside Landa. No printing, no courier, no lost copies. |
+| AGREEMENTS | **Sign the lease right here** | Tenancy agreements are drafted, reviewed and signed inside Oasis. No printing, no courier, no lost copies. |
 | ESCROW | **Rent that stays protected** | Your payment sits in escrow and is only released when the keys change hands. Payouts reach the landlord automatically. |
 | VERIFIED | **Everyone here is verified** | Landlords and tenants both pass identity checks, and every document you sign is filed away in your vault. |
 
@@ -70,7 +70,7 @@ the same thing:
 **Fix (artisan directory)**
 - Find a verified electrician, plumber, carpenter and so on, and call them. Landlords can
   vouch for artisans, whose recommendations surface per unit for their tenants.
-- Landa does **not** broker or take payment for repairs. Do not imply it does.
+- Oasis does **not** broker or take payment for repairs. Do not imply it does.
 
 **Communication**
 - Threaded messaging hung off a real relationship (an application or a tenancy) — no cold DMs.
@@ -134,25 +134,22 @@ gives a card no edge to be seen against, which makes every plane sit at the same
 Status fills are opaque tints, never alpha overlays, so a pill reads identically on a
 card and on the page.
 
-### The wordmark needs recolouring
+### The logo
 
-Terracotta + sage is the palette, settled. The shipped wordmark
-(`assets/images/newlogo.png`, `newlogonobackground.png`, `logo_wordmark_light.png`,
-`iconlogo.png`) is still **deep navy + emerald** from the app's first palette and is now
-the only thing in the brand that disagrees with everything else.
+Two arrow strokes meeting as a roof — terracotta on the left, forest green on the
+right — over the name set in capitals: **OASIS**. In sentences the name is written
+"Oasis"; the capitals belong to the logo.
 
-Recolour it before the site is built, keeping the artwork exactly as it is:
-
-| Element | From (navy/emerald) | To |
+| Element | Light backgrounds | Dark backgrounds |
 |---|---|---|
-| Shield + building mark | Deep navy | Terracotta `#B65F3C` |
-| "Landa" wordmark | Deep navy | Terracotta `#B65F3C` |
-| "OS" | Emerald | Sage green `#6F8F72` |
-| Dark-background variant | White | White (unchanged) |
+| Left stroke | Terracotta `#AC5B2C` | Terracotta `#AC5B2C` |
+| Right stroke | Forest green `#2A5138` | Lifted green `#45875E` |
+| OASIS lettering | Deep green `#28362B` | White |
 
-The shape is right — a shield with a building rising out of it reads as *protected
-property* in one glance, which is the whole pitch. Only the colour is stale. Do not build
-a navy website around a terracotta app, and do not introduce a third accent to bridge them.
+The logo is drawn on paper white `#FDFCF8`, which is also the app-icon background. The
+white lines inside each stroke are cut-outs, not paint — they show whatever is behind the
+logo. Use the stacked logo (mark over name) where there is room, and the side-by-side
+wordmark in headers, where the stacked version would shrink the name past reading.
 
 ---
 
@@ -328,10 +325,11 @@ dynamic content beyond a waitlist form.
 
 | File | Size | Use |
 |---|---|---|
-| `newlogo.png` | 1830×658 | Full wordmark, light background — **awaiting recolour**, see §4 |
-| `newlogonobackground.png` | 833×299 | Wordmark, transparent |
-| `logo_wordmark_light.png` | 833×299 | White wordmark, for dark backgrounds |
-| `iconlogo.png` | 826×878 | Shield mark alone — use for the favicon and app icon |
+| `oasis_logo.png` | 400×540 | Stacked logo (mark over OASIS), transparent |
+| `oasis_logo_dark.png` | 400×540 | Stacked logo for dark backgrounds |
+| `oasis_wordmark.png` | 572×240 | Mark and OASIS side by side, transparent — headers |
+| `oasis_wordmark_dark.png` | 572×240 | Side-by-side wordmark for dark backgrounds |
+| `oasis_mark.png` | 507×512 | Mark alone — favicon and app icon |
 | `room_interior.png`, `quality_hero.png` | 1024² | Interior imagery |
 | `artisan_*.png` | 1024² | Artisan portraits (demo likenesses — check rights before public use) |
 

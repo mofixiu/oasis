@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../../dashboard/views/widgets/add_property_modal.dart';
 import '../controllers/landlord_controller.dart';
 import '../models/property_model.dart';
@@ -76,13 +76,13 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen>
   ) {
     if (!controller.hasLoaded(LandlordController.kPropertiesKey) ||
         (controller.isLoading && properties.isEmpty)) {
-      return const LandaSkeletonList(count: 3, hasThumbnail: true);
+      return const OasisSkeletonList(count: 3, hasThumbnail: true);
     }
 
     // A failure with nothing to show is a dead page; a failure with cards
     // already on screen is a banner over them.
     if (controller.hasError && properties.isEmpty) {
-      return LandaErrorState(
+      return OasisErrorState(
         message: controller.errorMessage,
         isConnectionError: controller.errorIsConnection,
         onRetry: _reload,
@@ -90,7 +90,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen>
     }
 
     if (properties.isEmpty) {
-      return LandaEmptyState(
+      return OasisEmptyState(
         icon: Icons.apartment_outlined,
         title: 'No properties yet',
         message:
@@ -109,14 +109,14 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen>
         if (controller.hasError)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: LandaErrorBanner(
+            child: OasisErrorBanner(
               message: controller.errorMessage!,
               isConnectionError: controller.errorIsConnection,
               onRetry: _reload,
             ),
           ),
         for (final (index, property) in properties.indexed)
-          LandaEntrance(
+          OasisEntrance(
             index: index,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 16),

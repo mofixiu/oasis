@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/landa_pressable.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
 import '../../../auth/controllers/auth_controller.dart';
 import 'add_property_modal.dart';
 import 'invite_tenant_modal.dart';
@@ -42,7 +42,7 @@ class LandlordHeader extends StatelessWidget {
           style: AppTheme.bodyText(context),
         ),
         const SizedBox(height: 24),
-        LandaButton(
+        OasisButton(
           label: 'Add New Property',
           icon: Icons.add_rounded,
           onPressed: () => _showAddProperty(context),
@@ -50,7 +50,7 @@ class LandlordHeader extends StatelessWidget {
         const SizedBox(height: 12),
         // Secondary action, so it is outlined rather than a second filled
         // button competing with the first for attention.
-        LandaButton(
+        OasisButton(
           label: 'Invite Tenant',
           icon: Icons.person_add_alt_1_rounded,
           outlined: true,

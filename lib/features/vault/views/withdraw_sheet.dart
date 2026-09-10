@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../payouts/controllers/payout_controller.dart';
 import '../../payouts/views/payout_account_screen.dart';
 import '../controllers/vault_controller.dart';
 import 'vault_pin_sheet.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/utils/oasis_input_formatters.dart';
 
 /// Moves money from the vault to the user's own bank.
 ///
@@ -76,7 +76,7 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
     final controller = context.read<VaultController>();
 
     if (!_hasAmount) {
-      LandaToast.error(context, 'Enter an amount to withdraw.');
+      OasisToast.error(context, 'Enter an amount to withdraw.');
       return;
     }
 
@@ -86,9 +86,9 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
     // name the sum being confirmed. It is held only for this one call.
     final pin = await promptVaultPin(
       context,
-      title: 'Confirm ${LandaCurrency.format(amount)}',
+      title: 'Confirm ${OasisCurrency.format(amount)}',
       subtitle: 'Enter your vault PIN to send this to your bank.',
-      actionLabel: 'Withdraw ${LandaCurrency.format(amount)}',
+      actionLabel: 'Withdraw ${OasisCurrency.format(amount)}',
     );
     if (!mounted || pin == null) return;
 
@@ -99,7 +99,7 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
       // The backend owns the rules (balance, limits, PIN, provider health)
       // so its sentence is shown as written, with the PIN standing the
       // controller just re-read folded in around it.
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.describeFailedAttempt(
           controller.errorMessage ??
@@ -110,9 +110,9 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
     }
 
     Navigator.pop(context);
-    LandaToast.success(
+    OasisToast.success(
       context,
-      '${LandaCurrency.format(withdrawal.amount)} requested. '
+      '${OasisCurrency.format(withdrawal.amount)} requested. '
       '${withdrawal.status.label}.',
     );
   }
@@ -124,7 +124,7 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
     final vault = controller.vault;
     final needsAccount = !payout.isVerified;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.arrow_outward_rounded,
       title: 'Withdraw from vault',
       subtitle: needsAccount
@@ -133,14 +133,14 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
                 'shortly after.',
       accent: AppTheme.successColor,
       footer: needsAccount
-          ? LandaSheetButton(
+          ? OasisSheetButton(
               label: 'Add bank account',
               icon: Icons.account_balance_outlined,
               onPressed: _setupPayoutAccount,
             )
-          : LandaSheetButton(
+          : OasisSheetButton(
               label: _hasAmount
-                  ? 'Withdraw ${LandaCurrency.format('$_rawAmount.00')}'
+                  ? 'Withdraw ${OasisCurrency.format('$_rawAmount.00')}'
                   : 'Withdraw',
               icon: Icons.arrow_outward_rounded,
               isLoading: controller.isWithdrawing,
@@ -154,21 +154,21 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
               ? null
               : () => setState(
                   () => _amountController.text =
-                      LandaThousandsFormatter.groupAmount(
+                      OasisThousandsFormatter.groupAmount(
                         vault.availableBalance,
                       ),
                 ),
         ),
         const SizedBox(height: 18),
 
-        const LandaFieldLabel('Amount'),
+        const OasisFieldLabel('Amount'),
         TextField(
           controller: _amountController,
           keyboardType: TextInputType.number,
-          inputFormatters: const [LandaThousandsFormatter()],
+          inputFormatters: const [OasisThousandsFormatter()],
           enabled: !needsAccount,
           style: AppTheme.screenTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: '0',
             prefixIcon: Icons.payments_outlined,
@@ -212,7 +212,7 @@ class _WithdrawSheetState extends State<WithdrawSheet> {
           _Notice(
             icon: Icons.hourglass_top_outlined,
             message:
-                '${LandaCurrency.format(vault.pendingWithdrawalBalance)} is '
+                '${OasisCurrency.format(vault.pendingWithdrawalBalance)} is '
                 'already on its way and is not part of your available balance.',
           ),
         ],
@@ -247,7 +247,7 @@ class _AvailableRow extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                LandaCurrency.format(available),
+                OasisCurrency.format(available),
                 style: AppTheme.sectionTitle(context),
               ),
             ],

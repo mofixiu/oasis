@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/vault/models/vault_allocations.dart';
+import 'package:oasis_app/features/vault/models/vault_allocations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// A tenant renting two places saves for both out of one balance. Before this,

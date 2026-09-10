@@ -5,9 +5,9 @@ import '../../features/auth/models/user_model.dart';
 import '../../features/marketplace/controllers/marketplace_controller.dart';
 import '../../features/shortlets/controllers/shortlet_controller.dart';
 import '../theme/app_theme.dart';
-import '../utils/landa_haptics.dart';
+import '../utils/oasis_haptics.dart';
 
-/// Custom bottom navigation bar for Landa OS MVP.
+/// Custom bottom navigation bar for Oasis MVP.
 class CustomBottomNavbar extends StatelessWidget {
   final int currentIndex;
 
@@ -77,7 +77,7 @@ class CustomBottomNavbar extends StatelessWidget {
                 currentIndex: currentIndex,
                 onTap: (index) {
                   // Tab changes are selection-class feedback, not commits.
-                  if (index != currentIndex) LandaHaptics.select();
+                  if (index != currentIndex) OasisHaptics.select();
                   onTap(index);
                 },
                 backgroundColor: Colors.transparent,

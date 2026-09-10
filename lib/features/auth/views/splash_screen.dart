@@ -10,9 +10,9 @@ import 'identity_verification_screen.dart';
 import 'sign_in_screen.dart';
 import 'welcome_screen.dart';
 
-/// A modern, minimalist Splash Screen for Landa OS.
+/// A modern, minimalist Splash Screen for Oasis.
 /// Renders a white/soft-grey background and applies a premium scale and fade-in
-/// animation to the Landa logo. Once finished and auth check completes, it dynamically
+/// animation to the Oasis logo. Once finished and auth check completes, it dynamically
 /// routes to the WelcomeScreen (first time only), SignInScreen, or MainScaffold based on auth state.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -128,13 +128,15 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // The navy wordmark disappears on the dark background, so
-                    // dark mode gets the white-on-transparent variant.
+                    // The forest-green lettering disappears on the dark
+                    // background, so dark mode gets the white-lettered variant.
+                    // 168 matches the iOS LaunchImage, so the hand-off from
+                    // the OS splash does not jump.
                     Image.asset(
                       isDarkMode
-                          ? 'assets/images/logo_wordmark_light.png'
-                          : 'assets/images/newlogonobackground.png',
-                      height: 104,
+                          ? 'assets/images/oasis_logo_dark.png'
+                          : 'assets/images/oasis_logo.png',
+                      height: 168,
                       fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 18),
@@ -170,7 +172,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'SECURED BY LANDA OS',
+                    'SECURED BY OASIS',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,

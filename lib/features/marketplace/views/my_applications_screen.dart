@@ -3,11 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../messaging/views/widgets/message_action_button.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../controllers/marketplace_controller.dart';
 import '../models/marketplace_models.dart';
 import 'application_status_pill.dart';
@@ -25,7 +25,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen>
   /// Polls while open. Every row here is waiting on a landlord's decision,
   /// which arrives on their phone rather than this one.
   @override
-  Duration? get autoRefreshInterval => kLandaPollInterval;
+  Duration? get autoRefreshInterval => kOasisPollInterval;
 
   @override
   Future<void> onAutoRefresh() =>
@@ -63,9 +63,9 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen>
 
     if (!controller.hasLoadedTenantApplications ||
         (controller.isLoading && applications.isEmpty)) {
-      return const LandaContentSwitcher(
+      return const OasisContentSwitcher(
         stateKey: 'loading',
-        child: LandaSkeletonList(
+        child: OasisSkeletonList(
           hasAvatar: true,
           padding: EdgeInsets.fromLTRB(20, 8, 20, 32),
         ),
@@ -76,9 +76,9 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen>
     // yet" and "we could not reach the server" are different situations and
     // only one of them is fixed by trying again.
     if (controller.hasError && applications.isEmpty) {
-      return LandaContentSwitcher(
+      return OasisContentSwitcher(
         stateKey: 'error',
-        child: LandaErrorState(
+        child: OasisErrorState(
           message: controller.errorMessage,
           isConnectionError: controller.errorIsConnection,
           onRetry: controller.loadTenantApplications,
@@ -88,9 +88,9 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen>
     }
 
     if (applications.isEmpty) {
-      return LandaContentSwitcher(
+      return OasisContentSwitcher(
         stateKey: 'empty',
-        child: LandaEmptyState(
+        child: OasisEmptyState(
           icon: Icons.description_outlined,
           title: 'No applications yet',
           message:
@@ -103,12 +103,12 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen>
       );
     }
 
-    return LandaContentSwitcher(
+    return OasisContentSwitcher(
       stateKey: 'content',
       child: Column(
         children: [
           if (controller.hasError)
-            LandaErrorBanner(
+            OasisErrorBanner(
               message: controller.errorMessage!,
               isConnectionError: controller.errorIsConnection,
               onRetry: controller.loadTenantApplications,
@@ -119,7 +119,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen>
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               itemCount: applications.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => LandaEntrance(
+              itemBuilder: (context, index) => OasisEntrance(
                 index: index,
                 child: _ApplicationCard(application: applications[index]),
               ),
@@ -171,7 +171,7 @@ class _ApplicationCard extends StatelessWidget {
           if (application.rentAmount != null) ...[
             const SizedBox(height: 6),
             Text(
-              LandaCurrency.perYear(application.rentAmount),
+              OasisCurrency.perYear(application.rentAmount),
               style: TextStyle(
                 fontSize: 13,
                 color: AppTheme.secondaryTextColor(context),

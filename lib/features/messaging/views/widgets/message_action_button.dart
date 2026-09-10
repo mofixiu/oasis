@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/landa_pressable.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../controllers/messaging_controller.dart';
 import '../conversation_screen.dart';
 import '../../../../core/utils/fade_page_route.dart';
-import '../../../../core/widgets/landa_busy.dart';
+import '../../../../core/widgets/oasis_busy.dart';
 
 /// Starts (or re-opens) the conversation attached to a relationship, then
 /// opens it.
@@ -71,7 +71,7 @@ class _MessageActionButtonState extends State<MessageActionButton> {
       // The refusals here are already sentences worth reading: "You can only
       // message a landlord after applying for one of their units", so the
       // backend's own wording is shown rather than a generic failure.
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not open that conversation. Try again in a moment.',
@@ -92,7 +92,7 @@ class _MessageActionButtonState extends State<MessageActionButton> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (_isOpening)
-          const LandaBusyDots(color: AppTheme.actionColor)
+          const OasisBusyDots(color: AppTheme.actionColor)
         else
           Icon(
             Icons.chat_bubble_outline_rounded,
@@ -107,7 +107,7 @@ class _MessageActionButtonState extends State<MessageActionButton> {
       ],
     );
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: _isOpening ? null : _open,
       child: Container(
         width: widget.expanded ? double.infinity : null,

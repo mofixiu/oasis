@@ -7,12 +7,12 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/nigeria_locations.dart';
-import '../../../../core/utils/landa_haptics.dart';
-import '../../../../core/widgets/landa_pressable.dart';
-import '../../../../core/widgets/landa_sheet.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/utils/oasis_haptics.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
+import '../../../../core/widgets/oasis_sheet.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../services/geocoding_service.dart';
-import '../../../../core/widgets/landa_busy.dart';
+import '../../../../core/widgets/oasis_busy.dart';
 
 /// Where a pin came from. The source decides what we can say about accuracy:
 /// a GPS fix carries a radius worth drawing, a tap is exact by definition.
@@ -308,7 +308,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
       }
       if (permission == LocationPermission.deniedForever) {
         _fail(
-          'Location is blocked for Landa. Enable it in Settings, or drop the pin by hand.',
+          'Location is blocked for Oasis. Enable it in Settings, or drop the pin by hand.',
           onOpenSettings: Geolocator.openAppSettings,
         );
         return;
@@ -330,7 +330,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
         accuracy: position.accuracy,
       );
       if (position.accuracy > 60) {
-        LandaToast.info(
+        OasisToast.info(
           context,
           'Rough fix (±${position.accuracy.round()}m). Drag the map and tap the exact entrance.',
         );
@@ -348,7 +348,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
   Future<void> _findFromAddress() async {
     final query = widget.addressResolver?.call().trim() ?? '';
     if (query.length < 4) {
-      LandaToast.info(context, 'Type the street address above first.');
+      OasisToast.info(context, 'Type the street address above first.');
       return;
     }
     setState(() => _isSearching = true);
@@ -372,7 +372,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
           PropertyLocationPicker._stateZoom,
         );
       }
-      LandaToast.error(
+      OasisToast.error(
         context,
         'Could not find that address. Tap the map to drop the pin instead.',
       );
@@ -386,7 +386,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
     // town and asked for the one thing only they know.
     if (!hit.isPinnable) {
       _mapController.move(hit.result.point, hit.zoom);
-      LandaToast.info(
+      OasisToast.info(
         context,
         'Could not find that exact address. Showing ${hit.result.label} — '
         'tap the map on your entrance.',
@@ -402,7 +402,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
     // The search already carries the parts, so the city and state boxes fill
     // in without a second round trip to the reverse geocoder.
     if (!result.address.isEmpty) widget.onAddressResolved?.call(result.address);
-    LandaToast.info(context, 'Found ${result.label}. Nudge the pin if needed.');
+    OasisToast.info(context, 'Found ${result.label}. Nudge the pin if needed.');
   }
 
   void _applyPin(
@@ -412,7 +412,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
     String? placeName,
     bool recentre = true,
   }) {
-    LandaHaptics.select();
+    OasisHaptics.select();
     setState(() {
       _pin = point;
       _source = source;
@@ -462,7 +462,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
   void _clearPin() {
     _nameDebounce?.cancel();
     _nameToken++;
-    LandaHaptics.tap();
+    OasisHaptics.tap();
     setState(() {
       _pin = null;
       _source = null;
@@ -480,7 +480,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
   /// is a continuation rather than a restart — a landlord who has already
   /// panned to their street does not arrive back at the country view.
   Future<void> _openFullScreen() async {
-    LandaHaptics.tap();
+    OasisHaptics.tap();
     final navigator = Navigator.of(context);
     final camera = _mapController.camera;
     final result = await navigator.push<_FullScreenPinResult>(
@@ -505,14 +505,14 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
   }
 
   void _zoomBy(double delta) {
-    LandaHaptics.tap();
+    OasisHaptics.tap();
     final camera = _mapController.camera;
     _mapController.move(camera.center, (camera.zoom + delta).clamp(3.0, 19.0));
   }
 
   void _fail(String message, {VoidCallback? onOpenSettings}) {
     if (!mounted) return;
-    LandaToast.error(context, message);
+    OasisToast.error(context, message);
     onOpenSettings?.call();
   }
 
@@ -521,7 +521,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LandaFieldLabel(
+        OasisFieldLabel(
           'Property pin',
           trailing: _LabelAction(
             icon: Icons.travel_explore_rounded,
@@ -600,7 +600,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
                       TileLayer(
                         urlTemplate:
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.landa.landa_app',
+                        userAgentPackageName: 'com.oasis.oasisapp',
                         maxNativeZoom: 19,
                       ),
                       if (_pin != null && _accuracy != null && _accuracy! > 15)
@@ -804,7 +804,7 @@ class _FullScreenPinPageState extends State<_FullScreenPinPage> {
               const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
-                child: LandaSheetButton(
+                child: OasisSheetButton(
                   label: _pin == null ? 'Done without a pin' : 'Use this pin',
                   icon: _pin == null
                       ? Icons.close_rounded
@@ -975,7 +975,7 @@ class _MapButton extends StatelessWidget {
         : AppTheme.primaryTextColor(context);
     return Tooltip(
       message: tooltip,
-      child: LandaPressable(
+      child: OasisPressable(
         onTap: onTap,
         child: Container(
           width: 38,
@@ -994,7 +994,7 @@ class _MapButton extends StatelessWidget {
             ],
           ),
           child: isBusy
-              ? const Center(child: LandaBusyDots(color: AppTheme.actionColor))
+              ? const Center(child: OasisBusyDots(color: AppTheme.actionColor))
               : Icon(icon, size: 19, color: foreground),
         ),
       ),
@@ -1017,13 +1017,13 @@ class _LabelAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LandaPressable(
+    return OasisPressable(
       onTap: onTap,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isBusy)
-            const LandaBusyDots(color: AppTheme.actionColor, size: 4)
+            const OasisBusyDots(color: AppTheme.actionColor, size: 4)
           else
             Icon(icon, size: 15, color: AppTheme.actionColor),
           const SizedBox(width: 6),

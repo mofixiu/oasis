@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../../shortlets/views/respond_to_caution_claim_sheet.dart';
 import '../controllers/notification_controller.dart';
 import '../models/notification_model.dart';
@@ -125,9 +125,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Widget _buildBody(BuildContext context, NotificationController controller) {
     if (!controller.hasLoaded ||
         (controller.isLoading && controller.notifications.isEmpty)) {
-      return const LandaContentSwitcher(
+      return const OasisContentSwitcher(
         stateKey: 'loading',
-        child: LandaSkeletonList(
+        child: OasisSkeletonList(
           count: 5,
           hasAvatar: true,
           hasPill: false,
@@ -137,9 +137,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     }
 
     if (controller.hasError && controller.notifications.isEmpty) {
-      return LandaContentSwitcher(
+      return OasisContentSwitcher(
         stateKey: 'error',
-        child: LandaErrorState(
+        child: OasisErrorState(
           message: controller.errorMessage,
           isConnectionError: controller.errorIsConnection,
           onRetry: controller.loadNotifications,
@@ -149,9 +149,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     }
 
     if (controller.notifications.isEmpty) {
-      return LandaContentSwitcher(
+      return OasisContentSwitcher(
         stateKey: 'empty',
-        child: LandaEmptyState(
+        child: OasisEmptyState(
           icon: controller.hasActiveFilter
               ? Icons.filter_alt_off_outlined
               : Icons.notifications_none_outlined,
@@ -173,12 +173,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       );
     }
 
-    return LandaContentSwitcher(
+    return OasisContentSwitcher(
       stateKey: 'content',
       child: Column(
         children: [
           if (controller.hasError)
-            LandaErrorBanner(
+            OasisErrorBanner(
               message: controller.errorMessage!,
               isConnectionError: controller.errorIsConnection,
               onRetry: controller.loadNotifications,
@@ -189,7 +189,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               itemCount: controller.notifications.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => LandaEntrance(
+              itemBuilder: (context, index) => OasisEntrance(
                 index: index,
                 child: _NotificationCard(
                   notification: controller.notifications[index],

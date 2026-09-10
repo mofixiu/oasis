@@ -121,7 +121,7 @@ export function ProductPromises() {
     <section className="product-section section" id="product">
       <div className="container">
         <div className="compact-heading">
-          <span className="eyebrow">For tenants · The Landa way</span>
+          <span className="eyebrow">For tenants · The Oasis way</span>
           <h2>
             From first search
             <br />
@@ -145,7 +145,7 @@ export function ProductPromises() {
           href="#waitlist"
           onClick={() => track("Tenant interest", { source: "product" })}
         >
-          Find your place with Landa <ArrowRight size={17} />
+          Find your place with Oasis <ArrowRight size={17} />
         </a>
       </div>
     </section>
@@ -299,7 +299,7 @@ export function CraftAndTrust() {
           </div>
         </div>
         <p className="fix-caption">
-          Need a hand? <b>Landa Fix</b> helps you find and call verified
+          Need a hand? <b>Oasis Fix</b> helps you find and call verified
           artisans. Arrange repairs directly.
         </p>
       </div>
@@ -313,7 +313,7 @@ export const faqs = [
       "Rent is paid into escrow rather than directly to the landlord. The escrow provider and custody arrangements have not yet been confirmed for publication. Those details will need to be available before you pay.",
   },
   {
-    question: "What does Landa cost?",
+    question: "What does Oasis cost?",
     answer:
       "Fees are still being finalized. We cannot quote listing, booking, payment or withdrawal charges yet. Do not assume a service is free; review the final charges before using it.",
   },
@@ -325,7 +325,7 @@ export const faqs = [
   {
     question: "Can I offer both yearly rentals and short stays?",
     answer:
-      "Yes. Landa supports annual tenancies and nightly listings on the same property units. Short-stay requests need host approval, then payment within the booking window.",
+      "Yes. Oasis supports annual tenancies and nightly listings on the same property units. Short-stay requests need host approval, then payment within the booking window.",
   },
 ];
 export function FAQ() {

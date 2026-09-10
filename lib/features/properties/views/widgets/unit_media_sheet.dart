@@ -6,14 +6,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/landa_network_image.dart';
-import '../../../../core/widgets/landa_pressable.dart';
-import '../../../../core/widgets/landa_sheet.dart';
-import '../../../../core/widgets/landa_toast.dart';
-import '../../../../core/widgets/landa_video_player.dart';
+import '../../../../core/widgets/oasis_network_image.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
+import '../../../../core/widgets/oasis_sheet.dart';
+import '../../../../core/widgets/oasis_toast.dart';
+import '../../../../core/widgets/oasis_video_player.dart';
 import '../../controllers/landlord_controller.dart';
 import '../../models/property_model.dart';
-import '../../../../core/widgets/landa_busy.dart';
+import '../../../../core/widgets/oasis_busy.dart';
 
 /// Manages one unit's photos and its tour video, after the unit exists.
 ///
@@ -77,7 +77,7 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
   Future<void> _addPhotos(int currentCount) async {
     final remaining = PropertyMediaLimits.maxUnitPhotos - currentCount;
     if (remaining <= 0) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'This unit already has the maximum of '
         '${PropertyMediaLimits.maxUnitPhotos} photos.',
@@ -93,7 +93,7 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
     if (picked.isEmpty || !mounted) return;
 
     if (picked.length > remaining) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'You can add $remaining more ${remaining == 1 ? 'photo' : 'photos'}.',
       );
@@ -105,7 +105,7 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
       final file = File(image.path);
       if (await file.length() > PropertyMediaLimits.maxPhotoBytes) {
         if (!mounted) return;
-        LandaToast.error(
+        OasisToast.error(
           context,
           '"${image.name}" is larger than 5MB. Choose a smaller image.',
         );
@@ -123,12 +123,12 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
     );
     if (!mounted) return;
     if (ok) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         files.length == 1 ? 'Photo added.' : '${files.length} photos added.',
       );
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -141,9 +141,9 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
     );
     if (!mounted) return;
     if (ok) {
-      LandaToast.success(context, 'Photo removed.');
+      OasisToast.success(context, 'Photo removed.');
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -158,7 +158,7 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
     final file = File(path);
     if (await file.length() > PropertyMediaLimits.maxVideoBytes) {
       if (!mounted) return;
-      LandaToast.error(
+      OasisToast.error(
         context,
         'That video is larger than 50MB. Choose a shorter clip.',
       );
@@ -174,12 +174,12 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
     );
     if (!mounted) return;
     if (ok) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         replacing ? 'Tour video replaced.' : 'Tour video uploaded.',
       );
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -191,7 +191,7 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
     final videoUrl = _videoUrl;
     final busy = controller.isMediaBusy;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.perm_media_outlined,
       title: 'Unit ${widget.unit.unitNumber} media',
       subtitle:
@@ -232,9 +232,9 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
         else
           Column(
             children: [
-              LandaVideoPlayer(url: videoUrl),
+              OasisVideoPlayer(url: videoUrl),
               const SizedBox(height: 10),
-              LandaSheetChipButton(
+              OasisSheetChipButton(
                 icon: Icons.swap_horiz_rounded,
                 label: 'Replace video',
                 onTap: busy ? () {} : () => _uploadVideo(replacing: true),
@@ -289,7 +289,7 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
           ),
           const SizedBox(height: 10),
           if (photos.length < PropertyMediaLimits.maxUnitPhotos)
-            LandaSheetChipButton(
+            OasisSheetChipButton(
               icon: Icons.add_photo_alternate_outlined,
               label: 'Add more photos',
               onTap: busy ? () {} : () => _addPhotos(photos.length),
@@ -298,7 +298,7 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
 
         if (busy) ...[
           const SizedBox(height: 16),
-          const LandaBusyLine(label: 'Uploading'),
+          const OasisBusyLine(label: 'Uploading'),
         ],
       ],
     );
@@ -324,7 +324,7 @@ class _PhotoTile extends StatelessWidget {
     child: Stack(
       fit: StackFit.expand,
       children: [
-        LandaNetworkImage(
+        OasisNetworkImage(
           url: photo.imageUrl,
           placeholderIcon: Icons.image_outlined,
         ),
@@ -352,7 +352,7 @@ class _PhotoTile extends StatelessWidget {
         Positioned(
           right: 2,
           top: 2,
-          child: LandaPressable(
+          child: OasisPressable(
             onTap: enabled ? onDelete : null,
             pressedScale: 0.88,
             child: Container(
@@ -402,7 +402,7 @@ class _EmptyMediaCard extends StatelessWidget {
           style: AppTheme.bodyText(context),
         ),
         const SizedBox(height: 14),
-        LandaSheetChipButton(
+        OasisSheetChipButton(
           icon: Icons.add_rounded,
           label: actionLabel,
           onTap: onAction ?? () {},

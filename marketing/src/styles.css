@@ -1,6 +1,6 @@
 @font-face {
-  font-family: "Landa Navigation";
-  src: url("/fonts/landa-navigation.otf") format("opentype");
+  font-family: "Oasis Navigation";
+  src: url("/fonts/oasis-navigation.otf") format("opentype");
   font-style: normal;
   font-weight: 400;
   font-display: block;
@@ -196,21 +196,22 @@ p {
   position: relative;
   flex-shrink: 0;
 }
-.logo span {
+/* The mark is two-colour, so it cannot be a single-colour mask; each theme
+   gets its own image, the dark one with white lettering and a lifted green. */
+.logo img {
   position: absolute;
   inset: 0;
-  mask: url("/images/landa-wordmark.webp") center/contain no-repeat;
-  -webkit-mask: url("/images/landa-wordmark.webp") center/contain no-repeat;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
 }
-.logo-base {
-  background: var(--primary);
+.logo-dark,
+[data-theme="dark"] .logo-light {
+  display: none;
 }
-.logo-os {
-  background: var(--sage);
-  clip-path: inset(0 0 0 76%);
-}
-[data-theme="dark"] .logo-base {
-  background: #fff;
+[data-theme="dark"] .logo-dark {
+  display: block;
 }
 .footer a:hover {
   color: var(--primary-ink);
@@ -520,7 +521,7 @@ h1 > span {
 }
 .app-bottom-nav .app-nav-icon {
   display: block;
-  font-family: "Landa Navigation";
+  font-family: "Oasis Navigation";
   font-size: 19px;
   font-style: normal;
   font-weight: 400;

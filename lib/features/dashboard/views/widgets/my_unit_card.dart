@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/widgets/landa_pressable.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
 import '../../../agreements/models/agreement_group.dart';
 import '../../../agreements/models/agreement_model.dart';
 import '../my_unit_screen.dart';
@@ -32,7 +32,7 @@ class MyUnitCard extends StatelessWidget {
     final property = agreement.property;
     final due = _due(schedule);
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: () => Navigator.push(
         context,
         FadePageRoute(page: MyUnitScreen(tenancy: tenancy)),
@@ -105,7 +105,7 @@ class MyUnitCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        LandaCurrency.perYear(agreement.rentAmount),
+                        OasisCurrency.perYear(agreement.rentAmount),
                         style: AppTheme.sectionTitle(context),
                       ),
                       if (agreement.plan != RentPlan.unknown)
@@ -252,7 +252,7 @@ class MyUnitCard extends StatelessWidget {
     }
 
     final date = schedule.dueDate;
-    final amount = LandaCurrency.format(schedule.nextAmountDue);
+    final amount = OasisCurrency.format(schedule.nextAmountDue);
     if (date == null) {
       return (
         text: '$amount due now',

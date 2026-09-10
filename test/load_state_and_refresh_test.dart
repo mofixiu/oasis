@@ -4,12 +4,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/core/utils/landa_refresh.dart';
-import 'package:landa_app/features/shortlets/controllers/shortlet_controller.dart';
-import 'package:landa_app/features/shortlets/services/shortlet_service.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/core/utils/oasis_refresh.dart';
+import 'package:oasis_app/features/shortlets/controllers/shortlet_controller.dart';
+import 'package:oasis_app/features/shortlets/services/shortlet_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -128,7 +128,7 @@ void main() {
       var refreshes = 0;
       await tester.pumpWidget(
         MaterialApp(
-          navigatorObservers: [landaRouteObserver],
+          navigatorObservers: [oasisRouteObserver],
           home: _RefreshProbe(onRefresh: () => refreshes++),
         ),
       );
@@ -143,7 +143,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           navigatorKey: key,
-          navigatorObservers: [landaRouteObserver],
+          navigatorObservers: [oasisRouteObserver],
           home: _RefreshProbe(onRefresh: () => refreshes++),
         ),
       );
@@ -173,7 +173,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          navigatorObservers: [landaRouteObserver],
+          navigatorObservers: [oasisRouteObserver],
           home: _RefreshProbe(
             onRefresh: () => starts++,
             block: gate.future,
@@ -201,14 +201,14 @@ void main() {
     /// it was built, and pull-to-refresh was the only way out — which is what
     /// testers reported as "I have to refresh everything to see".
     Widget tabs(ValueNotifier<int> active, List<Widget> children) => MaterialApp(
-      navigatorObservers: [landaRouteObserver],
+      navigatorObservers: [oasisRouteObserver],
       home: ValueListenableBuilder<int>(
         valueListenable: active,
         builder: (_, index, _) => IndexedStack(
           index: index,
           children: [
             for (var i = 0; i < children.length; i++)
-              LandaTabVisibility(
+              OasisTabVisibility(
                 activeIndex: active,
                 index: i,
                 child: children[i],
@@ -278,13 +278,13 @@ void main() {
       var refreshes = 0;
       await tester.pumpWidget(
         MaterialApp(
-          navigatorObservers: [landaRouteObserver],
+          navigatorObservers: [oasisRouteObserver],
           home: _RefreshProbe(onRefresh: () => refreshes++),
         ),
       );
       await tester.pumpAndSettle();
 
-      // No LandaTabVisibility above it, so it is always "visible" and the
+      // No OasisTabVisibility above it, so it is always "visible" and the
       // mount fetch happens exactly as before.
       expect(refreshes, 1);
     });

@@ -4,16 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/auth/models/user_model.dart';
 
 class AuthTokenStorage {
-  static const String _keyAccessToken = 'landa_access_token';
-  static const String _keyRefreshToken = 'landa_refresh_token';
-  static const String _keyUserRole = 'landa_user_role';
-  static const String _keyOnboardingDone = 'landa_onboarding_done';
-  static const String _keyUserProfile = 'landa_user_profile';
+  static const String _keyAccessToken = 'oasis_access_token';
+  static const String _keyRefreshToken = 'oasis_refresh_token';
+  static const String _keyUserRole = 'oasis_user_role';
+  static const String _keyOnboardingDone = 'oasis_onboarding_done';
+  static const String _keyUserProfile = 'oasis_user_profile';
 
   /// Legacy key from the dismissible "identity verified" banner, which no
   /// longer exists. Retained only so `clear()` cleans it off older installs.
   static const String _keyVerifiedBannerDismissed =
-      'landa_verified_banner_dismissed';
+      'oasis_verified_banner_dismissed';
 
   // In-memory fallback cache
   static String? _memAccessToken;

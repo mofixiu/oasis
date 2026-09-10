@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../../core/widgets/main_scaffold.dart';
 import '../controllers/auth_controller.dart';
 import '../models/user_model.dart';
@@ -10,7 +10,7 @@ import 'identity_verification_screen.dart';
 import 'password_reset_sheet.dart';
 import 'widgets/auth_text_field.dart';
 import 'sign_up_screen.dart';
-import '../../../core/widgets/landa_busy.dart';
+import '../../../core/widgets/oasis_busy.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -35,7 +35,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      LandaToast.error(context, 'Please enter your email and password.');
+      OasisToast.error(context, 'Please enter your email and password.');
       return;
     }
 
@@ -51,7 +51,7 @@ class _SignInScreenState extends State<SignInScreen> {
           ? const IdentityVerificationScreen()
           : const MainScaffold();
 
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Welcome back, ${user?.email.split("@").first ?? "User"}!',
       );
@@ -62,7 +62,7 @@ class _SignInScreenState extends State<SignInScreen> {
         (route) => false,
       );
     } else if (auth.errorMessage != null) {
-      LandaToast.error(context, auth.errorMessage!);
+      OasisToast.error(context, auth.errorMessage!);
     }
   }
 
@@ -89,8 +89,8 @@ class _SignInScreenState extends State<SignInScreen> {
                   children: [
                     Image.asset(
                       AppTheme.isDarkMode(context)
-                          ? 'assets/images/logo_wordmark_light.png'
-                          : 'assets/images/newlogonobackground.png',
+                          ? 'assets/images/oasis_wordmark_dark.png'
+                          : 'assets/images/oasis_wordmark.png',
                       height: 44,
                       fit: BoxFit.contain,
                     ),
@@ -186,7 +186,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                     ),
                                   ),
                                   child: auth.isLoading
-                                      ? const LandaBusyDots(
+                                      ? const OasisBusyDots(
                                           color: Colors.white,
                                           size: 7,
                                         )

@@ -26,22 +26,22 @@ import 'package:flutter/material.dart';
 /// the parallax on the outgoing screen, the shadow down its leading edge, the
 /// rubber-banding, and the half-swipe cancel: none of which is worth
 /// rebuilding to arrive somewhere slightly different.
-class LandaPageRoute<T> extends CupertinoPageRoute<T> {
-  LandaPageRoute({required Widget page, super.settings})
+class OasisPageRoute<T> extends CupertinoPageRoute<T> {
+  OasisPageRoute({required Widget page, super.settings})
     : super(builder: (_) => page);
 }
 
 /// The previous name. Kept so nothing has to change at a call site to get the
 /// gesture.
-typedef FadePageRoute<T> = LandaPageRoute<T>;
+typedef FadePageRoute<T> = OasisPageRoute<T>;
 
 /// The same movement for routes the framework builds on its own: generated
-/// routes, dialogs, anything pushed without [LandaPageRoute].
+/// routes, dialogs, anything pushed without [OasisPageRoute].
 ///
 /// Registered for every platform in `AppTheme`, so a `MaterialPageRoute` that
 /// slips into the codebase still moves like the rest of the app and still
 /// answers the back-swipe.
-typedef LandaPageTransitionsBuilder = CupertinoPageTransitionsBuilder;
+typedef OasisPageTransitionsBuilder = CupertinoPageTransitionsBuilder;
 
 /// The previous name, for the theme's transition table.
-typedef FadePageTransitionsBuilder = LandaPageTransitionsBuilder;
+typedef FadePageTransitionsBuilder = OasisPageTransitionsBuilder;

@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_haptics.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_haptics.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../agreements/controllers/agreement_controller.dart';
 import '../../messaging/views/widgets/message_action_button.dart';
 import '../../properties/controllers/landlord_controller.dart';
@@ -33,7 +33,7 @@ class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
   /// Polls while open. Applications land here from tenants at any hour, and
   /// an applicant is waiting on the landlord for every one of them.
   @override
-  Duration? get autoRefreshInterval => kLandaPollInterval;
+  Duration? get autoRefreshInterval => kOasisPollInterval;
 
   @override
   Future<void> onAutoRefresh() =>
@@ -60,7 +60,7 @@ class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
     if (!mounted) return;
 
     if (success) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Application approved. A pending tenancy agreement has been sent to the tenant.',
       );
@@ -72,7 +72,7 @@ class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
       context.read<AgreementController>().loadAgreements();
       context.read<LandlordController>().loadLandlordProperties();
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -123,10 +123,10 @@ class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
     if (!mounted) return;
 
     if (success) {
-      LandaToast.success(context, 'Application rejected.');
+      OasisToast.success(context, 'Application rejected.');
       await refreshNow();
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -136,7 +136,7 @@ class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const LandaAppBar(),
+      appBar: const OasisAppBar(),
       body: RefreshIndicator(
         onRefresh: controller.loadLandlordApplications,
         child: Column(
@@ -182,16 +182,16 @@ class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
     // mount and the post-frame callback that starts it.
     if (!controller.hasLoadedLandlordApplications ||
         (controller.isLoading && applications.isEmpty)) {
-      return const LandaContentSwitcher(
+      return const OasisContentSwitcher(
         stateKey: 'loading',
-        child: LandaSkeletonList(hasAvatar: true, hasAction: true),
+        child: OasisSkeletonList(hasAvatar: true, hasAction: true),
       );
     }
 
     if (controller.hasError && applications.isEmpty) {
-      return LandaContentSwitcher(
+      return OasisContentSwitcher(
         stateKey: 'error',
-        child: LandaErrorState(
+        child: OasisErrorState(
           message: controller.errorMessage,
           isConnectionError: controller.errorIsConnection,
           onRetry: controller.loadLandlordApplications,
@@ -201,9 +201,9 @@ class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
 
     if (applications.isEmpty) {
       final filtered = controller.landlordStatusFilter != null;
-      return LandaContentSwitcher(
+      return OasisContentSwitcher(
         stateKey: 'empty',
-        child: LandaEmptyState(
+        child: OasisEmptyState(
           icon: filtered ? Icons.filter_alt_off_outlined : Icons.inbox_outlined,
           title: filtered ? 'Nothing with that status' : 'No applications yet',
           message: filtered
@@ -220,14 +220,14 @@ class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
       );
     }
 
-    return LandaContentSwitcher(
+    return OasisContentSwitcher(
       stateKey: 'content',
       child: Column(
         children: [
           // The list is still usable, so a failed refresh gets a banner
           // rather than replacing everything with an error page.
           if (controller.hasError)
-            LandaErrorBanner(
+            OasisErrorBanner(
               message: controller.errorMessage!,
               isConnectionError: controller.errorIsConnection,
               onRetry: controller.loadLandlordApplications,
@@ -240,7 +240,7 @@ class _LandlordApplicationsScreenState extends State<LandlordApplicationsScreen>
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final application = applications[index];
-                return LandaEntrance(
+                return OasisEntrance(
                   index: index,
                   child: _LandlordApplicationCard(
                     application: application,
@@ -324,7 +324,7 @@ class _Chip extends StatelessWidget {
     label: Text(label),
     selected: selected,
     onSelected: (value) {
-      LandaHaptics.select();
+      OasisHaptics.select();
       onSelected(value);
     },
     showCheckmark: false,
@@ -494,7 +494,7 @@ class _LandlordApplicationCard extends StatelessWidget {
           if (application.rentAmount != null)
             _DetailRow(
               icon: Icons.payments_outlined,
-              text: LandaCurrency.perYear(application.rentAmount),
+              text: OasisCurrency.perYear(application.rentAmount),
             ),
           if (application.createdAt.isNotEmpty)
             _DetailRow(
@@ -562,7 +562,7 @@ class _LandlordApplicationCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: LandaButton(
+                  child: OasisButton(
                     label: 'Reject',
                     outlined: true,
                     color: AppTheme.disputeColor,
@@ -572,7 +572,7 @@ class _LandlordApplicationCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: LandaButton(
+                  child: OasisButton(
                     label: 'Approve',
                     isBusy: isApproving,
                     onPressed: isBusy ? null : onApprove,

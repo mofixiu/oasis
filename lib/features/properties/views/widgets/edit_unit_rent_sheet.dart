@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/widgets/landa_sheet.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/widgets/oasis_sheet.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../controllers/landlord_controller.dart';
 import '../../models/property_model.dart';
-import '../../../../core/utils/landa_input_formatters.dart';
+import '../../../../core/utils/oasis_input_formatters.dart';
 
 /// Changes what a unit costs.
 ///
@@ -18,7 +18,7 @@ import '../../../../core/utils/landa_input_formatters.dart';
 /// flat *is*, and is right or wrong from the day it is typed. The price is a
 /// position in a market: a flat sitting empty for two months is usually a
 /// flat priced for a market that has moved, and until this existed the only
-/// remedy inside Landa was to delete the unit and add it again, which throws
+/// remedy inside Oasis was to delete the unit and add it again, which throws
 /// away its photos, its walkthrough and its applications.
 Future<bool> openEditUnitRentSheet(
   BuildContext context, {
@@ -74,19 +74,19 @@ class _EditUnitRentSheetState extends State<_EditUnitRentSheet> {
 
   /// What will actually be stored: a year's rent, whatever was typed.
   String? get _annualRent =>
-      _hasRent ? LandaCurrency.scale(_raw, _interval.periodsPerYear) : null;
+      _hasRent ? OasisCurrency.scale(_raw, _interval.periodsPerYear) : null;
 
   /// Whether the figure on screen is the one already saved. Nothing is sent
   /// for a save that changes nothing: it would spend a request to produce a
   /// success message about no change at all.
   bool get _isUnchanged =>
-      LandaCurrency.minorUnits(_annualRent) ==
-      LandaCurrency.minorUnits(widget.unit.rentAmount);
+      OasisCurrency.minorUnits(_annualRent) ==
+      OasisCurrency.minorUnits(widget.unit.rentAmount);
 
   Future<void> _save() async {
     final annual = _annualRent;
     if (annual == null) {
-      LandaToast.error(context, 'Enter the new rent.');
+      OasisToast.error(context, 'Enter the new rent.');
       return;
     }
 
@@ -99,7 +99,7 @@ class _EditUnitRentSheetState extends State<_EditUnitRentSheet> {
     if (!mounted) return;
 
     if (!saved) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not change that rent. Try again in a moment.',
@@ -110,9 +110,9 @@ class _EditUnitRentSheetState extends State<_EditUnitRentSheet> {
     // The navigator is resolved before the pop, so the toast is not looking
     // for an overlay through a context that is on its way out.
     Navigator.pop(context, true);
-    LandaToast.success(
+    OasisToast.success(
       context,
-      'Unit ${widget.unit.unitNumber} is now ${LandaCurrency.perYear(annual)}.',
+      'Unit ${widget.unit.unitNumber} is now ${OasisCurrency.perYear(annual)}.',
     );
   }
 
@@ -121,21 +121,21 @@ class _EditUnitRentSheetState extends State<_EditUnitRentSheet> {
     final isSaving = context.watch<LandlordController>().isSavingUnit;
     final annual = _annualRent;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.sell_outlined,
       title: 'Change the rent',
       subtitle:
           'Unit ${widget.unit.unitNumber} is listed at '
-          '${LandaCurrency.perYear(widget.unit.rentAmount)}. What you set here '
+          '${OasisCurrency.perYear(widget.unit.rentAmount)}. What you set here '
           'is what tenants browsing the marketplace see.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Save new rent',
         icon: Icons.check_rounded,
         isLoading: isSaving,
         onPressed: !_hasRent || _isUnchanged || isSaving ? null : _save,
       ),
       children: [
-        const LandaFieldLabel('New rent'),
+        const OasisFieldLabel('New rent'),
         Row(
           children: [
             Expanded(
@@ -144,10 +144,10 @@ class _EditUnitRentSheetState extends State<_EditUnitRentSheet> {
                 controller: _rentController,
                 autofocus: true,
                 keyboardType: TextInputType.number,
-                inputFormatters: const [LandaThousandsFormatter()],
+                inputFormatters: const [OasisThousandsFormatter()],
                 onChanged: (_) => setState(() {}),
                 style: AppTheme.cardTitle(context),
-                decoration: landaInputDecoration(
+                decoration: oasisInputDecoration(
                   context,
                   hint: 'Rent (₦)',
                   prefixIcon: Icons.payments_outlined,
@@ -165,7 +165,7 @@ class _EditUnitRentSheetState extends State<_EditUnitRentSheet> {
                 isExpanded: true,
                 borderRadius: AppTheme.cornerMd,
                 style: AppTheme.cardTitle(context),
-                decoration: landaInputDecoration(context),
+                decoration: oasisInputDecoration(context),
                 items: [
                   for (final option in const [
                     RentInterval.perYear,
@@ -191,13 +191,13 @@ class _EditUnitRentSheetState extends State<_EditUnitRentSheet> {
           ],
         ),
 
-        // Landa stores one rent per unit, a year's, so a landlord who typed
+        // Oasis stores one rent per unit, a year's, so a landlord who typed
         // a monthly figure is shown the multiplication rather than finding it
         // on the listing afterwards.
         if (annual != null && _interval != RentInterval.perYear) ...[
           const SizedBox(height: 8),
           Text(
-            'Saved as ${LandaCurrency.perYear(annual)}.',
+            'Saved as ${OasisCurrency.perYear(annual)}.',
             style: AppTheme.labelText(
               context,
               color: AppTheme.secondaryTextColor(context),

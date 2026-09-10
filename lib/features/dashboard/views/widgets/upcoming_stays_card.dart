@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/widgets/landa_pressable.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
 import '../../../shortlets/models/shortlet_models.dart';
 
 /// A paid short-let booking, on the tenant's dashboard.
@@ -33,7 +33,7 @@ class UpcomingStayCard extends StatelessWidget {
     final isUnderReview = booking.status == ShortLetBookingStatus.disputed;
     final tone = isUnderReview ? AppTheme.disputeColor : AppTheme.successColor;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: onTap,
       pressedScale: 0.99,
       child: Container(
@@ -80,7 +80,7 @@ class UpcomingStayCard extends StatelessWidget {
                     // Says paid, in the amount that was taken. The single
                     // most reassuring thing on this card is the number the
                     // tenant remembers seeing at checkout.
-                    '${LandaCurrency.format(booking.totalAmount)} paid'
+                    '${OasisCurrency.format(booking.totalAmount)} paid'
                     '${booking.hasCautionFee && !booking.isCautionFeeRefunded ? ' · deposit held' : ''}',
                     style: AppTheme.labelText(
                       context,

@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_network_image.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
+import '../../../core/widgets/oasis_network_image.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
 import '../../../core/utils/nearby_search.dart';
 import '../../../core/widgets/custom_bottom_navbar.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_near_me.dart';
-import '../../../core/widgets/landa_search_field.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_near_me.dart';
+import '../../../core/widgets/oasis_search_field.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../properties/models/property_model.dart';
 import '../controllers/marketplace_controller.dart';
 import '../models/marketplace_models.dart';
@@ -22,8 +22,8 @@ import 'marketplace_filter_sheet.dart';
 import 'marketplace_property_screen.dart';
 import 'my_applications_screen.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/utils/landa_prefetch.dart';
-import '../../../core/widgets/landa_busy.dart';
+import '../../../core/utils/oasis_prefetch.dart';
+import '../../../core/widgets/oasis_busy.dart';
 
 /// Tenant-facing marketplace: browse properties with available units and
 /// apply in one tap.
@@ -160,12 +160,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     if (!mounted) return;
 
     if (application != null) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Application sent for Unit ${unit.unitNumber}. You will be notified when the landlord responds.',
       );
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -176,7 +176,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
       // A tab root now, so no back arrow: there is nothing behind it.
-      appBar: const LandaAppBar(),
+      appBar: const OasisAppBar(),
       body: RefreshIndicator(
         onRefresh: controller.loadMarketplace,
         child: CustomScrollView(
@@ -204,7 +204,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    LandaSearchField(
+                    OasisSearchField(
                       controller: _searchController,
                       hintText: 'Search by area, city or address',
                       onChanged: controller.search,
@@ -331,7 +331,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           sliver: SliverList.separated(
             itemCount: 3,
             separatorBuilder: (_, __) => const SizedBox(height: 16),
-            itemBuilder: (_, __) => const LandaListingSkeleton(),
+            itemBuilder: (_, __) => const OasisListingSkeleton(),
           ),
         ),
       ];
@@ -340,7 +340,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
     if (controller.hasError && controller.listings.isEmpty) {
       return [
         SliverToBoxAdapter(
-          child: LandaErrorState(
+          child: OasisErrorState(
             message: controller.errorMessage,
             isConnectionError: controller.errorIsConnection,
             onRetry: controller.loadMarketplace,
@@ -359,7 +359,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
       final narrowed = controller.isNarrowed;
       return [
         SliverToBoxAdapter(
-          child: LandaEmptyState(
+          child: OasisEmptyState(
             icon: narrowed
                 ? Icons.search_off_rounded
                 : Icons.home_work_outlined,
@@ -393,7 +393,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
           separatorBuilder: (_, __) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
             final listing = controller.listings[index];
-            return LandaEntrance(
+            return OasisEntrance(
               index: index,
               child: _MarketplaceCard(
                 listing: listing,
@@ -401,7 +401,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                 applyingUnitId: controller.applyingUnitId,
                 onApply: (unit) => _apply(unit, listing),
                 onOpen: () {
-                  LandaPrefetch.images(context, [
+                  OasisPrefetch.images(context, [
                     listing.property.displayImageUrl,
                     ...listing.property.photoUrls,
                   ]);
@@ -469,10 +469,10 @@ class _MarketplaceCard extends StatelessWidget {
                       // A grid of these used to pop in one by one as each
                       // decoded. They now fade onto a block of the right
                       // shape, so a scroll settles instead of flickering.
-                      child: LandaNetworkImage(
+                      child: OasisNetworkImage(
                         url: property.displayImageUrl,
                         placeholderIcon: Icons.home_work_outlined,
-                        heroTag: landaMediaHeroTag('property', property.id),
+                        heroTag: oasisMediaHeroTag('property', property.id),
                       ),
                     ),
                     if (property.hasVideo)
@@ -676,7 +676,7 @@ class _UnitRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Unit ${unit.unitNumber} · ${LandaCurrency.perYear(unit.rentAmount)}',
+                  'Unit ${unit.unitNumber} · ${OasisCurrency.perYear(unit.rentAmount)}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -731,7 +731,7 @@ class _UnitRow extends StatelessWidget {
                 ),
               ),
               child: isApplying
-                  ? const LandaBusyDots(color: Colors.white)
+                  ? const OasisBusyDots(color: Colors.white)
                   : const Text(
                       'Apply',
                       style: TextStyle(

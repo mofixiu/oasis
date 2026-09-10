@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/core/widgets/landa_animated_list.dart';
+import 'package:oasis_app/core/widgets/oasis_animated_list.dart';
 
 /// A list animation that gets its diff wrong is worse than none: rows
 /// duplicate, or vanish early, or an approved application is still on screen
@@ -9,7 +9,7 @@ void main() {
   Widget listOf(List<String> items) => MaterialApp(
     home: Scaffold(
       body: SingleChildScrollView(
-        child: LandaAnimatedList<String>(
+        child: OasisAnimatedList<String>(
           items: items,
           keyOf: (item) => item,
           itemBuilder: (_, item, _) => SizedBox(height: 40, child: Text(item)),

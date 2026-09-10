@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/core/theme/app_theme.dart';
+import 'package:oasis_app/core/theme/app_theme.dart';
 
 /// The tinted status surfaces: the fills behind pills, callouts and quoted
 /// blocks.

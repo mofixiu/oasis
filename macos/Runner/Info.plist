@@ -27,11 +27,11 @@
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSLocationUsageDescription</key>
-	<string>Landa uses your location so you can pin the exact property address.</string>
+	<string>Oasis uses your location so you can pin the exact property address.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Landa uses the camera to capture property evidence.</string>
+	<string>Oasis uses the camera to capture property evidence.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Landa uses the microphone when recording property evidence.</string>
+	<string>Oasis uses the microphone when recording property evidence.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

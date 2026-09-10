@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/vault_controller.dart';
 import '../models/vault_models.dart';
 import 'widgets/vault_pin_field.dart';
-import '../../../core/widgets/landa_busy.dart';
+import '../../../core/widgets/oasis_busy.dart';
 
 /// Asks for the vault PIN before money leaves the vault, and returns it.
 ///
@@ -124,15 +124,15 @@ class _VaultPinSheetState extends State<_VaultPinSheet> {
     final controller = context.read<VaultController>();
 
     if (_passwordController.text.isEmpty) {
-      LandaToast.error(context, 'Enter your account password.');
+      OasisToast.error(context, 'Enter your account password.');
       return;
     }
     if (!isValidVaultPin(_newPin)) {
-      LandaToast.error(context, 'Your PIN must be 4 digits.');
+      OasisToast.error(context, 'Your PIN must be 4 digits.');
       return;
     }
     if (_newPin != _confirmPin) {
-      LandaToast.error(context, 'Those two PINs do not match.');
+      OasisToast.error(context, 'Those two PINs do not match.');
       return;
     }
 
@@ -143,7 +143,7 @@ class _VaultPinSheetState extends State<_VaultPinSheet> {
     if (!mounted) return;
 
     if (!created) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ?? 'Could not save that PIN. Try again.',
       );
@@ -161,7 +161,7 @@ class _VaultPinSheetState extends State<_VaultPinSheet> {
     final status = controller.pinStatus;
     final stage = _stage(controller);
 
-    return LandaSheet(
+    return OasisSheet(
       icon: stage == _PromptStage.locked
           ? Icons.lock_clock_outlined
           : Icons.lock_outline_rounded,
@@ -182,7 +182,7 @@ class _VaultPinSheetState extends State<_VaultPinSheet> {
           : AppTheme.actionColor,
       footer: switch (stage) {
         _PromptStage.loading => null,
-        _PromptStage.unavailable => LandaSheetButton(
+        _PromptStage.unavailable => OasisSheetButton(
           label: 'Try again',
           icon: Icons.refresh_rounded,
           onPressed: () {
@@ -190,18 +190,18 @@ class _VaultPinSheetState extends State<_VaultPinSheet> {
             _checkPin();
           },
         ),
-        _PromptStage.locked => LandaSheetButton(
+        _PromptStage.locked => OasisSheetButton(
           label: 'Close',
           onPressed: () => Navigator.pop(context),
           color: AppTheme.disputeColor,
         ),
-        _PromptStage.create => LandaSheetButton(
+        _PromptStage.create => OasisSheetButton(
           label: 'Create PIN and continue',
           icon: Icons.lock_outline_rounded,
           isLoading: controller.isSavingPin,
           onPressed: controller.isSavingPin ? null : _createAndContinue,
         ),
-        _PromptStage.enter => LandaSheetButton(
+        _PromptStage.enter => OasisSheetButton(
           label: widget.actionLabel,
           icon: Icons.check_rounded,
           onPressed: isValidVaultPin(_pin) ? _submitExisting : null,
@@ -240,7 +240,7 @@ class _VaultPinSheetState extends State<_VaultPinSheet> {
   }
 
   List<Widget> _enterFields(VaultPinStatus? status) => [
-    const LandaFieldLabel('Vault PIN'),
+    const OasisFieldLabel('Vault PIN'),
     VaultPinField(
       onChanged: (value) => setState(() => _pin = value),
       onCompleted: (_) => _submitExisting(),
@@ -267,16 +267,16 @@ class _VaultPinSheetState extends State<_VaultPinSheet> {
   ];
 
   List<Widget> _createFields(VaultController controller) => [
-    const LandaFieldLabel('Account password'),
+    const OasisFieldLabel('Account password'),
     TextField(
       controller: _passwordController,
       obscureText: _obscurePassword,
       enableSuggestions: false,
       autocorrect: false,
       style: AppTheme.bodyText(context),
-      decoration: landaInputDecoration(
+      decoration: oasisInputDecoration(
         context,
-        hint: 'Your Landa password',
+        hint: 'Your Oasis password',
         prefixIcon: Icons.key_outlined,
         suffix: IconButton(
           icon: Icon(
@@ -292,14 +292,14 @@ class _VaultPinSheetState extends State<_VaultPinSheet> {
     ),
     const SizedBox(height: 20),
 
-    const LandaFieldLabel('Choose a 4-digit PIN'),
+    const OasisFieldLabel('Choose a 4-digit PIN'),
     VaultPinField(
       autofocus: false,
       onChanged: (value) => setState(() => _newPin = value),
     ),
     const SizedBox(height: 20),
 
-    const LandaFieldLabel('Enter it again'),
+    const OasisFieldLabel('Enter it again'),
     VaultPinField(
       autofocus: false,
       hasError: _confirmPin.length == 4 && _confirmPin != _newPin,
@@ -355,19 +355,19 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
     final controller = context.read<VaultController>();
 
     if (_passwordController.text.isEmpty) {
-      LandaToast.error(context, 'Enter your account password.');
+      OasisToast.error(context, 'Enter your account password.');
       return;
     }
     if (isChange && !isValidVaultPin(_currentPin)) {
-      LandaToast.error(context, 'Enter your current 4-digit PIN.');
+      OasisToast.error(context, 'Enter your current 4-digit PIN.');
       return;
     }
     if (!isValidVaultPin(_newPin)) {
-      LandaToast.error(context, 'Your new PIN must be 4 digits.');
+      OasisToast.error(context, 'Your new PIN must be 4 digits.');
       return;
     }
     if (_newPin != _confirmPin) {
-      LandaToast.error(context, 'Those two PINs do not match.');
+      OasisToast.error(context, 'Those two PINs do not match.');
       return;
     }
 
@@ -384,7 +384,7 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
     if (!mounted) return;
 
     if (!saved) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ?? 'Could not save that PIN. Try again.',
       );
@@ -392,7 +392,7 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
     }
 
     Navigator.pop(context, true);
-    LandaToast.success(
+    OasisToast.success(
       context,
       isChange ? 'Vault PIN changed.' : 'Vault PIN created.',
     );
@@ -406,7 +406,7 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
     final isLocked = status?.isLocked ?? false;
 
     if (_checking) {
-      return const LandaSheet(
+      return const OasisSheet(
         icon: Icons.lock_outline_rounded,
         title: 'Vault PIN',
         subtitle: 'Checking your vault PIN.',
@@ -414,13 +414,13 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
       );
     }
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.lock_outline_rounded,
       title: isChange ? 'Change vault PIN' : 'Create vault PIN',
       subtitle: isChange
           ? 'You will need your password and the PIN you use now.'
           : 'A 4-digit PIN guards every withdrawal and vault payment.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: isChange ? 'Change PIN' : 'Create PIN',
         icon: Icons.lock_outline_rounded,
         isLoading: controller.isSavingPin,
@@ -442,7 +442,7 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
           const SizedBox(height: 20),
         ],
 
-        const LandaFieldLabel('Account password'),
+        const OasisFieldLabel('Account password'),
         TextField(
           controller: _passwordController,
           obscureText: _obscurePassword,
@@ -450,9 +450,9 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
           autocorrect: false,
           enabled: !(isChange && isLocked),
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
-            hint: 'Your Landa password',
+            hint: 'Your Oasis password',
             prefixIcon: Icons.key_outlined,
             suffix: IconButton(
               icon: Icon(
@@ -470,7 +470,7 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
         const SizedBox(height: 20),
 
         if (isChange) ...[
-          const LandaFieldLabel('Current PIN'),
+          const OasisFieldLabel('Current PIN'),
           VaultPinField(
             autofocus: false,
             enabled: !isLocked,
@@ -479,7 +479,7 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
           const SizedBox(height: 20),
         ],
 
-        LandaFieldLabel(isChange ? 'New PIN' : 'Choose a 4-digit PIN'),
+        OasisFieldLabel(isChange ? 'New PIN' : 'Choose a 4-digit PIN'),
         VaultPinField(
           autofocus: false,
           enabled: !(isChange && isLocked),
@@ -487,7 +487,7 @@ class _VaultPinManagerSheetState extends State<_VaultPinManagerSheet> {
         ),
         const SizedBox(height: 20),
 
-        const LandaFieldLabel('Enter it again'),
+        const OasisFieldLabel('Enter it again'),
         VaultPinField(
           autofocus: false,
           enabled: !(isChange && isLocked),
@@ -524,7 +524,7 @@ class _CheckingPin extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 28),
     child: Center(
-      child: LandaBusyDots(color: AppTheme.mutedTextColor(context)),
+      child: OasisBusyDots(color: AppTheme.mutedTextColor(context)),
     ),
   );
 }

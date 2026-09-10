@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/core/widgets/landa_app_bar.dart';
-import 'package:landa_app/features/auth/controllers/auth_controller.dart';
-import 'package:landa_app/features/auth/models/user_model.dart';
-import 'package:landa_app/features/auth/services/mock_auth_service.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/features/messaging/controllers/messaging_controller.dart';
-import 'package:landa_app/features/notifications/controllers/notification_controller.dart';
+import 'package:oasis_app/core/widgets/oasis_app_bar.dart';
+import 'package:oasis_app/features/auth/controllers/auth_controller.dart';
+import 'package:oasis_app/features/auth/models/user_model.dart';
+import 'package:oasis_app/features/auth/services/mock_auth_service.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/features/messaging/controllers/messaging_controller.dart';
+import 'package:oasis_app/features/notifications/controllers/notification_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,7 +35,7 @@ void main() {
         .dx;
     final messagesX = tester.getCenter(find.byIcon(Icons.forum_outlined)).dx;
 
-    final width = tester.getSize(find.byType(LandaAppBar)).width;
+    final width = tester.getSize(find.byType(OasisAppBar)).width;
     expect(avatarX, lessThan(width / 2));
     expect(bellX, greaterThan(width / 2));
 
@@ -66,7 +66,7 @@ void main() {
     expect(backX, lessThan(avatarX));
     expect(
       avatarX,
-      lessThan(tester.getSize(find.byType(LandaAppBar)).width / 2),
+      lessThan(tester.getSize(find.byType(OasisAppBar)).width / 2),
     );
   });
 }
@@ -101,7 +101,7 @@ Future<void> _pumpBar(
       ],
       child: MaterialApp(
         home: Scaffold(
-          appBar: LandaAppBar(showBackButton: showBackButton),
+          appBar: OasisAppBar(showBackButton: showBackButton),
           body: const SizedBox.shrink(),
         ),
       ),

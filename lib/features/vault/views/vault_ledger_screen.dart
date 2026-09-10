@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
 import '../../../core/widgets/custom_bottom_navbar.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/vault_controller.dart';
 import '../models/vault_models.dart';
@@ -128,13 +128,13 @@ class _VaultLedgerScreenState extends State<VaultLedgerScreen>
   ) {
     if (!controller.hasLoaded(VaultController.kTransactionsKey) ||
         (controller.isLoading && transactions.isEmpty)) {
-      return const LandaSkeletonList(count: 5);
+      return const OasisSkeletonList(count: 5);
     }
 
     // A failure with nothing to show is a dead page; a failure with rows
     // already on screen is a banner over them.
     if (controller.hasError && transactions.isEmpty) {
-      return LandaErrorState(
+      return OasisErrorState(
         message: controller.errorMessage,
         isConnectionError: controller.errorIsConnection,
         onRetry: _reload,
@@ -142,7 +142,7 @@ class _VaultLedgerScreenState extends State<VaultLedgerScreen>
     }
 
     if (transactions.isEmpty) {
-      return LandaEmptyState(
+      return OasisEmptyState(
         icon: Icons.receipt_long_outlined,
         title: 'Nothing in your vault yet',
         message: isTenant
@@ -185,7 +185,7 @@ class _VaultLedgerScreenState extends State<VaultLedgerScreen>
             hasMore: controller.hasMoreTransactions,
           );
         }
-        return LandaEntrance(
+        return OasisEntrance(
           index: index - 1,
           child: _LedgerRow(transaction: transactions[index - 1]),
         );
@@ -245,7 +245,7 @@ class _Total extends StatelessWidget {
         ),
         const SizedBox(height: 3),
         Text(
-          LandaCurrency.format(amount),
+          OasisCurrency.format(amount),
           style: AppTheme.cardTitle(context),
           overflow: TextOverflow.ellipsis,
         ),
@@ -311,7 +311,7 @@ class _LedgerRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Balance ${LandaCurrency.format(transaction.balanceAfter)}',
+                  'Balance ${OasisCurrency.format(transaction.balanceAfter)}',
                   style: AppTheme.labelText(context),
                 ),
               ],
@@ -320,7 +320,7 @@ class _LedgerRow extends StatelessWidget {
           const SizedBox(width: 10),
           Text(
             '${transaction.isCredit ? '+' : '−'}'
-            '${LandaCurrency.format(transaction.amount)}',
+            '${OasisCurrency.format(transaction.amount)}',
             style: AppTheme.cardTitle(context, color: amountColor),
           ),
         ],
@@ -340,7 +340,7 @@ class _ListFooter extends StatelessWidget {
     if (isLoadingMore && hasMore) {
       return const Padding(
         padding: EdgeInsets.only(top: 12),
-        child: LandaCardSkeleton(),
+        child: OasisCardSkeleton(),
       );
     }
     if (hasMore) return const SizedBox(height: 24);

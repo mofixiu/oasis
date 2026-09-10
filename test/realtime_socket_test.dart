@@ -4,15 +4,15 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/core/network/realtime_socket.dart';
-import 'package:landa_app/core/session/realtime_hub.dart';
-import 'package:landa_app/features/messaging/controllers/messaging_controller.dart';
-import 'package:landa_app/features/messaging/services/messaging_service.dart';
-import 'package:landa_app/features/notifications/controllers/notification_controller.dart';
-import 'package:landa_app/features/notifications/services/notification_service.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/core/network/realtime_socket.dart';
+import 'package:oasis_app/core/session/realtime_hub.dart';
+import 'package:oasis_app/features/messaging/controllers/messaging_controller.dart';
+import 'package:oasis_app/features/messaging/services/messaging_service.dart';
+import 'package:oasis_app/features/notifications/controllers/notification_controller.dart';
+import 'package:oasis_app/features/notifications/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The socket against a real WebSocket server.

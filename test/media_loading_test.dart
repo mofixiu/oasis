@@ -4,20 +4,20 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/core/theme/app_theme.dart';
-import 'package:landa_app/core/widgets/landa_media_hero.dart';
-import 'package:landa_app/core/widgets/landa_network_image.dart';
-import 'package:landa_app/core/widgets/landa_video_player.dart';
+import 'package:oasis_app/core/theme/app_theme.dart';
+import 'package:oasis_app/core/widgets/oasis_media_hero.dart';
+import 'package:oasis_app/core/widgets/oasis_network_image.dart';
+import 'package:oasis_app/core/widgets/oasis_video_player.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/core/widgets/landa_shimmer.dart';
-import 'package:landa_app/features/properties/controllers/landlord_controller.dart';
-import 'package:landa_app/features/properties/models/property_model.dart';
-import 'package:landa_app/features/properties/services/property_service.dart';
-import 'package:landa_app/features/properties/views/widgets/property_media_manager.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/core/widgets/oasis_shimmer.dart';
+import 'package:oasis_app/features/properties/controllers/landlord_controller.dart';
+import 'package:oasis_app/features/properties/models/property_model.dart';
+import 'package:oasis_app/features/properties/services/property_service.dart';
+import 'package:oasis_app/features/properties/views/widgets/property_media_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,7 +32,7 @@ void main() {
     home: Scaffold(body: child),
   );
 
-  group('LandaNetworkImage', () {
+  group('OasisNetworkImage', () {
     testWidgets('hands the photo the full box, not a loose one', (
       tester,
     ) async {
@@ -41,7 +41,7 @@ void main() {
           const SizedBox(
             width: 300,
             height: 150,
-            child: LandaNetworkImage(url: 'https://example.test/photo.jpg'),
+            child: OasisNetworkImage(url: 'https://example.test/photo.jpg'),
           ),
         ),
       );
@@ -79,7 +79,7 @@ void main() {
           const SizedBox(
             width: 300,
             height: 150,
-            child: LandaNetworkImage(
+            child: OasisNetworkImage(
               url: 'https://example.test/photo.jpg',
               placeholderIcon: Icons.home_work_outlined,
             ),
@@ -103,7 +103,7 @@ void main() {
           const SizedBox(
             width: 120,
             height: 90,
-            child: LandaNetworkImage(
+            child: OasisNetworkImage(
               url: null,
               placeholderIcon: Icons.meeting_room_outlined,
             ),
@@ -119,7 +119,7 @@ void main() {
     });
   });
 
-  group('LandaVideoPlayer', () {
+  group('OasisVideoPlayer', () {
     testWidgets('offers a play button, never a spinner, and stays quiet '
         'about a poster nobody asked for', (tester) async {
       await tester.pumpWidget(
@@ -127,7 +127,7 @@ void main() {
           const SizedBox(
             width: 320,
             height: 180,
-            child: LandaVideoPlayer(url: 'https://example.test/tour.mp4'),
+            child: OasisVideoPlayer(url: 'https://example.test/tour.mp4'),
           ),
         ),
       );
@@ -139,17 +139,17 @@ void main() {
       // into a black error panel. The block and the play button stay, and
       // the tap is the retry; the failure is only spelled out to somebody who
       // actually asked to watch.
-      expect(find.byType(LandaVideoPlayButton), findsOneWidget);
+      expect(find.byType(OasisVideoPlayButton), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.textContaining('could not be played'), findsNothing);
     });
   });
 
-  group('LandaMediaHero', () {
+  group('OasisMediaHero', () {
     testWidgets('counts the walkthrough as a page of its own', (tester) async {
       await tester.pumpWidget(
         wrap(
-          const LandaMediaHero(
+          const OasisMediaHero(
             photoUrls: [
               'https://example.test/1.jpg',
               'https://example.test/2.jpg',
@@ -168,7 +168,7 @@ void main() {
     testWidgets('a listing with nothing to show still renders', (tester) async {
       await tester.pumpWidget(
         wrap(
-          const LandaMediaHero(
+          const OasisMediaHero(
             photoUrls: [],
             height: 300,
             emptyIcon: Icons.holiday_village_outlined,

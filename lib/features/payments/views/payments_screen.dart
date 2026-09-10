@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../../agreements/controllers/agreement_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
@@ -67,10 +67,10 @@ class _PaymentsScreenState extends State<PaymentsScreen>
     if (paymentCtrl.hasError && paymentCtrl.payments.isEmpty) {
       return Scaffold(
         backgroundColor: AppTheme.pageBackground(context),
-        appBar: const LandaAppBar(),
+        appBar: const OasisAppBar(),
         body: RefreshIndicator(
           onRefresh: _reload,
-          child: LandaErrorState(
+          child: OasisErrorState(
             message: paymentCtrl.errorMessage,
             isConnectionError: paymentCtrl.errorIsConnection,
             onRetry: _reload,
@@ -81,7 +81,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const LandaAppBar(),
+      appBar: const OasisAppBar(),
       body: RefreshIndicator(
         onRefresh: _reload,
         child: SingleChildScrollView(
@@ -122,7 +122,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                 Text('PENDING PAYMENTS', style: AppTheme.labelText(context)),
                 const SizedBox(height: 8),
                 for (final (index, agreement) in rentDue.indexed)
-                  LandaEntrance(
+                  OasisEntrance(
                     index: index,
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -140,7 +140,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
               if (paymentCtrl.hasError)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: LandaErrorBanner(
+                  child: OasisErrorBanner(
                     message: paymentCtrl.errorMessage!,
                     isConnectionError: paymentCtrl.errorIsConnection,
                     onRetry: _reload,
@@ -149,7 +149,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
 
               if (!paymentCtrl.hasLoaded() ||
                   (paymentCtrl.isLoading && paymentCtrl.payments.isEmpty))
-                const LandaSkeletonList(count: 3, padding: EdgeInsets.zero)
+                const OasisSkeletonList(count: 3, padding: EdgeInsets.zero)
               else if (paymentCtrl.payments.isEmpty)
                 Container(
                   decoration: BoxDecoration(
@@ -157,7 +157,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                     borderRadius: AppTheme.cornerLg,
                     border: Border.all(color: AppTheme.borderColor(context)),
                   ),
-                  child: LandaEmptyState(
+                  child: OasisEmptyState(
                     icon: Icons.receipt_long_outlined,
                     title: 'No payment transactions yet',
                     message:
@@ -192,7 +192,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                         ? AppTheme.successColor
                         : AppTheme.primaryColor;
 
-                    return LandaEntrance(
+                    return OasisEntrance(
                       index: index,
                       child: Container(
                         padding: const EdgeInsets.all(16),
@@ -228,7 +228,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    LandaCurrency.format(p.amount),
+                                    OasisCurrency.format(p.amount),
                                     style: AppTheme.sectionTitle(
                                       context,
                                       color: AppTheme.primaryColor,

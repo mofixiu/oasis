@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_media_hero.dart';
-import '../../../core/widgets/landa_media_viewer.dart';
-import '../../../core/widgets/landa_network_image.dart';
-import '../../../core/widgets/landa_toast.dart';
-import '../../../core/widgets/landa_video_player.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_media_hero.dart';
+import '../../../core/widgets/oasis_media_viewer.dart';
+import '../../../core/widgets/oasis_network_image.dart';
+import '../../../core/widgets/oasis_toast.dart';
+import '../../../core/widgets/oasis_video_player.dart';
 import '../../properties/models/property_model.dart';
 import '../controllers/marketplace_controller.dart';
 import '../models/marketplace_models.dart';
 import 'apply_for_unit_sheet.dart';
-import '../../../core/widgets/landa_busy.dart';
+import '../../../core/widgets/oasis_busy.dart';
 
 /// Tenant-facing property detail: photo gallery, tour video, and every
 /// available unit with its own apply action.
@@ -41,7 +41,7 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen>
       context.read<MarketplaceController>().loadTenantApplications();
 
   @override
-  Duration? get autoRefreshInterval => kLandaPollInterval;
+  Duration? get autoRefreshInterval => kOasisPollInterval;
 
   /// Photos to show: the cover first, then any others, de-duplicated so a
   /// cover that also appears in `photo_urls` isn't shown twice.
@@ -77,12 +77,12 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen>
     if (!mounted) return;
 
     if (application != null) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Application sent for Unit ${unit.unitNumber}. You will be notified when the landlord responds.',
       );
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -108,7 +108,7 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen>
             // photos of a Lagos building.
             leading: Padding(
               padding: const EdgeInsets.only(left: 12, top: 4),
-              child: LandaMediaCircleButton(
+              child: OasisMediaCircleButton(
                 icon: Icons.arrow_back_rounded,
                 tooltip: 'Back',
                 onTap: () => Navigator.of(context).maybePop(),
@@ -120,11 +120,11 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen>
               // clip of the compound is context rather than the thing being
               // decided on. Carrying it in the header as well would show the
               // same video twice on one screen.
-              background: LandaMediaHero(
+              background: OasisMediaHero(
                 photoUrls: images,
                 title: property.name,
                 height: 320,
-                heroTag: landaMediaHeroTag('property', property.id),
+                heroTag: oasisMediaHeroTag('property', property.id),
               ),
             ),
           ),
@@ -209,7 +209,7 @@ class _MarketplacePropertyScreenState extends State<MarketplacePropertyScreen>
                     const SizedBox(height: 24),
                     const _SectionLabel('AROUND THE BUILDING'),
                     const SizedBox(height: 10),
-                    LandaVideoPlayer(url: property.videoUrl!),
+                    OasisVideoPlayer(url: property.videoUrl!),
                   ],
 
                   const SizedBox(height: 28),
@@ -290,7 +290,7 @@ class _UnitCard extends StatelessWidget {
             // built in one pass, so preparing them all would open a stream
             // per flat the moment the property opened. The tap that asks for
             // a walkthrough is what fetches it.
-            LandaVideoPlayer(url: unit.videoUrl!, preparePoster: false),
+            OasisVideoPlayer(url: unit.videoUrl!, preparePoster: false),
             const SizedBox(height: 12),
           ],
           // Photos of the flat itself, shown whether or not there is a
@@ -305,13 +305,13 @@ class _UnitCard extends StatelessWidget {
                 itemCount: unit.photoUrls.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (_, index) => GestureDetector(
-                  onTap: () => openLandaMediaViewer(
+                  onTap: () => openOasisMediaViewer(
                     context,
                     photoUrls: unit.photoUrls,
                     initialIndex: index,
                     title: 'Unit ${unit.unitNumber}',
                   ),
-                  child: LandaNetworkImage(
+                  child: OasisNetworkImage(
                     url: unit.photoUrls[index],
                     width: 122,
                     height: 92,
@@ -339,7 +339,7 @@ class _UnitCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      LandaCurrency.perYear(unit.rentAmount),
+                      OasisCurrency.perYear(unit.rentAmount),
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -397,7 +397,7 @@ class _UnitCard extends StatelessWidget {
                     ),
                   ),
                   child: isApplying
-                      ? const LandaBusyDots(color: Colors.white)
+                      ? const OasisBusyDots(color: Colors.white)
                       : const Text(
                           'Apply',
                           style: TextStyle(

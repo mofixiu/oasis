@@ -1,4 +1,4 @@
-/// What a landlord is putting a property on Landa for.
+/// What a landlord is putting a property on Oasis for.
 ///
 /// Asked first, because almost everything after it differs. A yearly let is
 /// a tenancy: it needs proof of ownership, a rent, and an agreement somebody
@@ -217,7 +217,7 @@ class PropertyModel {
   /// Null before the field ships; [needsPhotos] then works it out locally.
   final bool? serverNeedsPhotos;
 
-  /// Whether this property is being taken off Landa. See API guide 19 §6.
+  /// Whether this property is being taken off Oasis. See API guide 19 §6.
   final PropertyRemovalStatus removalStatus;
 
   /// The removal request in flight, when there is one.
@@ -269,7 +269,7 @@ class PropertyModel {
 
   /// This property, with any media it is missing taken from [previous].
   ///
-  /// Landa's endpoints do not all describe a property equally. `POST
+  /// Oasis's endpoints do not all describe a property equally. `POST
   /// /properties/` answers with `photo_urls`, `cover_photo_url`,
   /// `photo_count`, `needs_photos` and `video_url`; `GET /properties/`, the
   /// list the landlord's portfolio is rebuilt from on every refresh, is

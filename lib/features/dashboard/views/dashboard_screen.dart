@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/network/load_failure.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_animated_list.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_animated_list.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../../agreements/controllers/agreement_controller.dart';
 import '../../agreements/models/agreement_model.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
@@ -95,7 +95,7 @@ class _AssignedUnitFallbackCard extends StatelessWidget {
         ),
         const SizedBox(height: 3),
         Text(
-          LandaCurrency.perYear(unit.rentAmount),
+          OasisCurrency.perYear(unit.rentAmount),
           style: AppTheme.sectionTitle(context),
         ),
         const SizedBox(height: 14),
@@ -337,10 +337,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (!isLoading && failureMessage != null && !hasAnyContent) {
       return Scaffold(
         backgroundColor: AppTheme.pageBackground(context),
-        appBar: const LandaAppBar(),
+        appBar: const OasisAppBar(),
         body: RefreshIndicator(
           onRefresh: _loadTenantData,
-          child: LandaErrorState(
+          child: OasisErrorState(
             message: failureMessage,
             isConnectionError: isOffline,
             onRetry: _loadTenantData,
@@ -351,7 +351,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const LandaAppBar(),
+      appBar: const OasisAppBar(),
       body: RefreshIndicator(
         onRefresh: _loadTenantData,
         child: SingleChildScrollView(
@@ -363,7 +363,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               if (failureMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: LandaErrorBanner(
+                  child: OasisErrorBanner(
                     // Banner owns its own horizontal inset elsewhere; here the
                     // page padding already provides it.
                     message: failureMessage,
@@ -466,18 +466,18 @@ class _DashboardScreenState extends State<DashboardScreen>
               if ((!agreementCtrl.hasLoaded() || isLoading) &&
                   tenancies.isEmpty &&
                   assignedUnit == null)
-                const LandaContentSwitcher(
+                const OasisContentSwitcher(
                   stateKey: 'unit-loading',
-                  child: LandaCardSkeleton(hasPill: true),
+                  child: OasisCardSkeleton(hasPill: true),
                 )
               else if (tenancies.isNotEmpty)
                 // Animated by unit, so a tenancy that ends collapses out of
                 // the list instead of the ones below it snapping upwards.
-                LandaAnimatedList(
+                OasisAnimatedList(
                   items: tenancies,
                   keyOf: (tenancy) => tenancy.latest.unit,
                   spacing: 12,
-                  itemBuilder: (_, tenancy, index) => LandaEntrance(
+                  itemBuilder: (_, tenancy, index) => OasisEntrance(
                     index: index,
                     child: MyUnitCard(tenancy: tenancy),
                   ),
@@ -507,11 +507,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                 const SizedBox(height: 20),
                 Text('UPCOMING STAYS', style: AppTheme.labelText(context)),
                 const SizedBox(height: 8),
-                LandaAnimatedList(
+                OasisAnimatedList(
                   items: upcomingStays,
                   keyOf: (stay) => stay.id,
                   spacing: 10,
-                  itemBuilder: (_, stay, index) => LandaEntrance(
+                  itemBuilder: (_, stay, index) => OasisEntrance(
                     index: index,
                     child: UpcomingStayCard(
                       booking: stay,
@@ -534,7 +534,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 const SizedBox(height: 8),
                 // The agreement card is a title, a status line and a
                 // full-width button, so that is the silhouette that waits.
-                const LandaCardSkeleton(hasPill: false, hasAction: true),
+                const OasisCardSkeleton(hasPill: false, hasAction: true),
               ] else if (tenantAgreements.isNotEmpty) ...[
                 Text('AGREEMENTS TO SIGN', style: AppTheme.labelText(context)),
                 const SizedBox(height: 8),
@@ -542,11 +542,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                 // off this list, and a card that simply disappears under the
                 // finger that signed it reads as a glitch rather than as the
                 // task being done.
-                LandaAnimatedList(
+                OasisAnimatedList(
                   items: tenantAgreements,
                   keyOf: (agreement) => agreement.id,
                   spacing: 10,
-                  itemBuilder: (_, agreement, index) => LandaEntrance(
+                  itemBuilder: (_, agreement, index) => OasisEntrance(
                     index: index,
                     child: _TenantAgreementCard(agreement: agreement),
                   ),
@@ -580,7 +580,7 @@ class _FixCard extends StatelessWidget {
     // a quote to accept, a finished job to confirm, and API guide 18
     // removed the workflow those belonged to. Fix is a directory now, and a
     // directory has nothing waiting in it.
-    return LandaPressable(
+    return OasisPressable(
       onTap: () => Navigator.push(
         context,
         FadePageRoute(page: FixScreen(initialUnitId: unitId)),
@@ -614,7 +614,7 @@ class _FixCard extends StatelessWidget {
                 children: [
                   Text('Fix', style: AppTheme.sectionTitle(context)),
                   const SizedBox(height: 3),
-                  // No longer promises a quote or escrow: Landa introduces
+                  // No longer promises a quote or escrow: Oasis introduces
                   // the artisan and stops there.
                   Text(
                     'Find a verified plumber, electrician or cleaner near '

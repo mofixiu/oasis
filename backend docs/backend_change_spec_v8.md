@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v8
+# Oasis Backend Change Specification — v8
 
 > **Audience:** Backend developer implementing the Django API (`landa_os`, `users` app).
 >
@@ -15,7 +15,7 @@ A short-let charge contains three different amounts. They must not be represente
 | Amount | Owner after a successful payment | Holding rule |
 | :--- | :--- | :--- |
 | `amount - platform_fee` | Landlord | Credit the landlord vault **immediately**. |
-| `platform_fee` | Landa/platform | Account for it immediately through the normal platform flow. |
+| `platform_fee` | Oasis/platform | Account for it immediately through the normal platform flow. |
 | `caution_fee` | Tenant | Hold it as a separate refundable caution-fee escrow until checkout or claim resolution. |
 
 `total_amount` remains the amount charged to the tenant:
@@ -119,7 +119,7 @@ When the approval window expires, transition the booking to `EXPIRED`. A tenant 
 
 ### 3.3 Optional landlord cancellation and refund policy
 
-Short-let hosts may set a cancellation policy per listing. Landa provides the policy framework, clear disclosure and dispute handling; it does **not** impose one rigid refund rule on every property.
+Short-let hosts may set a cancellation policy per listing. Oasis provides the policy framework, clear disclosure and dispute handling; it does **not** impose one rigid refund rule on every property.
 
 When a host has not selected a policy, apply the platform default `FLEXIBLE`. The default must be shown in the listing and checkout exactly as a host-selected policy would be. A listing may not have an unknown or blank cancellation policy.
 
@@ -130,7 +130,7 @@ Initial v1 policy choices:
 | `FLEXIBLE` | Full accommodation refund when cancelled at least 24 hours before check-in; no accommodation refund inside 24 hours. |
 | `MODERATE` | Full accommodation refund when cancelled at least 5 days before check-in; 50% accommodation refund from 5 days to 24 hours before check-in; no accommodation refund inside 24 hours. |
 | `STRICT` | Full accommodation refund when cancelled at least 14 days before check-in; 50% accommodation refund from 14 days to 7 days before check-in; no accommodation refund inside 7 days. |
-| `NON_REFUNDABLE` | No accommodation refund after payment, except when Landa or the property cancels, or an approved exceptional-circumstances case applies. |
+| `NON_REFUNDABLE` | No accommodation refund after payment, except when Oasis or the property cancels, or an approved exceptional-circumstances case applies. |
 
 These windows and percentages are a product decision, so keep them server-configured rather than hard-coded in Flutter. Future policies may be added without changing the API shape.
 
@@ -194,13 +194,13 @@ A property-initiated cancellation always returns the tenant's full `total_amount
 
 Provide an exceptional-circumstances/support path for safety, access failure, material misrepresentation, force majeure, and no-show disputes. It must be reviewed and audited; it must not be implemented as an undocumented client-side override of a host policy.
 
-For no-shows, the listing policy controls the accommodation refund unless Landa approves an exceptional case. The caution fee follows the separate caution-fee rules: it is returned unless a valid, documented claim/dispute requires it to remain held.
+For no-shows, the listing policy controls the accommodation refund unless Oasis approves an exceptional case. The caution fee follows the separate caution-fee rules: it is returned unless a valid, documented claim/dispute requires it to remain held.
 
 #### Transparent price and marketplace incentive
 
-The tenant must see, before payment: nightly accommodation price, any Landa platform fee, caution fee, `total_amount`, and the cancellation-policy summary. The payment receipt must expose the same allocation.
+The tenant must see, before payment: nightly accommodation price, any Oasis platform fee, caution fee, `total_amount`, and the cancellation-policy summary. The payment receipt must expose the same allocation.
 
-Landa may negotiate a property rate or fund a promotion to make a stay cheaper, but the accounting must remain explicit. For example, on a ₦100,000 accommodation charge with a ₦15,000 platform fee, the landlord payout is ₦85,000. If Landa offers a tenant discount, include `discount_amount`, `discount_funded_by` (`PLATFORM` or `LANDLORD`), and the resulting amounts in the quote and receipt. A discount must never be hidden by changing the landlord payout after payment.
+Oasis may negotiate a property rate or fund a promotion to make a stay cheaper, but the accounting must remain explicit. For example, on a ₦100,000 accommodation charge with a ₦15,000 platform fee, the landlord payout is ₦85,000. If Oasis offers a tenant discount, include `discount_amount`, `discount_funded_by` (`PLATFORM` or `LANDLORD`), and the resulting amounts in the quote and receipt. A discount must never be hidden by changing the landlord payout after payment.
 
 ---
 

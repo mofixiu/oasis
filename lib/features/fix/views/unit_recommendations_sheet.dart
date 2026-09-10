@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/fix_controller.dart';
 import '../models/fix_models.dart';
 import 'widgets/artisan_card.dart';
@@ -165,7 +165,7 @@ class _UnitRecommendationsSheetState extends State<_UnitRecommendationsSheet> {
     if (!mounted) return;
 
     if (!saved) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not save that recommendation. Try again in a moment.',
@@ -182,7 +182,7 @@ class _UnitRecommendationsSheetState extends State<_UnitRecommendationsSheet> {
         artisan: chosen,
       );
     });
-    LandaToast.success(
+    OasisToast.success(
       context,
       '${chosen.displayName} is now your ${category.label.toLowerCase()} '
       'recommendation for ${widget.unitLabel}.',
@@ -198,7 +198,7 @@ class _UnitRecommendationsSheetState extends State<_UnitRecommendationsSheet> {
     if (!mounted) return;
 
     if (!removed) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not remove that recommendation. Try again in a moment.',
@@ -225,7 +225,7 @@ class _UnitRecommendationsSheetState extends State<_UnitRecommendationsSheet> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) Navigator.pop(context, _changed);
       },
-      child: LandaSheet(
+      child: OasisSheet(
         icon: Icons.handshake_outlined,
         title: 'Recommended artisans',
         subtitle: '${widget.unitLabel} · optional',
@@ -238,9 +238,9 @@ class _UnitRecommendationsSheetState extends State<_UnitRecommendationsSheet> {
           const SizedBox(height: 20),
 
           if (_loading)
-            const LandaSkeletonList(count: 3, padding: EdgeInsets.zero)
+            const OasisSkeletonList(count: 3, padding: EdgeInsets.zero)
           else if (_loadError != null)
-            LandaErrorBanner(message: _loadError!, onRetry: _load)
+            OasisErrorBanner(message: _loadError!, onRetry: _load)
           else
             for (final category in categories) ...[
               _RecommendationRow(
@@ -282,7 +282,7 @@ class _RecommendationRow extends StatelessWidget {
         ? AppTheme.successColor
         : AppTheme.mutedTextColor(context);
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: busy ? null : onChoose,
       pressedScale: 0.99,
       child: Container(
@@ -339,7 +339,7 @@ class _RecommendationRow extends StatelessWidget {
               ),
             ),
             if (set)
-              LandaPressable(
+              OasisPressable(
                 onTap: busy ? null : onRemove,
                 pressedScale: 0.9,
                 child: Padding(
@@ -403,21 +403,21 @@ class _ArtisanPickerSheetState extends State<_ArtisanPickerSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => LandaSheet(
+  Widget build(BuildContext context) => OasisSheet(
     icon: Icons.person_search_outlined,
     title: 'Pick a ${widget.category.label.toLowerCase()}',
     subtitle: 'Only verified, active artisans can be recommended.',
     children: [
       if (_loading)
-        const LandaSkeletonList(count: 3, padding: EdgeInsets.zero)
+        const OasisSkeletonList(count: 3, padding: EdgeInsets.zero)
       else if (_error != null)
-        LandaErrorBanner(message: _error!, onRetry: _load)
+        OasisErrorBanner(message: _error!, onRetry: _load)
       else if (_artisans.isEmpty)
-        LandaEmptyState(
+        OasisEmptyState(
           icon: Icons.person_off_outlined,
           title: 'Nobody listed yet',
           message:
-              'No verified ${widget.category.label.toLowerCase()} is on Landa '
+              'No verified ${widget.category.label.toLowerCase()} is on Oasis '
               'right now. You can come back and set this later.',
           scrollable: false,
           padding: const EdgeInsets.fromLTRB(8, 16, 8, 16),
@@ -444,13 +444,13 @@ class _CategoryChooserSheet extends StatelessWidget {
   const _CategoryChooserSheet({required this.categories});
 
   @override
-  Widget build(BuildContext context) => LandaSheet(
+  Widget build(BuildContext context) => OasisSheet(
     icon: Icons.handshake_outlined,
     title: 'Which trade?',
     subtitle: 'One recommendation per trade.',
     children: [
       for (final category in categories) ...[
-        LandaPressable(
+        OasisPressable(
           onTap: () => Navigator.pop(context, category),
           pressedScale: 0.99,
           child: Container(

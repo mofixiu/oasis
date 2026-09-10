@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/oasis_currency.dart';
 import '../../properties/models/property_model.dart';
 import '../models/marketplace_models.dart';
 
@@ -97,7 +97,7 @@ class _ApplyForUnitSheetState extends State<ApplyForUnitSheet> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${LandaCurrency.perYear(unit.rentAmount)} · ${unit.bedrooms} bed · ${unit.bathrooms} bath',
+                    '${OasisCurrency.perYear(unit.rentAmount)} · ${unit.bedrooms} bed · ${unit.bathrooms} bath',
                     style: TextStyle(
                       fontSize: 13,
                       color: AppTheme.readingTextColor(context),

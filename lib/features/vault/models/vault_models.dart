@@ -1,4 +1,4 @@
-/// Models for the vault: the in-app balance every Landa account holds.
+/// Models for the vault: the in-app balance every Oasis account holds.
 ///
 /// A landlord's fills when rent leaves escrow and empties through withdrawals.
 /// A tenant's fills when they top it up and empties when they pay rent out of
@@ -6,11 +6,11 @@
 /// thing that differs is which direction money usually moves.
 ///
 /// Money arrives from the backend as decimal strings (`"450000.00"`) and stays
-/// that way all the way to `LandaCurrency`. Nothing here parses to `double`:
+/// that way all the way to `OasisCurrency`. Nothing here parses to `double`:
 /// a balance rendered a naira out is worse than one that fails to render.
 library;
 
-import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/oasis_currency.dart';
 
 /// One append-only ledger row from `GET /vault/transactions/`.
 class VaultTransaction {
@@ -120,7 +120,7 @@ class VaultSummary {
   bool get hasPendingWithdrawal => _isPositive(pendingWithdrawalBalance);
 
   /// Whether the balance would settle a bill of [amount] in full.
-  bool covers(String amount) => LandaCurrency.covers(availableBalance, amount);
+  bool covers(String amount) => OasisCurrency.covers(availableBalance, amount);
 
   /// Whether a decimal string is more than zero, without parsing it to a
   /// double: these are money and stay textual end to end.

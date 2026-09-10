@@ -3,14 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../messaging/views/widgets/message_action_button.dart';
 import '../../reviews/models/review_models.dart';
 import '../../reviews/views/leave_review_sheet.dart';
@@ -45,7 +45,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
   /// this, an approved booking with a 24-hour payment window only appears when
   /// the guest thinks to drag the list down.
   @override
-  Duration? get autoRefreshInterval => kLandaPollInterval;
+  Duration? get autoRefreshInterval => kOasisPollInterval;
 
   @override
   Future<void> onAutoRefresh() => _reload();
@@ -88,7 +88,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     if (!mounted) return;
 
     if (verified == null) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'We could not confirm that payment yet. Pull down to check again.',
@@ -96,10 +96,10 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
       return;
     }
     if (verified.status.isPaid) {
-      LandaToast.success(context, 'Paid. Your stay is confirmed.');
+      OasisToast.success(context, 'Paid. Your stay is confirmed.');
       await _reload();
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'That payment has not gone through yet. You can try again.',
       );
@@ -137,9 +137,9 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     // The PIN is asked for here and lives only as long as this one call.
     final pin = await promptVaultPin(
       context,
-      title: 'Confirm ${LandaCurrency.format(booking.totalAmount)}',
+      title: 'Confirm ${OasisCurrency.format(booking.totalAmount)}',
       subtitle: 'Enter your vault PIN to pay for this stay.',
-      actionLabel: 'Pay ${LandaCurrency.format(booking.totalAmount)}',
+      actionLabel: 'Pay ${OasisCurrency.format(booking.totalAmount)}',
     );
     if (!mounted || pin == null) return;
 
@@ -161,14 +161,14 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
       final vault = context.read<VaultController>();
       await vault.refreshPinStatusAfterFailedAttempt();
       if (!mounted) return;
-      LandaToast.error(
+      OasisToast.error(
         context,
         vault.describeFailedAttempt(controller.errorMessage),
       );
       return;
     }
 
-    LandaToast.success(context, 'Paid. Your stay is confirmed.');
+    OasisToast.success(context, 'Paid. Your stay is confirmed.');
     await _reload();
   }
 
@@ -181,7 +181,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     if (!mounted) return;
 
     if (started == null) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not start that payment. Try again in a moment.',
@@ -192,7 +192,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     final url = started.authorizationUrl;
     final uri = url == null ? null : Uri.tryParse(url);
     if (!started.hasCheckout || uri == null) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'The payment page could not be opened. Try again in a moment.',
       );
@@ -211,7 +211,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     if (!mounted) return;
 
     if (!opened) {
-      LandaToast.error(context, 'Could not open the payment page.');
+      OasisToast.error(context, 'Could not open the payment page.');
       return;
     }
     // Verification happens on resume, not here: the page being open says
@@ -226,12 +226,12 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     final vault = context.read<VaultController>();
     final shortfall =
         quotedShortfall ??
-        LandaCurrency.subtract(booking.totalAmount, vault.availableBalance) ??
+        OasisCurrency.subtract(booking.totalAmount, vault.availableBalance) ??
         booking.totalAmount;
 
-    LandaToast.error(
+    OasisToast.error(
       context,
-      'Your vault is ${LandaCurrency.format(shortfall)} short of this stay. '
+      'Your vault is ${OasisCurrency.format(shortfall)} short of this stay. '
       'Nothing has been charged.',
     );
 
@@ -313,13 +313,13 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     if (!mounted) return;
 
     if (raised) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Reported. The host payout stays paused until this is settled.',
       );
       await _reload();
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not report that just now. Try again in a moment.',
@@ -388,10 +388,10 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     if (!mounted) return;
 
     if (resolved) {
-      LandaToast.success(context, 'Marked resolved. Thanks for confirming.');
+      OasisToast.success(context, 'Marked resolved. Thanks for confirming.');
       await refreshNow();
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not mark that resolved. Try again in a moment.',
@@ -427,10 +427,10 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
         content: Text(
           target.status.isPaid
               ? (target.hasRefundQuote
-                    ? 'The host will be told you are no longer coming. Landa '
-                          'will return ${LandaCurrency.format(target.totalRefundAmount)} '
+                    ? 'The host will be told you are no longer coming. Oasis '
+                          'will return ${OasisCurrency.format(target.totalRefundAmount)} '
                           'under this booking’s cancellation terms.'
-                    : 'The host will be told you are no longer coming. Landa '
+                    : 'The host will be told you are no longer coming. Oasis '
                           'will confirm the refund under this booking’s '
                           'cancellation terms before completing cancellation.')
               : 'The host will be told you are no longer coming. You have not '
@@ -462,10 +462,10 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     if (!mounted) return;
 
     if (cancelled) {
-      LandaToast.success(context, 'Booking cancelled.');
+      OasisToast.success(context, 'Booking cancelled.');
       await refreshNow();
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not cancel that booking. Try again in a moment.',
@@ -479,7 +479,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const LandaAppBar(showBackButton: true),
+      appBar: const OasisAppBar(showBackButton: true),
       body: RefreshIndicator(
         onRefresh: _reload,
         child: _buildBody(context, controller),
@@ -497,11 +497,11 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     // with three booked stays saw for a beat every time they opened this.
     if (!controller.hasLoaded(ShortLetController.kBookingsKey) ||
         (controller.isLoading && controller.bookings.isEmpty)) {
-      return const LandaSkeletonList(count: 3);
+      return const OasisSkeletonList(count: 3);
     }
 
     if (controller.hasError && controller.bookings.isEmpty) {
-      return LandaErrorState(
+      return OasisErrorState(
         message: controller.errorMessage,
         isConnectionError: controller.errorIsConnection,
         onRetry: _reload,
@@ -509,7 +509,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     }
 
     if (controller.bookings.isEmpty) {
-      return LandaEmptyState(
+      return OasisEmptyState(
         icon: Icons.luggage_outlined,
         title: 'No stays yet',
         message:
@@ -534,7 +534,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
         for (var index = 0; index < live.length; index++)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
-            child: LandaEntrance(
+            child: OasisEntrance(
               index: index,
               child: ShortLetBookingCard(
                 booking: live[index],
@@ -568,15 +568,15 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
 
     return [
       if (booking.status.needsPayment)
-        LandaButton(
-          label: 'Pay ${LandaCurrency.format(booking.totalAmount)}',
+        OasisButton(
+          label: 'Pay ${OasisCurrency.format(booking.totalAmount)}',
           icon: Icons.lock_outline_rounded,
           isBusy: busy,
           onPressed: busy ? null : () => _pay(booking),
         ),
       if (booking.canBeCancelledByTenant) ...[
         if (booking.status.needsPayment) const SizedBox(height: 8),
-        LandaButton(
+        OasisButton(
           label: 'Cancel booking',
           icon: Icons.close_rounded,
           outlined: true,
@@ -605,7 +605,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
       // they think about the stay again.
       if (booking.canReview) ...[
         const SizedBox(height: 8),
-        LandaButton(
+        OasisButton(
           label: 'Rate this stay',
           icon: Icons.star_outline_rounded,
           outlined: true,
@@ -618,7 +618,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
       // window in which raising a problem still holds it.
       if (booking.canDispute) ...[
         const SizedBox(height: 8),
-        LandaButton(
+        OasisButton(
           label: 'Report a problem',
           icon: Icons.gavel_outlined,
           outlined: true,
@@ -632,7 +632,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
       // time has already passed while this was being looked into.
       if (booking.status == ShortLetBookingStatus.disputed) ...[
         const SizedBox(height: 8),
-        LandaButton(
+        OasisButton(
           label: 'Mark issue resolved',
           icon: Icons.check_circle_outline_rounded,
           outlined: true,
@@ -701,7 +701,7 @@ class _PayWithSheet extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          'Pay ${LandaCurrency.format(booking.totalAmount)}',
+          'Pay ${OasisCurrency.format(booking.totalAmount)}',
           style: AppTheme.sectionTitle(context),
         ),
         const SizedBox(height: 4),
@@ -716,8 +716,8 @@ class _PayWithSheet extends StatelessWidget {
           title: 'Pay from vault',
           // Naming the balance is what makes the disabled state make sense.
           subtitle: canUseVault
-              ? '${LandaCurrency.format(vaultBalance)} available · settles instantly'
-              : 'Only ${LandaCurrency.format(vaultBalance)} available',
+              ? '${OasisCurrency.format(vaultBalance)} available · settles instantly'
+              : 'Only ${OasisCurrency.format(vaultBalance)} available',
           enabled: canUseVault,
           onTap: () => Navigator.pop(context, true),
         ),
@@ -755,7 +755,7 @@ class _PayOption extends StatelessWidget {
         ? AppTheme.primaryTextColor(context)
         : AppTheme.mutedTextColor(context);
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: enabled ? onTap : null,
       pressedScale: 0.99,
       child: Container(

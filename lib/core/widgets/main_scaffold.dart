@@ -12,7 +12,7 @@ import '../../features/payments/views/payments_screen.dart';
 import '../../features/shortlets/views/landlord_shortlets_screen.dart';
 import '../../features/shortlets/views/shortlet_browse_screen.dart';
 
-import '../utils/landa_refresh.dart';
+import '../utils/oasis_refresh.dart';
 import 'custom_bottom_navbar.dart';
 
 /// Wrapper scaffold that maintains the bottom navigation state and switches
@@ -78,7 +78,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     //
     // An artisan gets neither, and now gets no tab bar at all. They hold no
     // unit, sign no agreement and pay no rent; since API guide 18 removed the
-    // Fix job workflow they take no jobs through Landa and are paid no money
+    // Fix job workflow they take no jobs through Oasis and are paid no money
     // through it either. What is left for them is one screen: the listing
     // landlords and tenants find them by, so a bottom bar would be a row of
     // one. Fix itself is not a tab for the other two roles: a tenant reaches
@@ -128,12 +128,12 @@ class _MainScaffoldState extends State<MainScaffold> {
           // is showing. Without that, switching tabs is invisible to the
           // screens themselves: nothing mounts, nothing pops, and a tab that
           // has been sitting behind another for ten minutes comes back
-          // showing what it loaded then. See [LandaTabVisibility].
+          // showing what it loaded then. See [OasisTabVisibility].
           IndexedStack(
             index: _currentIndex,
             children: [
               for (var i = 0; i < screens.length; i++)
-                LandaTabVisibility(
+                OasisTabVisibility(
                   activeIndex: _activeTab,
                   index: i,
                   child: screens[i],

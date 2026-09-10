@@ -3,14 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../properties/controllers/landlord_controller.dart';
 import '../../properties/models/property_model.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
-import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/utils/oasis_input_formatters.dart';
 
 /// Lists a unit for nightly stays, or edits the listing it already has.
 ///
@@ -123,17 +123,17 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
     _unit = widget.initialUnit;
     final seededPrice = widget.initialNightlyPrice;
     if (seededPrice != null) {
-      _priceController.text = LandaThousandsFormatter.groupAmount(
+      _priceController.text = OasisThousandsFormatter.groupAmount(
         seededPrice,
       );
     }
     final existing = widget.existing;
     if (existing != null) {
-      _priceController.text = LandaThousandsFormatter.groupAmount(
+      _priceController.text = OasisThousandsFormatter.groupAmount(
         existing.nightlyPrice,
       );
       if (existing.hasCautionFee) {
-        _cautionController.text = LandaThousandsFormatter.groupAmount(
+        _cautionController.text = OasisThousandsFormatter.groupAmount(
           existing.cautionFee,
         );
       }
@@ -217,12 +217,12 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
   /// one who is surprised by a cancelled booking.
   String get _quoteLine {
     final nights = int.parse(_rawPrice) * _minimumNights;
-    final stay = LandaCurrency.format('$nights.00');
+    final stay = OasisCurrency.format('$nights.00');
     if (!_hasCaution) {
       return 'A $_minimumNights-night stay would come to $stay before fees.';
     }
-    final deposit = LandaCurrency.format('$_rawCaution.00');
-    final total = LandaCurrency.format('${nights + int.parse(_rawCaution)}.00');
+    final deposit = OasisCurrency.format('$_rawCaution.00');
+    final total = OasisCurrency.format('${nights + int.parse(_rawCaution)}.00');
     return 'A $_minimumNights-night stay would come to $stay, plus a '
         '$deposit refundable deposit. $total to pay before fees.';
   }
@@ -244,11 +244,11 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
   Future<void> _save() async {
     final unitId = _unitId;
     if (unitId == null || unitId.isEmpty) {
-      LandaToast.error(context, 'Pick the unit you want to let by the night.');
+      OasisToast.error(context, 'Pick the unit you want to let by the night.');
       return;
     }
     if (!_hasPrice) {
-      LandaToast.error(context, 'Set a nightly price.');
+      OasisToast.error(context, 'Set a nightly price.');
       return;
     }
 
@@ -262,7 +262,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
     if (!_isEditing) {
       final duplicate = controller.listingForUnit(unitId);
       if (duplicate != null) {
-        LandaToast.error(
+        OasisToast.error(
           context,
           '${duplicate.title} is already listed for short stays. Open that '
           'listing from Short lets to change its price or dates.',
@@ -307,7 +307,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         await _openExistingInstead(existingId);
         return;
       }
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not save that listing. Try again in a moment.',
@@ -321,13 +321,13 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
       // the app set the widest it could. Say so: a listing that comes back
       // reading "Bookable until 2031" when they chose "any dates" would
       // otherwise look like the app ignoring them.
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Listed. This server needs a booking window, so yours runs for the '
         'next 5 years. You can narrow it any time.',
       );
     } else {
-      LandaToast.success(
+      OasisToast.success(
         context,
         _isEditing
             ? 'Listing updated.'
@@ -357,7 +357,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
     if (existing == null) {
       // It exists server-side but did not come back in the list. Nothing to
       // open, so say what happened rather than silently doing nothing.
-      LandaToast.error(
+      OasisToast.error(
         navigator.context,
         'That unit is already listed for short stays. Open it from Short '
         'lets to change it.',
@@ -365,7 +365,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
       return;
     }
 
-    LandaToast.info(
+    OasisToast.info(
       navigator.context,
       '${existing.title} is already listed. Opening it to edit instead.',
     );
@@ -380,14 +380,14 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         ? const <UnitModel>[]
         : landlord.propertyUnits[_property!.id] ?? const <UnitModel>[];
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.holiday_village_outlined,
       title: _isEditing ? 'Edit short let' : 'List for short stays',
       subtitle: _isEditing
           ? widget.existing!.title
           : 'Offer a unit by the night. You approve every booking before '
                 'anyone pays.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: _isEditing ? 'Save changes' : 'List this place',
         icon: Icons.check_rounded,
         isLoading: controller.isSubmitting,
@@ -399,12 +399,12 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         // The unit is fixed when editing, because the backend keys a listing
         // to its unit and changing it here would make a second listing.
         if (!_isEditing) ...[
-          const LandaFieldLabel('Property'),
+          const OasisFieldLabel('Property'),
           DropdownButtonFormField<PropertyModel>(
             initialValue: _property,
             isExpanded: true,
             borderRadius: AppTheme.cornerMd,
-            decoration: landaInputDecoration(
+            decoration: oasisInputDecoration(
               context,
               prefixIcon: Icons.apartment_outlined,
             ),
@@ -423,12 +423,12 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
           ),
           const SizedBox(height: 18),
 
-          const LandaFieldLabel('Unit'),
+          const OasisFieldLabel('Unit'),
           DropdownButtonFormField<UnitModel>(
             initialValue: _unit,
             isExpanded: true,
             borderRadius: AppTheme.cornerMd,
-            decoration: landaInputDecoration(
+            decoration: oasisInputDecoration(
               context,
               prefixIcon: Icons.meeting_room_outlined,
             ),
@@ -491,14 +491,14 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
           const SizedBox(height: 18),
         ],
 
-        const LandaFieldLabel('Price per night'),
+        const OasisFieldLabel('Price per night'),
         TextField(
           controller: _priceController,
           keyboardType: TextInputType.number,
-          inputFormatters: const [LandaThousandsFormatter()],
+          inputFormatters: const [OasisThousandsFormatter()],
           style: AppTheme.cardTitle(context),
           onChanged: (_) => setState(() {}),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: '50000',
             prefixIcon: Icons.payments_outlined,
@@ -514,7 +514,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         // once set, which is why it is stated in both directions here: a
         // host needs to know they are adding to the bill, not asking a
         // favour.
-        LandaFieldLabel(
+        OasisFieldLabel(
           'Caution fee',
           trailing: _OptionalPill(
             label: _hasCaution ? 'Refundable' : 'Optional',
@@ -524,10 +524,10 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         TextField(
           controller: _cautionController,
           keyboardType: TextInputType.number,
-          inputFormatters: const [LandaThousandsFormatter()],
+          inputFormatters: const [OasisThousandsFormatter()],
           style: AppTheme.cardTitle(context),
           onChanged: (_) => setState(() {}),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Leave empty for no deposit',
             prefixIcon: Icons.shield_outlined,
@@ -565,7 +565,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         ),
         const SizedBox(height: 18),
 
-        LandaFieldLabel(
+        OasisFieldLabel(
           'Cancellation policy',
           trailing: const _OptionalPill(label: 'Optional'),
         ),
@@ -573,7 +573,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
           initialValue: _cancellationPolicy,
           isExpanded: true,
           borderRadius: AppTheme.cornerMd,
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             prefixIcon: Icons.policy_outlined,
           ),
@@ -587,7 +587,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         ),
         const SizedBox(height: 6),
         Text(
-          '${_cancellationPolicy.defaultSummary} Landa shows guests the '
+          '${_cancellationPolicy.defaultSummary} Oasis shows guests the '
           'terms before they request dates.',
           style: AppTheme.labelText(
             context,
@@ -621,7 +621,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         ),
         const SizedBox(height: 18),
 
-        LandaFieldLabel(
+        OasisFieldLabel(
           'Available between',
           trailing: _OptionalPill(
             label: _window == null ? 'Any dates' : 'Set',
@@ -688,7 +688,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         // only one of the three a guest reads while deciding. A stay with no
         // description gets browsed past, which is why the hint is a worked
         // example rather than "Description".
-        LandaFieldLabel(
+        OasisFieldLabel(
           'About this place',
           trailing: _OptionalPill(
             label: _hasDescription ? 'Added' : 'Recommended',
@@ -702,7 +702,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
           textCapitalization: TextCapitalization.sentences,
           style: AppTheme.bodyText(context),
           onChanged: (_) => setState(() {}),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint:
                 'A quiet two-bedroom flat five minutes from the airport. '
@@ -719,24 +719,24 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         ),
         const SizedBox(height: 18),
 
-        const LandaFieldLabel('House rules'),
+        const OasisFieldLabel('House rules'),
         TextField(
           controller: _rulesController,
           maxLines: 3,
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'No parties. Quiet after 10pm.',
           ),
         ),
         const SizedBox(height: 18),
 
-        const LandaFieldLabel('Check-in notes'),
+        const OasisFieldLabel('Check-in notes'),
         TextField(
           controller: _checkInController,
           maxLines: 2,
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Gate code and key box details.',
           ),
@@ -815,7 +815,7 @@ class _Stepper extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      LandaFieldLabel(label),
+      OasisFieldLabel(label),
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(

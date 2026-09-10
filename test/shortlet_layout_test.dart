@@ -4,22 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/theme/app_theme.dart';
-import 'package:landa_app/core/widgets/custom_bottom_navbar.dart';
-import 'package:landa_app/features/auth/models/user_model.dart';
-import 'package:landa_app/core/widgets/landa_sheet.dart';
-import 'package:landa_app/features/auth/controllers/auth_controller.dart';
-import 'package:landa_app/features/auth/services/api_auth_service.dart';
-import 'package:landa_app/features/marketplace/controllers/marketplace_controller.dart';
-import 'package:landa_app/features/messaging/controllers/messaging_controller.dart';
-import 'package:landa_app/features/notifications/controllers/notification_controller.dart';
-import 'package:landa_app/features/properties/controllers/landlord_controller.dart';
-import 'package:landa_app/features/shortlets/controllers/shortlet_controller.dart';
-import 'package:landa_app/features/shortlets/services/shortlet_service.dart';
-import 'package:landa_app/features/shortlets/views/create_shortlet_sheet.dart';
-import 'package:landa_app/features/shortlets/views/landlord_shortlets_screen.dart';
-import 'package:landa_app/features/shortlets/views/shortlet_browse_screen.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/theme/app_theme.dart';
+import 'package:oasis_app/core/widgets/custom_bottom_navbar.dart';
+import 'package:oasis_app/features/auth/models/user_model.dart';
+import 'package:oasis_app/core/widgets/oasis_sheet.dart';
+import 'package:oasis_app/features/auth/controllers/auth_controller.dart';
+import 'package:oasis_app/features/auth/services/api_auth_service.dart';
+import 'package:oasis_app/features/marketplace/controllers/marketplace_controller.dart';
+import 'package:oasis_app/features/messaging/controllers/messaging_controller.dart';
+import 'package:oasis_app/features/notifications/controllers/notification_controller.dart';
+import 'package:oasis_app/features/properties/controllers/landlord_controller.dart';
+import 'package:oasis_app/features/shortlets/controllers/shortlet_controller.dart';
+import 'package:oasis_app/features/shortlets/services/shortlet_service.dart';
+import 'package:oasis_app/features/shortlets/views/create_shortlet_sheet.dart';
+import 'package:oasis_app/features/shortlets/views/landlord_shortlets_screen.dart';
+import 'package:oasis_app/features/shortlets/views/shortlet_browse_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -98,7 +98,7 @@ void main() {
     // Idle: the sheet leaves the top third of the screen alone, so its title
     // never lands under the status bar and the backdrop stays tappable.
     const screenHeight = 667.0;
-    final sheet = tester.getRect(find.byType(LandaSheet));
+    final sheet = tester.getRect(find.byType(OasisSheet));
     expect(
       tester.getRect(find.text('List for short stays')).top,
       greaterThan(screenHeight * 0.25),

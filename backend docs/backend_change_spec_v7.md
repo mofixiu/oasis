@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v7
+# Oasis Backend Change Specification — v7
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >
@@ -111,7 +111,7 @@ The workaround is self-cancelling: the day §1 ships, step 1 succeeds and steps 
 
 ### 2.1 Why
 
-Nigerian short lets very commonly ask for a refundable deposit against damage, and hosts who ask for one have no way to collect it through Landa. Today they either forgo it or take it in cash outside the platform, which is exactly the off-platform transaction escrow exists to prevent.
+Nigerian short lets very commonly ask for a refundable deposit against damage, and hosts who ask for one have no way to collect it through Oasis. Today they either forgo it or take it in cash outside the platform, which is exactly the off-platform transaction escrow exists to prevent.
 
 The rule is asymmetric and both halves matter:
 
@@ -190,7 +190,7 @@ Set `caution_fee_refunded_at` when the escrowed caution fee is returned. A booki
 
 `release_ready_shortlet_escrows` must therefore release **only caution-fee escrows**. It must never credit the landlord's stay payout, because that credit happens at payment success. Rename the job to `release_ready_caution_fee_escrows` when it is safe to do so; retain the old command as a compatibility alias during rollout.
 
-> **Terminology:** this document uses *caution fee* for the refundable tenant security deposit. It is distinct from `platform_fee`, which is Landa's service fee. Do not label either field simply “fee” in payment or booking responses.
+> **Terminology:** this document uses *caution fee* for the refundable tenant security deposit. It is distinct from `platform_fee`, which is Oasis's service fee. Do not label either field simply “fee” in payment or booking responses.
 
 > **Out of scope for v7:** a host-side damage claim endpoint. Until it exists the caution fee returns on confirmed checkout and a host with a genuine claim goes through support. The immediate landlord payout rule still applies.
 
@@ -276,7 +276,7 @@ Property photos are still required at creation (minimum 2) and still sent. Say s
 
 ### 4.1 Why
 
-Nothing on Landa carries a reputation. A tenant choosing an artisan to let into their flat picks from a list of strangers; a guest picking between two short lets has the price and nothing else. This is the single largest missing trust signal in the product, and it is the one that compounds — a marketplace with reviews gets better as it is used, and one without does not.
+Nothing on Oasis carries a reputation. A tenant choosing an artisan to let into their flat picks from a list of strangers; a guest picking between two short lets has the price and nothing else. This is the single largest missing trust signal in the product, and it is the one that compounds — a marketplace with reviews gets better as it is used, and one without does not.
 
 The requirement that makes it worth anything is that **a review must be attached to a completed transaction**. Anyone can write a review; only someone who actually stayed, or actually had the work done, can write one here.
 

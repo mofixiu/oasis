@@ -2,15 +2,15 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/core/theme/app_theme.dart';
-import 'package:landa_app/features/agreements/controllers/agreement_controller.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
-import 'package:landa_app/features/agreements/views/tenancy_agreement_modal.dart';
-import 'package:landa_app/features/auth/controllers/auth_controller.dart';
-import 'package:landa_app/features/auth/models/user_model.dart';
-import 'package:landa_app/features/auth/services/mock_auth_service.dart';
-import 'package:landa_app/features/payments/controllers/payment_controller.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/core/theme/app_theme.dart';
+import 'package:oasis_app/features/agreements/controllers/agreement_controller.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/agreements/views/tenancy_agreement_modal.dart';
+import 'package:oasis_app/features/auth/controllers/auth_controller.dart';
+import 'package:oasis_app/features/auth/models/user_model.dart';
+import 'package:oasis_app/features/auth/services/mock_auth_service.dart';
+import 'package:oasis_app/features/payments/controllers/payment_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

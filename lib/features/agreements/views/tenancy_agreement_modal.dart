@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
 import '../../payments/controllers/payment_controller.dart';
@@ -14,8 +14,8 @@ import '../controllers/agreement_controller.dart';
 import '../models/agreement_model.dart';
 import 'widgets/rent_plan_picker.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/widgets/landa_busy.dart';
-import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/widgets/oasis_busy.dart';
+import '../../../core/utils/oasis_input_formatters.dart';
 
 class CreateAgreementModal extends StatefulWidget {
   final String unitId;
@@ -69,7 +69,7 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
     // Stripped of the separators the field shows: the API takes a decimal
     // string, and `double.tryParse('450,000')` is null, so an ungrouped read
     // here would reject every rent the landlord typed.
-    final rent = LandaThousandsFormatter.digitsOf(_rentAmountController.text);
+    final rent = OasisThousandsFormatter.digitsOf(_rentAmountController.text);
     final startDate = _startDateController.text.trim();
     final endDate = _endDateController.text.trim();
     final rules = _rulesController.text.trim();
@@ -78,12 +78,12 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
         rent.isEmpty ||
         startDate.isEmpty ||
         endDate.isEmpty) {
-      LandaToast.error(context, 'Please fill in all required fields.');
+      OasisToast.error(context, 'Please fill in all required fields.');
       return;
     }
 
     if (double.tryParse(rent) == null || double.parse(rent) <= 0) {
-      LandaToast.error(context, 'Rent amount must be greater than zero.');
+      OasisToast.error(context, 'Rent amount must be greater than zero.');
       return;
     }
 
@@ -92,7 +92,7 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
     if (parsedStartDate == null ||
         parsedEndDate == null ||
         !parsedEndDate.isAfter(parsedStartDate)) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'Use YYYY-MM-DD dates with an end date after the start date.',
       );
@@ -113,13 +113,13 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
     if (!mounted) return;
 
     if (newAgreement != null) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Agreement created as PENDING. The tenant can now review and sign it.',
       );
       Navigator.pop(context, true);
     } else if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -170,7 +170,7 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
             TextField(
               controller: _rentAmountController,
               keyboardType: TextInputType.number,
-              inputFormatters: const [LandaThousandsFormatter()],
+              inputFormatters: const [OasisThousandsFormatter()],
               // Redraws the plan picker's instalment preview as the annual
               // figure is typed.
               onChanged: (_) => setState(() {}),
@@ -190,7 +190,7 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
             const SizedBox(height: 10),
             RentPlanPicker(
               selected: _rentPlan,
-              annualRent: LandaThousandsFormatter.digitsOf(
+              annualRent: OasisThousandsFormatter.digitsOf(
                 _rentAmountController.text,
               ),
               onChanged: (plan) => setState(() => _rentPlan = plan),
@@ -242,7 +242,7 @@ class _CreateAgreementModalState extends State<CreateAgreementModal> {
                       backgroundColor: AppTheme.primaryColor,
                     ),
                     child: controller.isLoading
-                        ? const LandaBusyDots(color: Colors.white, size: 6)
+                        ? const OasisBusyDots(color: Colors.white, size: 6)
                         : const Text(
                             'Send Tenancy Agreement',
                             style: TextStyle(fontSize: 16, color: Colors.white),
@@ -283,7 +283,7 @@ class ViewAgreementModal extends StatelessWidget {
               await mainContext.read<PaymentController>().loadPayments();
               if (!mainContext.mounted) return;
               Navigator.pop(ctx);
-              LandaToast.success(
+              OasisToast.success(
                 mainContext,
                 'Payment confirmed and held in escrow.',
               );
@@ -440,7 +440,7 @@ class ViewAgreementModal extends StatelessWidget {
                             ),
                             SizedBox(width: 8),
                             Text(
-                              'Landa Escrow Payment',
+                              'Oasis Escrow Payment',
                               style: AppTheme.sectionTitle(
                                 context,
                                 color: AppTheme.primaryColor,
@@ -507,7 +507,7 @@ class ViewAgreementModal extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                LandaCurrency.perYear(agreement.rentAmount),
+                                OasisCurrency.perYear(agreement.rentAmount),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -554,17 +554,17 @@ class ViewAgreementModal extends StatelessWidget {
                           children: [
                             _paymentSummaryRow(
                               'Rent',
-                              LandaCurrency.format(payment!.amount),
+                              OasisCurrency.format(payment!.amount),
                             ),
                             const SizedBox(height: 8),
                             _paymentSummaryRow(
                               'Platform fee',
-                              LandaCurrency.format(payment!.platformFee),
+                              OasisCurrency.format(payment!.platformFee),
                             ),
                             const Divider(height: 20),
                             _paymentSummaryRow(
                               'Total to pay',
-                              LandaCurrency.format(payment!.totalAmount),
+                              OasisCurrency.format(payment!.totalAmount),
                               emphasized: true,
                             ),
                           ],
@@ -596,7 +596,7 @@ class ViewAgreementModal extends StatelessWidget {
                                 size: 18,
                               ),
                         label: isBusy
-                            ? const LandaBusyDots(color: Colors.white, size: 6)
+                            ? const OasisBusyDots(color: Colors.white, size: 6)
                             : Text(
                                 payment == null
                                     ? 'Continue to Paystack'
@@ -618,7 +618,7 @@ class ViewAgreementModal extends StatelessWidget {
                     if (payment?.status == PaymentStatus.pending) ...[
                       const SizedBox(height: 12),
                       Text(
-                        'After checkout closes or you return to Landa, verify the payment below.',
+                        'After checkout closes or you return to Oasis, verify the payment below.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
@@ -663,7 +663,7 @@ class ViewAgreementModal extends StatelessWidget {
     if (!context.mounted) return;
 
     if (success) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         isTenantSigning
             ? 'Agreement signed. Waiting for your landlord to counter-sign.'
@@ -695,7 +695,7 @@ class ViewAgreementModal extends StatelessWidget {
     }
 
     if (controller.errorMessage != null) {
-      LandaToast.error(context, controller.errorMessage!);
+      OasisToast.error(context, controller.errorMessage!);
     }
   }
 
@@ -789,7 +789,7 @@ class ViewAgreementModal extends StatelessWidget {
             _infoRow(
               context,
               'Rent Amount:',
-              LandaCurrency.perYear(agreement.rentAmount),
+              OasisCurrency.perYear(agreement.rentAmount),
             ),
             if (agreement.plan != RentPlan.unknown)
               _infoRow(context, 'Paid:', agreement.plan.label),
@@ -874,7 +874,7 @@ class ViewAgreementModal extends StatelessWidget {
                           },
                           icon: const Icon(Icons.payments, color: Colors.white),
                           label: Text(
-                            'Pay Rent into Escrow (${LandaCurrency.format(agreement.rentAmount)})',
+                            'Pay Rent into Escrow (${OasisCurrency.format(agreement.rentAmount)})',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -945,7 +945,7 @@ class ViewAgreementModal extends StatelessWidget {
                         ? const SizedBox()
                         : const Icon(Icons.draw, color: Colors.white),
                     label: controller.isLoading
-                        ? const LandaBusyDots(color: Colors.white, size: 6)
+                        ? const OasisBusyDots(color: Colors.white, size: 6)
                         : Text(
                             isTenantSigning
                                 ? 'Sign Tenancy Agreement'

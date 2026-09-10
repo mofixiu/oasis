@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../core/network/auth_token_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/utils/landa_haptics.dart';
-import '../../../core/widgets/landa_pressable.dart';
+import '../../../core/utils/oasis_haptics.dart';
+import '../../../core/widgets/oasis_pressable.dart';
 import 'sign_in_screen.dart';
 import 'sign_up_screen.dart';
 import 'widgets/onboarding_art.dart';
@@ -47,7 +47,7 @@ const List<_Slide> _slides = [
     eyebrow: 'AGREEMENTS',
     title: 'Sign the lease right here',
     body:
-        'Tenancy agreements are drafted, reviewed and signed inside Landa. No '
+        'Tenancy agreements are drafted, reviewed and signed inside Oasis. No '
         'printing, no courier, no lost copies.',
     accent: AppTheme.sandColor,
     art: OnboardingAgreementArt(),
@@ -72,7 +72,7 @@ const List<_Slide> _slides = [
   ),
 ];
 
-/// The first-run tour. Four slides, each a miniature of the part of Landa it
+/// The first-run tour. Four slides, each a miniature of the part of Oasis it
 /// describes, ending on the sign-up call to action.
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -174,7 +174,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   isDark: isDark,
                   showSkip: !_isLastSlide,
                   onSkip: () {
-                    LandaHaptics.tap();
+                    OasisHaptics.tap();
                     _leaveOnboarding(const SignUpScreen());
                   },
                 ),
@@ -183,7 +183,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   child: PageView.builder(
                     controller: _controller,
                     itemCount: _slides.length,
-                    onPageChanged: (_) => LandaHaptics.select(),
+                    onPageChanged: (_) => OasisHaptics.select(),
                     itemBuilder: (context, index) =>
                         _SlideView(slide: _slides[index], delta: _page - index),
                   ),
@@ -228,8 +228,8 @@ class _Header extends StatelessWidget {
         children: [
           Image.asset(
             isDark
-                ? 'assets/images/logo_wordmark_light.png'
-                : 'assets/images/newlogonobackground.png',
+                ? 'assets/images/oasis_wordmark_dark.png'
+                : 'assets/images/oasis_wordmark.png',
             height: 30,
             fit: BoxFit.contain,
           ),
@@ -424,7 +424,7 @@ class _Footer extends StatelessWidget {
           // as the label changing rather than the button being replaced.
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
-            child: LandaButton(
+            child: OasisButton(
               key: ValueKey(isLastSlide),
               label: isLastSlide ? 'Create your account' : 'Continue',
               onPressed: onPrimary,

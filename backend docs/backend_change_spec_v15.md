@@ -1,4 +1,4 @@
-# Landa OS Backend Change Specification — v15
+# Oasis Backend Change Specification — v15
 
 > **Audience:** Backend developer implementing on the Django API (`landa_os`, `users` app).
 >
@@ -65,7 +65,7 @@ One request, though: **please confirm the expiry checks payment state at run tim
 
 ## 3. Push: deferred. Please stop holding a slot for it
 
-Guide 19 §2 asks whether a Firebase project already exists for Landa OS, and notes the backend is waiting on `FIREBASE_CREDENTIALS_JSON` before it can dispatch.
+Guide 19 §2 asks whether a Firebase project already exists for Oasis, and notes the backend is waiting on `FIREBASE_CREDENTIALS_JSON` before it can dispatch.
 
 **Do not wait on us, and do not spend more effort here.** Phone push has been cut from the MVP. There is no Firebase project, and creating one is not on the critical path for launch.
 

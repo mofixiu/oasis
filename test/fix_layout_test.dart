@@ -4,24 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/theme/app_theme.dart';
-import 'package:landa_app/core/widgets/custom_bottom_navbar.dart';
-import 'package:landa_app/features/agreements/controllers/agreement_controller.dart';
-import 'package:landa_app/features/auth/controllers/auth_controller.dart';
-import 'package:landa_app/features/auth/models/user_model.dart';
-import 'package:landa_app/features/auth/services/api_auth_service.dart';
-import 'package:landa_app/features/fix/controllers/fix_controller.dart';
-import 'package:landa_app/features/fix/services/fix_service.dart';
-import 'package:landa_app/features/fix/views/artisan_home_screen.dart';
-import 'package:landa_app/features/fix/views/fix_screen.dart';
-import 'package:landa_app/features/marketplace/controllers/marketplace_controller.dart';
-import 'package:landa_app/features/messaging/controllers/messaging_controller.dart';
-import 'package:landa_app/features/notifications/controllers/notification_controller.dart';
-import 'package:landa_app/features/payouts/controllers/payout_controller.dart';
-import 'package:landa_app/features/properties/controllers/landlord_controller.dart';
-import 'package:landa_app/features/shortlets/controllers/shortlet_controller.dart';
-import 'package:landa_app/features/vault/controllers/vault_controller.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/theme/app_theme.dart';
+import 'package:oasis_app/core/widgets/custom_bottom_navbar.dart';
+import 'package:oasis_app/features/agreements/controllers/agreement_controller.dart';
+import 'package:oasis_app/features/auth/controllers/auth_controller.dart';
+import 'package:oasis_app/features/auth/models/user_model.dart';
+import 'package:oasis_app/features/auth/services/api_auth_service.dart';
+import 'package:oasis_app/features/fix/controllers/fix_controller.dart';
+import 'package:oasis_app/features/fix/services/fix_service.dart';
+import 'package:oasis_app/features/fix/views/artisan_home_screen.dart';
+import 'package:oasis_app/features/fix/views/fix_screen.dart';
+import 'package:oasis_app/features/marketplace/controllers/marketplace_controller.dart';
+import 'package:oasis_app/features/messaging/controllers/messaging_controller.dart';
+import 'package:oasis_app/features/notifications/controllers/notification_controller.dart';
+import 'package:oasis_app/features/payouts/controllers/payout_controller.dart';
+import 'package:oasis_app/features/properties/controllers/landlord_controller.dart';
+import 'package:oasis_app/features/shortlets/controllers/shortlet_controller.dart';
+import 'package:oasis_app/features/vault/controllers/vault_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -75,7 +75,7 @@ void main() {
     // is worth writing should be looking at the thing the bio goes in.
     expect(find.text('Ada Fixer'), findsOneWidget);
     expect(find.text('Edit your details'), findsOneWidget);
-    // Says plainly that Landa stops at the introduction. An artisan who
+    // Says plainly that Oasis stops at the introduction. An artisan who
     // remembers the old job queue has to be told it is gone rather than
     // left waiting for work that will never arrive.
     expect(find.textContaining('does not handle the payment'), findsOneWidget);

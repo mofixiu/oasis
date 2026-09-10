@@ -3,13 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/vault_controller.dart';
 import '../models/vault_models.dart';
-import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/utils/oasis_input_formatters.dart';
 
 /// Moves money from the tenant's card or bank into their vault.
 ///
@@ -65,7 +65,7 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
     // than the vault holds. Offer the difference, not the whole bill.
     final shortfall = _shortfall();
     if (shortfall != null) {
-      _amountController.text = LandaThousandsFormatter.groupAmount(shortfall);
+      _amountController.text = OasisThousandsFormatter.groupAmount(shortfall);
     }
   }
 
@@ -91,13 +91,13 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
     final target = widget.targetAmount;
     if (target == null) return null;
     final have = context.read<VaultController>().vault?.availableBalance;
-    final missing = LandaCurrency.subtract(target, have ?? '0.00');
-    if (missing == null || (LandaCurrency.minorUnits(missing) ?? 0) <= 0) {
+    final missing = OasisCurrency.subtract(target, have ?? '0.00');
+    if (missing == null || (OasisCurrency.minorUnits(missing) ?? 0) <= 0) {
       return null;
     }
     // Rounded up to the naira: nobody tops up ₦12,340.55, and a keypad
     // pre-filled with kobo invites a top-up a kobo short of the bill.
-    final kobo = LandaCurrency.minorUnits(missing)!;
+    final kobo = OasisCurrency.minorUnits(missing)!;
     return ((kobo + 99) ~/ 100).toString();
   }
 
@@ -105,13 +105,13 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
   String get _rawAmount =>
       _amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
 
-  bool get _hasAmount => (LandaCurrency.minorUnits(_rawAmount) ?? 0) > 0;
+  bool get _hasAmount => (OasisCurrency.minorUnits(_rawAmount) ?? 0) > 0;
 
   Future<void> _submit() async {
     final controller = context.read<VaultController>();
 
     if (!_hasAmount) {
-      LandaToast.error(context, 'Enter an amount to add.');
+      OasisToast.error(context, 'Enter an amount to add.');
       return;
     }
 
@@ -228,11 +228,11 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
     }
 
     Navigator.pop(context, true);
-    LandaToast.success(
+    OasisToast.success(
       context,
       widget.targetLabel == null
-          ? '${LandaCurrency.format(topUp.amount)} added to your vault.'
-          : '${LandaCurrency.format(topUp.amount)} added and set aside for '
+          ? '${OasisCurrency.format(topUp.amount)} added to your vault.'
+          : '${OasisCurrency.format(topUp.amount)} added and set aside for '
                 '${widget.targetLabel}.',
     );
   }
@@ -246,7 +246,7 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
         !(controller.pendingTopUp?.status.isSettled ?? false) &&
         _hasOpenedCheckout;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.savings_outlined,
       title: 'Add money to your vault',
       subtitle: widget.targetLabel == null
@@ -255,16 +255,16 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
                 'vault.',
       accent: AppTheme.successColor,
       footer: awaitingCheckout
-          ? LandaSheetButton(
+          ? OasisSheetButton(
               label: 'I have completed checkout',
               icon: Icons.verified_outlined,
               isLoading: controller.isToppingUp,
               color: AppTheme.successColor,
               onPressed: () => _verify(),
             )
-          : LandaSheetButton(
+          : OasisSheetButton(
               label: _hasAmount
-                  ? 'Add ${LandaCurrency.format('$_rawAmount.00')}'
+                  ? 'Add ${OasisCurrency.format('$_rawAmount.00')}'
                   : 'Add money',
               icon: Icons.arrow_downward_rounded,
               isLoading: controller.isToppingUp,
@@ -279,13 +279,13 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
         ),
         const SizedBox(height: 18),
 
-        const LandaFieldLabel('Amount'),
+        const OasisFieldLabel('Amount'),
         TextField(
           controller: _amountController,
           keyboardType: TextInputType.number,
-          inputFormatters: const [LandaThousandsFormatter()],
+          inputFormatters: const [OasisThousandsFormatter()],
           style: AppTheme.screenTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: '0',
             prefixIcon: Icons.payments_outlined,
@@ -304,7 +304,7 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
               _QuickAmount(
                 amount: amount,
                 onTap: () => setState(() {
-                  _amountController.text = LandaThousandsFormatter.groupAmount(
+                  _amountController.text = OasisThousandsFormatter.groupAmount(
                     amount,
                   );
                 }),
@@ -353,10 +353,10 @@ class _BalanceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final covered = target != null && LandaCurrency.covers(balance, target!);
+    final covered = target != null && OasisCurrency.covers(balance, target!);
     final shortfall = target == null || covered
         ? null
-        : LandaCurrency.subtract(target!, balance);
+        : OasisCurrency.subtract(target!, balance);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -373,7 +373,7 @@ class _BalanceRow extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            LandaCurrency.format(balance),
+            OasisCurrency.format(balance),
             style: AppTheme.sectionTitle(context),
           ),
           if (target != null) ...[
@@ -381,9 +381,9 @@ class _BalanceRow extends StatelessWidget {
             Text(
               covered
                   ? 'Enough to cover ${targetLabel ?? 'this bill'}.'
-                  : '${LandaCurrency.format(shortfall!)} short of '
+                  : '${OasisCurrency.format(shortfall!)} short of '
                         '${targetLabel ?? 'this bill'} '
-                        '(${LandaCurrency.format(target!)}).',
+                        '(${OasisCurrency.format(target!)}).',
               style: AppTheme.labelText(
                 context,
                 color: covered
@@ -405,7 +405,7 @@ class _QuickAmount extends StatelessWidget {
   const _QuickAmount({required this.amount, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -417,7 +417,7 @@ class _QuickAmount extends StatelessWidget {
         ),
       ),
       child: Text(
-        LandaCurrency.format('$amount.00'),
+        OasisCurrency.format('$amount.00'),
         style: AppTheme.cardTitle(context, color: AppTheme.successColor),
       ),
     ),

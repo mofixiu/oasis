@@ -3,28 +3,28 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_haptics.dart';
-import '../../../core/widgets/landa_network_image.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/utils/landa_refresh.dart';
+import '../../../core/utils/oasis_haptics.dart';
+import '../../../core/widgets/oasis_network_image.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/utils/oasis_refresh.dart';
 import '../../../core/utils/nearby_search.dart';
 import '../../../core/widgets/custom_bottom_navbar.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_near_me.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_search_field.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_near_me.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_search_field.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../../reviews/views/widgets/rating_stars.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
 import 'my_shortlet_bookings_screen.dart';
 import 'shortlet_listing_screen.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/utils/landa_prefetch.dart';
-import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/utils/oasis_prefetch.dart';
+import '../../../core/utils/oasis_input_formatters.dart';
 
 /// The Stays tab: where a tenant browses places by the night.
 ///
@@ -147,7 +147,7 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
   /// that is already on.
   Future<void> _setBedrooms(int? minimum) {
     final controller = context.read<ShortLetController>();
-    LandaHaptics.select();
+    OasisHaptics.select();
     return controller.setBedroomsFilter(
       controller.minBedrooms == minimum ? null : minimum,
     );
@@ -206,7 +206,7 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const LandaAppBar(),
+      appBar: const OasisAppBar(),
       body: RefreshIndicator(
         onRefresh: _reload,
         child: _buildBody(context, controller),
@@ -223,11 +223,11 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
     // the flash of a wrong empty state this branch now prevents.
     if (!controller.hasLoaded(ShortLetController.kBrowseKey) ||
         (controller.isLoading && listings.isEmpty)) {
-      return const LandaSkeletonList(count: 4);
+      return const OasisSkeletonList(count: 4);
     }
 
     if (controller.hasError && listings.isEmpty) {
-      return LandaErrorState(
+      return OasisErrorState(
         message: controller.errorMessage,
         isConnectionError: controller.errorIsConnection,
         onRetry: _reload,
@@ -257,7 +257,7 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
         ),
         const SizedBox(height: 16),
 
-        LandaSearchField(
+        OasisSearchField(
           controller: _searchController,
           hintText: 'Search by area or city',
           onChanged: controller.searchBrowseListings,
@@ -304,7 +304,7 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
         const SizedBox(height: 20),
 
         if (listings.isEmpty)
-          LandaEmptyState(
+          OasisEmptyState(
             icon: controller.isBrowseNarrowed
                 ? Icons.search_off_rounded
                 : Icons.holiday_village_outlined,
@@ -335,7 +335,7 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
           for (var index = 0; index < listings.length; index++)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: LandaEntrance(
+              child: OasisEntrance(
                 index: index,
                 child: _ListingCard(
                   listing: listings[index],
@@ -347,7 +347,7 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
                     // so the push animation is spent downloading instead of
                     // waiting. The card's own photo is already cached; this
                     // is for the ones a swipe reveals next.
-                    LandaPrefetch.images(context, listings[index].photoUrls);
+                    OasisPrefetch.images(context, listings[index].photoUrls);
                     Navigator.push(
                       context,
                       FadePageRoute(
@@ -388,7 +388,7 @@ class _DateFilterRow extends StatelessWidget {
     final isSet = range != null;
     final format = DateFormat('d MMM');
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: onPick,
       pressedScale: 0.99,
       child: Container(
@@ -519,7 +519,7 @@ class _BedroomChip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     pressedScale: 0.96,
     child: Container(
@@ -584,7 +584,7 @@ class _PriceFilterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSet = minPrice != null || maxPrice != null;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: onPick,
       pressedScale: 0.99,
       child: Container(
@@ -647,10 +647,10 @@ class _PriceFilterRow extends StatelessWidget {
 
   static String _label(String? min, String? max) {
     if (min != null && max != null) {
-      return '${LandaCurrency.format(min)} – ${LandaCurrency.format(max)}';
+      return '${OasisCurrency.format(min)} – ${OasisCurrency.format(max)}';
     }
-    if (min != null) return 'From ${LandaCurrency.format(min)}';
-    return 'Up to ${LandaCurrency.format(max!)}';
+    if (min != null) return 'From ${OasisCurrency.format(min)}';
+    return 'Up to ${OasisCurrency.format(max!)}';
   }
 }
 
@@ -680,10 +680,10 @@ class _PriceRangeSheetState extends State<_PriceRangeSheet> {
   // Seeded in the grouped shape the field types in, so reopening the sheet
   // shows the same "50,000" the tenant left in it rather than a bare 50000.
   late final _minController = TextEditingController(
-    text: LandaThousandsFormatter.groupAmount(widget.minPrice),
+    text: OasisThousandsFormatter.groupAmount(widget.minPrice),
   );
   late final _maxController = TextEditingController(
-    text: LandaThousandsFormatter.groupAmount(widget.maxPrice),
+    text: OasisThousandsFormatter.groupAmount(widget.maxPrice),
   );
 
   @override
@@ -701,9 +701,9 @@ class _PriceRangeSheetState extends State<_PriceRangeSheet> {
   }
 
   int? get _min =>
-      int.tryParse(LandaThousandsFormatter.digitsOf(_minController.text));
+      int.tryParse(OasisThousandsFormatter.digitsOf(_minController.text));
   int? get _max =>
-      int.tryParse(LandaThousandsFormatter.digitsOf(_maxController.text));
+      int.tryParse(OasisThousandsFormatter.digitsOf(_maxController.text));
 
   /// The one thing this sheet will not let the tenant send: a range the
   /// backend can only reject. Digit-only formatters already rule out text
@@ -856,10 +856,10 @@ class _PriceField extends StatelessWidget {
       TextField(
         controller: controller,
         keyboardType: TextInputType.number,
-        inputFormatters: const [LandaThousandsFormatter()],
+        inputFormatters: const [OasisThousandsFormatter()],
         style: AppTheme.cardTitle(context),
         decoration:
-            landaInputDecoration(
+            oasisInputDecoration(
               context,
               hint: '0',
               prefixIcon: Icons.currency_exchange_outlined,
@@ -898,7 +898,7 @@ class _MyBookingsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final urgent = awaitingPayment > 0;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: onTap,
       pressedScale: 0.99,
       child: Container(
@@ -973,7 +973,7 @@ class _ListingCard extends StatelessWidget {
     final cover = listing.coverPhotoUrl;
     final isUnavailable = listing.isUnavailableForPeriod;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: onTap,
       pressedScale: 0.99,
       child: Container(
@@ -996,12 +996,12 @@ class _ListingCard extends StatelessWidget {
                   // so a missing or failed image degrades to the same quiet
                   // block rather than a broken-image glyph, and the photo
                   // fades onto that block instead of snapping into place.
-                  child: LandaNetworkImage(
+                  child: OasisNetworkImage(
                     url: cover,
                     placeholderIcon: Icons.holiday_village_outlined,
                     // Flies into the listing header, so tapping a card grows
                     // its photo rather than pushing a screen over it.
-                    heroTag: landaMediaHeroTag('shortlet', listing.id),
+                    heroTag: oasisMediaHeroTag('shortlet', listing.id),
                   ),
                 ),
                 // Taken dates are said in words below as well; the wash is
@@ -1112,7 +1112,7 @@ class _ListingCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          '${LandaCurrency.format(listing.nightlyPrice)} / night',
+                          '${OasisCurrency.format(listing.nightlyPrice)} / night',
                           style: AppTheme.cardTitle(
                             context,
                             color: AppTheme.actionColor,
@@ -1157,7 +1157,7 @@ class _ListingCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          '+ ${LandaCurrency.format(listing.cautionFee)} '
+                          '+ ${OasisCurrency.format(listing.cautionFee)} '
                           'refundable deposit',
                           style: AppTheme.labelText(
                             context,

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/review_controller.dart';
 import '../models/review_models.dart';
 import 'widgets/rating_stars.dart';
@@ -98,7 +98,7 @@ class _LeaveReviewSheetState extends State<_LeaveReviewSheet> {
 
   Future<void> _submit() async {
     if (_rating == 0) {
-      LandaToast.error(context, 'Pick a star rating first.');
+      OasisToast.error(context, 'Pick a star rating first.');
       return;
     }
 
@@ -113,7 +113,7 @@ class _LeaveReviewSheetState extends State<_LeaveReviewSheet> {
     if (!mounted) return;
 
     if (!posted) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not post that review. Try again in a moment.',
@@ -121,7 +121,7 @@ class _LeaveReviewSheetState extends State<_LeaveReviewSheet> {
       return;
     }
     Navigator.pop(context, true);
-    LandaToast.success(context, 'Thanks, your review is up.');
+    OasisToast.success(context, 'Thanks, your review is up.');
   }
 
   @override
@@ -130,13 +130,13 @@ class _LeaveReviewSheetState extends State<_LeaveReviewSheet> {
       (c) => c.isSubmitting,
     );
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.star_outline_rounded,
       title: 'How was it?',
       subtitle:
           '${widget.subjectName}. Your review is public and shown with your '
           'name, so keep it to what actually happened.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Post review',
         icon: Icons.send_rounded,
         isLoading: isSubmitting,
@@ -163,14 +163,14 @@ class _LeaveReviewSheetState extends State<_LeaveReviewSheet> {
         ),
         const SizedBox(height: 22),
 
-        const LandaFieldLabel('Say more (optional)'),
+        const OasisFieldLabel('Say more (optional)'),
         TextField(
           controller: _commentController,
           maxLines: 4,
           maxLength: 1000,
           textCapitalization: TextCapitalization.sentences,
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'What should the next person know?',
           ),

@@ -1,7 +1,7 @@
-# Agent Context for Landa OS
+# Agent Context for Oasis
 
 ## Project Overview
-Landa OS is a Nigerian prop-tech platform focused on secure, fraud-free rentals.
+Oasis is a Nigerian prop-tech platform focused on secure, fraud-free rentals.
 Two roles share one app: **landlords** list verified properties, invite tenants
 and approve applications; **tenants** browse the marketplace, apply for units,
 sign agreements and pay rent into escrow.
@@ -28,11 +28,11 @@ sign agreements and pay rent into escrow.
      - `ApiException` — the server rejected it; `.message` is already
        user-presentable. Never surface the raw debug string in a toast.
    - Money arrives as decimal strings (`"450000.00"`). Format with
-     `LandaCurrency`, which groups digits textually — never parse to `double`.
-   - Money is *typed* through `LandaThousandsFormatter`
-     (`core/utils/landa_input_formatters.dart`), which groups digits as they
+     `OasisCurrency`, which groups digits textually — never parse to `double`.
+   - Money is *typed* through `OasisThousandsFormatter`
+     (`core/utils/oasis_input_formatters.dart`), which groups digits as they
      are entered. Every money field carries it. The separators are display
-     only: read the field back with `LandaThousandsFormatter.digitsOf(...)`
+     only: read the field back with `OasisThousandsFormatter.digitsOf(...)`
      before it goes anywhere near the wire, and seed a field from a backend
      amount with `groupAmount(...)`. A raw `text.trim()` on one of these
      fields sends `"450,000"`, which a serializer rejects and a query
@@ -70,19 +70,19 @@ sign agreements and pay rent into escrow.
      plus a wide soft one). A single blurred shadow reads muddy or flat.
 
 5. **Freshness — the app re-reads rather than waiting to be dragged:**
-   - Screens that fetch mix in `AutoRefreshMixin` (`core/utils/landa_refresh.dart`)
+   - Screens that fetch mix in `AutoRefreshMixin` (`core/utils/oasis_refresh.dart`)
      and implement `onAutoRefresh()`. It fetches on mount, again when a pushed
-     route pops (`landaRouteObserver`, registered on the `MaterialApp`), again
+     route pops (`oasisRouteObserver`, registered on the `MaterialApp`), again
      when its **tab becomes visible**, and again on app resume. Do NOT
      hand-roll `addPostFrameCallback` for a first load any more.
-   - The tab trigger is `LandaTabVisibility`, which `MainScaffold` wraps each
+   - The tab trigger is `OasisTabVisibility`, which `MainScaffold` wraps each
      tab in. It exists because the bottom bar is an `IndexedStack`: switching
      tabs mounts nothing, disposes nothing and pushes no route, so every
      screen used to sit on whatever it loaded when it was first built and
      pull-to-refresh was the only way out. It also *defers* the opening fetch
      of a tab nobody has opened — an `IndexedStack` builds all its children at
      once, and without it four screens fetched on the first frame.
-   - Set `autoRefreshInterval => kLandaPollInterval` only where the user is
+   - Set `autoRefreshInterval => kOasisPollInterval` only where the user is
      waiting on somebody else: booking requests, applications, the messaging
      inbox. Polling a screen nobody is waiting on is battery — which is why
      Fix stopped polling when it stopped being a marketplace.
@@ -97,8 +97,8 @@ sign agreements and pay rent into escrow.
      `resetLoadedState()`.
 
 6. **Shared UI Components — reach for these before writing new chrome:**
-   - `LandaPickerField` + `openStatePicker` / `openCityPicker`
-     (`core/widgets/landa_place_picker.dart`) over `NigeriaLocations`
+   - `OasisPickerField` + `openStatePicker` / `openCityPicker`
+     (`core/widgets/oasis_place_picker.dart`) over `NigeriaLocations`
      (`core/utils/nigeria_locations.dart`) — states and cities are **picked,
      never typed**. Both sides of the marketplace filter compare the landlord's
      string against the tenant's, so "Lagos" and "lagos state" were two
@@ -106,18 +106,18 @@ sign agreements and pay rent into escrow.
      what the geocoder's answer is normalised through, so a pin that resolves
      "Federal Capital Territory" fills the box with the one spelling the
      picker offers.
-   - `LandaSheet` — the one bottom-sheet chrome: grab handle, header block,
+   - `OasisSheet` — the one bottom-sheet chrome: grab handle, header block,
      scrolling body, pinned keyboard-aware footer. Pair with
-     `landaInputDecoration()`, `LandaFieldLabel`, `LandaSheetButton`,
-     `LandaSheetChipButton`. Present it with
+     `oasisInputDecoration()`, `OasisFieldLabel`, `OasisSheetButton`,
+     `OasisSheetChipButton`. Present it with
      `backgroundColor: Colors.transparent` — the sheet paints its own surface.
-   - `LandaStateViews` (`LandaEmptyState`, `LandaErrorState`,
-     `LandaErrorBanner`) — every list needs empty, error and offline states,
+   - `OasisStateViews` (`OasisEmptyState`, `OasisErrorState`,
+     `OasisErrorBanner`) — every list needs empty, error and offline states,
      and a failure with content already on screen is a banner, not a takeover.
-   - `LandaShimmer` family (`LandaCardSkeleton`, `LandaSkeletonList`,
-     `LandaListingSkeleton`) for loading, not a bare `CircularProgressIndicator`.
-   - `LandaPressable` for tap feedback (scale dip + haptic), `LandaToast` for
-     transient messages, `LandaEntrance` for staggered list reveals.
+   - `OasisShimmer` family (`OasisCardSkeleton`, `OasisSkeletonList`,
+     `OasisListingSkeleton`) for loading, not a bare `CircularProgressIndicator`.
+   - `OasisPressable` for tap feedback (scale dip + haptic), `OasisToast` for
+     transient messages, `OasisEntrance` for staggered list reveals.
 
 7. **Coding Standards:**
    - Meticulously comment every class, complex method, and UI feature.
@@ -127,7 +127,7 @@ sign agreements and pay rent into escrow.
    - `flutter analyze` must be clean before a change is considered done.
 
 8. **Fix is a directory, not a marketplace:**
-   - Landa used to broker repairs — request, accept, quote, pay into escrow,
+   - Oasis used to broker repairs — request, accept, quote, pay into escrow,
      confirm, release. API guide 18 (§7B) removed every endpoint behind that,
      and `FixJob`, `FixJobStatus`, `FixUrgency`, the artisan job queue, the
      request sheet and seven notification types went with them. Do not
@@ -136,7 +136,7 @@ sign agreements and pay rent into escrow.
      The number used to be released only once a job was accepted — that gate
      was most of why the workflow existed — and is now always present.
    - **An artisan's whole app is one screen**, `ArtisanHomeScreen`: the
-     listing others find them by. They take no jobs through Landa and are paid
+     listing others find them by. They take no jobs through Oasis and are paid
      no money through it, so they have no bottom bar (`MainScaffold` renders
      one only for a role with more than one destination) and no Messages
      button (threads hang off an application or a tenancy; an artisan has
@@ -163,14 +163,14 @@ sign agreements and pay rent into escrow.
      the request while the socket is up. A backend with no `/ws/realtime/`
      gives you exactly the old behaviour, more slowly. New live features must
      keep that property.
-   - `LandaPopups` (`core/widgets/landa_popup_notification.dart`) is the
+   - `OasisPopups` (`core/widgets/oasis_popup_notification.dart`) is the
      in-app banner for things that happen *to* the user. It is not
-     `LandaToast`: a toast reports the result of something the user just did
+     `OasisToast`: a toast reports the result of something the user just did
      and is shown with that screen's context; a popup is an interruption with
      no screen in the call stack, so it reaches the overlay through
-     `landaRootOverlay`. A screen that would be reporting news the user can
-     already see calls `LandaPopups.suppress()` / `resume()`.
-   - `landaNavigatorKey` (`core/utils/landa_navigator.dart`) is the only
+     `oasisRootOverlay`. A screen that would be reporting news the user can
+     already see calls `OasisPopups.suppress()` / `resume()`.
+   - `oasisNavigatorKey` (`core/utils/oasis_navigator.dart`) is the only
      sanctioned global navigator, and only for callers with no context of
      their own. Do not reach for it from a screen.
 
@@ -193,9 +193,9 @@ sign agreements and pay rent into escrow.
      `debugCheckHasMediaQuery` on a context whose element has left the tree.
      `context.mounted` does not prevent it: it is checked before an `await`
      and the swap happens during one.
-   - `LandaErrorGuard` (`core/utils/landa_error_guard.dart`), installed first
+   - `OasisErrorGuard` (`core/utils/oasis_error_guard.dart`), installed first
      thing in `main()`, logs every framework and async error under
-     `[LANDA ERROR]` and replaces the release-mode red box with a small card,
+     `[OASIS ERROR]` and replaces the release-mode red box with a small card,
      so one broken widget no longer takes a page with it. It makes these bugs
      legible; it does not make them acceptable.
 

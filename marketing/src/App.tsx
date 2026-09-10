@@ -52,22 +52,34 @@ function AppNavigationIcon({
 
 function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <span className={`logo ${className}`} role="img" aria-label="Landa OS">
-      <span className="logo-base" />
-      <span className="logo-os" />
+    <span className={`logo ${className}`} role="img" aria-label="Oasis">
+      <img
+        className="logo-light"
+        src="/images/oasis-wordmark.webp"
+        width={382}
+        height={160}
+        alt=""
+      />
+      <img
+        className="logo-dark"
+        src="/images/oasis-wordmark-dark.webp"
+        width={382}
+        height={160}
+        alt=""
+      />
     </span>
   );
 }
 function Logo() {
   return (
-    <a href="#" aria-label="Landa OS home">
+    <a href="#" aria-label="Oasis home">
       <Wordmark />
     </a>
   );
 }
 function AppPreview() {
   return (
-    <figure className="app-figure" aria-label="Landa Discover preview">
+    <figure className="app-figure" aria-label="Oasis Discover preview">
       <div className="phone">
         <div className="phone-status">
           <span>9:41</span>
@@ -202,7 +214,7 @@ function Hero() {
               href="#landlords"
               onClick={() => track("Landlord interest", { source: "hero" })}
             >
-              Bring your property to Landa <ArrowUpRight size={19} />
+              Bring your property to Oasis <ArrowUpRight size={19} />
             </a>
             <a
               className="text-link"
@@ -258,7 +270,7 @@ function App() {
     setTheme(next);
     document.documentElement.dataset.theme = next;
     try {
-      localStorage.setItem("landa-theme", next);
+      localStorage.setItem("oasis-theme", next);
     } catch {}
   }
   return (
@@ -309,7 +321,7 @@ function Waitlist() {
         <br />
         is on its way.
       </h2>
-      <p>Be first to hear when Landa is ready for you.</p>
+      <p>Be first to hear when Oasis is ready for you.</p>
       <WaitlistForm />
       <noscript>
         <p>
@@ -398,10 +410,10 @@ function WaitlistForm() {
         {!endpoint
           ? "Waitlist registration is opening soon."
           : status === "success"
-            ? "You’re on the list. We’ll email you when Landa is ready."
+            ? "You’re on the list. We’ll email you when Oasis is ready."
             : status === "error"
               ? "We couldn’t save your email. Please try again."
-              : "By joining, you agree to receive Landa launch updates."}
+              : "By joining, you agree to receive Oasis launch updates."}
       </p>
     </div>
   );
@@ -418,7 +430,7 @@ function Footer() {
         <Logo />
         <span>Home starts with trust.</span>
       </div>
-      <nav className="footer-sections" aria-label="Explore Landa">
+      <nav className="footer-sections" aria-label="Explore Oasis">
         <a href="#landlords">For landlords</a>
         <a href="#product">For tenants</a>
         <a href="#money-and-stays">Stays & money</a>
@@ -427,7 +439,7 @@ function Footer() {
         <a href="#faq">FAQs & fees</a>
       </nav>
       <div className="footer-bottom">
-        <span>© {new Date().getFullYear()} Landa OS</span>
+        <span>© {new Date().getFullYear()} Oasis</span>
         <nav aria-label="Footer">
           {links.map(([label, url]) =>
             url ? (

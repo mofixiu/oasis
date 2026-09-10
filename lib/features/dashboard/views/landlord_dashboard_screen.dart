@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/network/load_failure.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../agreements/controllers/agreement_controller.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -98,10 +98,10 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen>
     if (!landlordCtrl.isLoading && failureMessage != null && !hasAnyContent) {
       return Scaffold(
         backgroundColor: AppTheme.pageBackground(context),
-        appBar: const LandaAppBar(),
+        appBar: const OasisAppBar(),
         body: RefreshIndicator(
           onRefresh: _loadAllData,
-          child: LandaErrorState(
+          child: OasisErrorState(
             message: failureMessage,
             isConnectionError: isOffline,
             onRetry: _loadAllData,
@@ -112,7 +112,7 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const LandaAppBar(),
+      appBar: const OasisAppBar(),
       body: RefreshIndicator(
         onRefresh: _loadAllData,
         child: SingleChildScrollView(
@@ -124,7 +124,7 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen>
               if (failureMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: LandaErrorBanner(
+                  child: OasisErrorBanner(
                     message: failureMessage,
                     isConnectionError: isOffline,
                     onRetry: _loadAllData,
@@ -255,14 +255,14 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen>
                                           .signAgreement(a.id);
                                       if (!context.mounted) return;
                                       if (success) {
-                                        LandaToast.success(
+                                        OasisToast.success(
                                           context,
                                           'Agreement executed. Rent payment is now unlocked.',
                                         );
                                         _loadAllData();
                                       } else if (agreementCtrl.errorMessage !=
                                           null) {
-                                        LandaToast.error(
+                                        OasisToast.error(
                                           context,
                                           agreementCtrl.errorMessage!,
                                         );
@@ -368,7 +368,7 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen>
               const SizedBox(height: 12),
               if (!landlordCtrl.hasLoaded(LandlordController.kPropertiesKey) ||
                   (landlordCtrl.isLoading && landlordCtrl.properties.isEmpty))
-                const LandaCardSkeleton()
+                const OasisCardSkeleton()
               else if (landlordCtrl.properties.isEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -377,7 +377,7 @@ class _LandlordDashboardScreenState extends State<LandlordDashboardScreen>
                     borderRadius: AppTheme.cornerLg,
                     border: Border.all(color: AppTheme.borderColor(context)),
                   ),
-                  child: LandaEmptyState(
+                  child: OasisEmptyState(
                     icon: Icons.apartment_outlined,
                     title: 'No properties yet',
                     message:
@@ -430,7 +430,7 @@ class _PortfolioBox extends StatelessWidget {
     final occupied = units.where((u) => u.isOccupied).length;
     final needingPhotos = properties.where((p) => p.needsPhotos).length;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),

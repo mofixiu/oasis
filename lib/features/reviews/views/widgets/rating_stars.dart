@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_haptics.dart';
+import '../../../../core/utils/oasis_haptics.dart';
 import '../../models/review_models.dart';
 
 /// Five stars, read-only, filled to [rating].
@@ -72,7 +72,7 @@ class RatingStarsInput extends StatelessWidget {
       for (var star = 1; star <= 5; star++)
         GestureDetector(
           onTap: () {
-            LandaHaptics.select();
+            OasisHaptics.select();
             onChanged(value == star ? 0 : star);
           },
           behavior: HitTestBehavior.opaque,

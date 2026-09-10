@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/widgets/landa_sheet.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/widgets/oasis_sheet.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../../agreements/controllers/agreement_controller.dart';
 import '../../../agreements/models/agreement_model.dart';
 import '../../../agreements/views/widgets/rent_plan_picker.dart';
 import '../../../properties/controllers/landlord_controller.dart';
 import '../../../properties/models/property_model.dart';
-import '../../../../core/utils/landa_input_formatters.dart';
+import '../../../../core/utils/oasis_input_formatters.dart';
 
 class InviteTenantModal extends StatefulWidget {
   const InviteTenantModal({super.key});
@@ -44,12 +44,12 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
   void _submitInvite() async {
     final contact = _emailPhoneController.text.trim();
     if (contact.isEmpty) {
-      LandaToast.error(context, 'Please enter tenant email or phone number.');
+      OasisToast.error(context, 'Please enter tenant email or phone number.');
       return;
     }
 
     if (_selectedProperty == null || _selectedUnit == null) {
-      LandaToast.error(context, 'Please select a property and unit.');
+      OasisToast.error(context, 'Please select a property and unit.');
       return;
     }
 
@@ -67,7 +67,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
       final agreement = await agreementController.createAgreement(
         unitId: _selectedUnit!.id,
         tenantId: contact,
-        rentAmount: LandaThousandsFormatter.digitsOf(_rentController.text),
+        rentAmount: OasisThousandsFormatter.digitsOf(_rentController.text),
         startDate: startDate,
         endDate: endDate,
         rules: _rulesController.text.trim(),
@@ -79,7 +79,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
 
       if (agreement != null) {
         Navigator.pop(context);
-        LandaToast.success(
+        OasisToast.success(
           context,
           'Invitation & Tenancy Agreement sent to $contact!',
         );
@@ -87,12 +87,12 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         final errorMsg =
             agreementController.errorMessage ??
             'Could not create invitation. Please check details.';
-        LandaToast.error(context, errorMsg);
+        OasisToast.error(context, errorMsg);
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      LandaToast.error(context, 'Error inviting tenant: $e');
+      OasisToast.error(context, 'Error inviting tenant: $e');
     }
   }
 
@@ -106,18 +106,18 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         ? const <UnitModel>[]
         : landlordCtrl.propertyUnits[_selectedProperty!.id] ?? const [];
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.person_add_alt_1_rounded,
       title: 'Invite tenant',
       subtitle: 'Send an invitation link and tenancy bridge agreement.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Send tenant invitation',
         icon: Icons.send_rounded,
         isLoading: _isSubmitting,
         onPressed: isSelectionValid ? _submitInvite : null,
       ),
       children: [
-        const LandaFieldLabel('Select property'),
+        const OasisFieldLabel('Select property'),
         DropdownButtonFormField<PropertyModel>(
           initialValue: _selectedProperty,
           isExpanded: true,
@@ -134,7 +134,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
             ),
           ),
           style: AppTheme.cardTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             prefixIcon: Icons.apartment_rounded,
           ),
@@ -154,7 +154,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         const SizedBox(height: 18),
 
         if (_selectedProperty != null) ...[
-          const LandaFieldLabel('Select unit'),
+          const OasisFieldLabel('Select unit'),
           if (units.isEmpty)
             _NoticeBanner(
               icon: Icons.info_outline_rounded,
@@ -177,7 +177,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
                 ),
               ),
               style: AppTheme.cardTitle(context),
-              decoration: landaInputDecoration(
+              decoration: oasisInputDecoration(
                 context,
                 prefixIcon: Icons.meeting_room_outlined,
               ),
@@ -185,7 +185,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
                 return DropdownMenuItem(
                   value: u,
                   child: Text(
-                    'Unit ${u.unitNumber} · ${LandaCurrency.format(u.rentAmount)}',
+                    'Unit ${u.unitNumber} · ${OasisCurrency.format(u.rentAmount)}',
                     overflow: TextOverflow.ellipsis,
                   ),
                 );
@@ -194,7 +194,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
                 setState(() {
                   _selectedUnit = val;
                   if (val != null && val.rentAmount.isNotEmpty) {
-                    _rentController.text = LandaThousandsFormatter.groupAmount(
+                    _rentController.text = OasisThousandsFormatter.groupAmount(
                       val.rentAmount,
                     );
                   }
@@ -204,12 +204,12 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
           const SizedBox(height: 18),
         ],
 
-        const LandaFieldLabel('Tenant email or phone'),
+        const OasisFieldLabel('Tenant email or phone'),
         TextField(
           controller: _emailPhoneController,
           keyboardType: TextInputType.emailAddress,
           style: AppTheme.cardTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'tenant@example.com or +234 801 234 5678',
             prefixIcon: Icons.alternate_email_rounded,
@@ -217,14 +217,14 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         ),
         const SizedBox(height: 18),
 
-        const LandaFieldLabel('Agreed rent amount'),
+        const OasisFieldLabel('Agreed rent amount'),
         TextField(
           controller: _rentController,
           keyboardType: TextInputType.number,
-          inputFormatters: const [LandaThousandsFormatter()],
+          inputFormatters: const [OasisThousandsFormatter()],
           style: AppTheme.cardTitle(context),
           onChanged: (_) => setState(() {}),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: '450,000',
             prefixIcon: Icons.payments_outlined,
@@ -239,10 +239,10 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         // Placed under the amount because it reads as a qualifier on it: the
         // figure above is what the tenant owes for the year, and this is how
         // they will be asked for it.
-        const LandaFieldLabel('How often rent is due'),
+        const OasisFieldLabel('How often rent is due'),
         RentPlanPicker(
           selected: _rentPlan,
-          annualRent: LandaThousandsFormatter.digitsOf(_rentController.text),
+          annualRent: OasisThousandsFormatter.digitsOf(_rentController.text),
           onChanged: (plan) => setState(() => _rentPlan = plan),
         ),
         const SizedBox(height: 20),
@@ -250,7 +250,7 @@ class _InviteTenantModalState extends State<InviteTenantModal> {
         _InviteSummary(
           property: _selectedProperty,
           unit: _selectedUnit,
-          rent: LandaThousandsFormatter.digitsOf(_rentController.text),
+          rent: OasisThousandsFormatter.digitsOf(_rentController.text),
           plan: _rentPlan,
         ),
       ],
@@ -312,7 +312,7 @@ class _InviteSummary extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${LandaCurrency.format(rent)} per year, '
+                        '${OasisCurrency.format(rent)} per year, '
                         '${plan.label.toLowerCase()} · 12-month bridge '
                         'agreement starting today.',
                         style: AppTheme.bodyText(context),

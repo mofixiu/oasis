@@ -12,12 +12,12 @@ import '../../features/notifications/models/notification_model.dart';
 import '../../features/notifications/views/notifications_screen.dart';
 import '../network/realtime_socket.dart';
 import '../utils/fade_page_route.dart';
-import '../utils/landa_navigator.dart';
-import '../widgets/landa_popup_notification.dart';
+import '../utils/oasis_navigator.dart';
+import '../widgets/oasis_popup_notification.dart';
 
 /// Turns socket frames into changes in the app.
 ///
-/// [RealtimeSocket] knows how to hold a connection and nothing about Landa;
+/// [RealtimeSocket] knows how to hold a connection and nothing about Oasis;
 /// the controllers know about messages and notifications and nothing about
 /// sockets. This is the seam between them, and it lives beside [SessionScope]
 /// for the same reason that does: it is composition-root wiring, not a
@@ -95,7 +95,7 @@ class RealtimeHub {
   void handleAuthChanged({required bool isAuthenticated}) {
     if (_hasSession == isAuthenticated) return;
     _hasSession = isAuthenticated;
-    if (!isAuthenticated) LandaPopups.clear();
+    if (!isAuthenticated) OasisPopups.clear();
     _sync();
   }
 
@@ -205,15 +205,15 @@ class RealtimeHub {
     // open.
     if (conversation == null || message.isSystem) return;
 
-    LandaPopups.show(
-      LandaPopup(
+    OasisPopups.show(
+      OasisPopup(
         title: conversation.counterparty.displayName,
         body: message.body,
         icon: Icons.forum_rounded,
         // One banner per thread, not per message: a host answering three
         // questions in a row is one interruption.
         collapseKey: 'conversation:$conversationId',
-        onTap: () => landaNavigatorKey.currentState?.push(
+        onTap: () => oasisNavigatorKey.currentState?.push(
           FadePageRoute(page: ConversationScreen(conversation: conversation)),
         ),
       ),
@@ -266,14 +266,14 @@ class RealtimeHub {
     // rather than the bell.
     if (isMessage && RealtimeSocket.instance.isConnected) return;
 
-    LandaPopups.show(
-      LandaPopup(
+    OasisPopups.show(
+      OasisPopup(
         title: notification.headline,
         body: notification.message,
         icon: notification.type.icon,
         accent: notification.type.accentColor,
         collapseKey: 'notification:${notification.type.name}',
-        onTap: () => landaNavigatorKey.currentState?.push(
+        onTap: () => oasisNavigatorKey.currentState?.push(
           FadePageRoute(
             page: isMessage
                 ? const ConversationsScreen()

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../controllers/fix_controller.dart';
 import '../models/fix_models.dart';
 import 'artisan_profile_sheet.dart';
@@ -15,8 +15,8 @@ import 'widgets/artisan_card.dart';
 /// The whole of an artisan's app.
 ///
 /// It used to be a job queue: requests arrived, the artisan accepted or
-/// declined them, sent a price, marked the work done, and Landa moved the
-/// money. API guide 18 removed all of it (§7B): Landa does not broker
+/// declined them, sent a price, marked the work done, and Oasis moved the
+/// money. API guide 18 removed all of it (§7B): Oasis does not broker
 /// repairs or artisan payments any more.
 ///
 /// What is left is one job, and it is worth stating plainly rather than
@@ -62,7 +62,7 @@ class _ArtisanHomeScreenState extends State<ArtisanHomeScreen>
       backgroundColor: AppTheme.pageBackground(context),
       // No Messages button: threads are landlord-to-tenant, and an artisan
       // has none. The bell stays: verification lands there.
-      appBar: const LandaAppBar(showMessages: false),
+      appBar: const OasisAppBar(showMessages: false),
       body: RefreshIndicator(
         onRefresh: _reload,
         child: _body(context, controller, profile),
@@ -76,14 +76,14 @@ class _ArtisanHomeScreenState extends State<ArtisanHomeScreen>
     ArtisanProfile? profile,
   ) {
     if (!controller.hasLoaded(FixController.kMyProfileKey) && profile == null) {
-      return const LandaSkeletonList(count: 2);
+      return const OasisSkeletonList(count: 2);
     }
 
     if (profile == null) {
       // The only screen this role has, so a failure here is the whole app
       // being blank. It gets the full state with a retry rather than a
       // banner over nothing.
-      return LandaErrorState(
+      return OasisErrorState(
         message:
             controller.errorMessage ??
             'Could not load your profile. Pull down to try again.',
@@ -103,7 +103,7 @@ class _ArtisanHomeScreenState extends State<ArtisanHomeScreen>
         const SizedBox(height: 4),
         Text(
           'This is what a landlord or tenant sees when they search your '
-          'trade. They call you directly. Landa does not take a cut and '
+          'trade. They call you directly. Oasis does not take a cut and '
           'does not handle the payment.',
           style: AppTheme.bodyText(context),
         ),
@@ -122,7 +122,7 @@ class _ArtisanHomeScreenState extends State<ArtisanHomeScreen>
 
         SizedBox(
           width: double.infinity,
-          child: LandaButton(
+          child: OasisButton(
             label: 'Edit your details',
             icon: Icons.edit_outlined,
             onPressed: _edit,
@@ -151,7 +151,7 @@ class _ArtisanHomeScreenState extends State<ArtisanHomeScreen>
           icon: Icons.handshake_outlined,
           title: 'You agree the work directly',
           body:
-              'Landa introduces you and stops there. The price, the timing '
+              'Oasis introduces you and stops there. The price, the timing '
               'and the payment are between you and whoever called.',
         ),
       ],
@@ -192,7 +192,7 @@ class _Completeness extends StatelessWidget {
       );
     }
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: onFix,
       pressedScale: 0.99,
       child: Container(

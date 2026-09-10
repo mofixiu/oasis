@@ -3,10 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/widgets/landa_app_bar.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/utils/landa_refresh.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_app_bar.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/utils/oasis_refresh.dart';
 import '../../agreements/controllers/agreement_controller.dart';
 import '../../agreements/models/agreement_group.dart';
 import '../../agreements/models/agreement_model.dart';
@@ -78,7 +78,7 @@ class _MyUnitScreenState extends State<MyUnitScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const LandaAppBar(showBackButton: true),
+      appBar: const OasisAppBar(showBackButton: true),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
         children: [
@@ -117,7 +117,7 @@ class _MyUnitScreenState extends State<MyUnitScreen>
           _Section(
             title: 'Your rent',
             rows: [
-              ('Rent', LandaCurrency.perYear(agreement.rentAmount)),
+              ('Rent', OasisCurrency.perYear(agreement.rentAmount)),
               if (agreement.plan != RentPlan.unknown)
                 ('Paid', agreement.plan.label),
               if (schedule != null) ('Next due', _nextDue(schedule)),
@@ -201,7 +201,7 @@ class _MyUnitScreenState extends State<MyUnitScreen>
           ],
 
           const SizedBox(height: 24),
-          LandaButton(
+          OasisButton(
             label: 'View agreement',
             icon: Icons.description_outlined,
             outlined: true,
@@ -218,7 +218,7 @@ class _MyUnitScreenState extends State<MyUnitScreen>
   }
 
   static String _nextDue(RentSchedule schedule) {
-    final amount = LandaCurrency.format(schedule.nextAmountDue);
+    final amount = OasisCurrency.format(schedule.nextAmountDue);
     if (schedule.isOverdue) return '$amount · overdue';
     final date = schedule.dueDate;
     if (date == null) return '$amount · due now';
@@ -303,7 +303,7 @@ class _PaymentRow extends StatelessWidget {
   const _PaymentRow({required this.payment});
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: () => showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -322,7 +322,7 @@ class _PaymentRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  LandaCurrency.format(payment.totalAmount),
+                  OasisCurrency.format(payment.totalAmount),
                   style: AppTheme.cardTitle(context),
                 ),
                 const SizedBox(height: 2),
@@ -349,7 +349,7 @@ class _PaymentRow extends StatelessWidget {
 
 /// The one thing a signed-but-unpaid tenant can do.
 ///
-/// Landa's guarantee is that rent is held in escrow until the tenant is in.
+/// Oasis's guarantee is that rent is held in escrow until the tenant is in.
 /// A tenancy that reads as active before any money has moved is the app
 /// undermining that on its own screens, which is what testers found: they
 /// signed for a yearly flat and the app treated them as moved in without a
@@ -434,7 +434,7 @@ class _FirstRentNotice extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 14),
-        LandaButton(
+        OasisButton(
           label: 'Pay the first rent',
           icon: Icons.shield_moon_outlined,
           onPressed: () => Navigator.push(

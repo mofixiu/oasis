@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_sheet.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_sheet.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../properties/controllers/landlord_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../models/broadcast_model.dart';
@@ -50,15 +50,15 @@ class _BroadcastComposerSheetState extends State<BroadcastComposerSheet> {
     final body = _bodyController.text.trim();
 
     if (title.isEmpty) {
-      LandaToast.error(context, 'Give your announcement a subject.');
+      OasisToast.error(context, 'Give your announcement a subject.');
       return;
     }
     if (body.isEmpty) {
-      LandaToast.error(context, 'Write what you want your tenants to know.');
+      OasisToast.error(context, 'Write what you want your tenants to know.');
       return;
     }
     if (_audience == BroadcastAudience.property && _propertyId == null) {
-      LandaToast.error(context, 'Choose which property this is for.');
+      OasisToast.error(context, 'Choose which property this is for.');
       return;
     }
 
@@ -72,7 +72,7 @@ class _BroadcastComposerSheetState extends State<BroadcastComposerSheet> {
     if (!mounted) return;
 
     if (broadcast == null) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not send that announcement. Try again in a moment.',
@@ -81,7 +81,7 @@ class _BroadcastComposerSheetState extends State<BroadcastComposerSheet> {
     }
 
     Navigator.pop(context);
-    LandaToast.success(
+    OasisToast.success(
       context,
       'Sent to ${broadcast.recipientCount} '
       '${broadcast.recipientCount == 1 ? 'tenant' : 'tenants'}.',
@@ -93,20 +93,20 @@ class _BroadcastComposerSheetState extends State<BroadcastComposerSheet> {
     final controller = context.watch<NotificationController>();
     final properties = context.watch<LandlordController>().properties;
 
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.campaign_outlined,
       title: 'Announce to tenants',
       subtitle:
           'This lands in their notifications. Keep it to things about the '
           'property: a water schedule, a gate code, a service visit.',
-      footer: LandaSheetButton(
+      footer: OasisSheetButton(
         label: 'Send announcement',
         icon: Icons.campaign_outlined,
         isLoading: controller.isSendingBroadcast,
         onPressed: _send,
       ),
       children: [
-        const LandaFieldLabel('Who gets this'),
+        const OasisFieldLabel('Who gets this'),
         Row(
           children: [
             for (final audience in BroadcastAudience.values) ...[
@@ -130,11 +130,11 @@ class _BroadcastComposerSheetState extends State<BroadcastComposerSheet> {
 
         if (_audience == BroadcastAudience.property) ...[
           const SizedBox(height: 18),
-          const LandaFieldLabel('Property'),
+          const OasisFieldLabel('Property'),
           DropdownButtonFormField<String>(
             initialValue: _propertyId,
             isExpanded: true,
-            decoration: landaInputDecoration(context, hint: 'Choose property'),
+            decoration: oasisInputDecoration(context, hint: 'Choose property'),
             items: [
               for (final property in properties)
                 DropdownMenuItem(
@@ -151,27 +151,27 @@ class _BroadcastComposerSheetState extends State<BroadcastComposerSheet> {
         ],
 
         const SizedBox(height: 18),
-        const LandaFieldLabel('Subject'),
+        const OasisFieldLabel('Subject'),
         TextField(
           controller: _titleController,
           maxLength: 80,
           textCapitalization: TextCapitalization.sentences,
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Water supply maintenance',
           ).copyWith(counterText: ''),
         ),
 
         const SizedBox(height: 18),
-        const LandaFieldLabel('Message'),
+        const OasisFieldLabel('Message'),
         TextField(
           controller: _bodyController,
           maxLines: 5,
           maxLength: 1000,
           textCapitalization: TextCapitalization.sentences,
           style: AppTheme.bodyText(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint:
                 'The borehole pump will be serviced on Saturday between 9am '
@@ -215,7 +215,7 @@ class _AudienceChip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     child: Container(
       height: 46,

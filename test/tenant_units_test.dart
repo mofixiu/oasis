@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/agreements/models/agreement_group.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/agreements/models/agreement_group.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
 
 /// A tenant with two homes was shown one, because the app asked
 /// `GET /tenant/assigned-unit/`, which the backend documents as returning

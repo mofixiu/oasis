@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_network_image.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_shimmer.dart';
-import '../../../core/widgets/landa_state_views.dart';
+import '../../../core/widgets/oasis_network_image.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/widgets/oasis_state_views.dart';
 import '../../dashboard/controllers/landlord_dashboard_controller.dart';
 import '../../dashboard/models/property_unit.dart';
 import '../../profile/views/profile_screen.dart';
@@ -33,7 +33,7 @@ class _UnitsScreenState extends State<UnitsScreen>
       appBar: AppBar(
         backgroundColor: AppTheme.pageBackground(context),
         elevation: 0,
-        title: Text('Landa OS', style: AppTheme.sectionTitle(context)),
+        title: Text('Oasis', style: AppTheme.sectionTitle(context)),
         centerTitle: true,
         actions: [
           GestureDetector(
@@ -57,13 +57,13 @@ class _UnitsScreenState extends State<UnitsScreen>
       body: Consumer<LandlordDashboardController>(
         builder: (context, controller, child) {
           if (controller.isLoading && controller.activeUnits == null) {
-            return const LandaSkeletonList(count: 4, hasThumbnail: true);
+            return const OasisSkeletonList(count: 4, hasThumbnail: true);
           }
 
           if (controller.hasError && controller.activeUnits == null) {
             return RefreshIndicator(
               onRefresh: controller.loadDashboardData,
-              child: LandaErrorState(
+              child: OasisErrorState(
                 message: controller.errorMessage,
                 isConnectionError: controller.errorIsConnection,
                 onRetry: controller.loadDashboardData,
@@ -98,7 +98,7 @@ class _UnitsScreenState extends State<UnitsScreen>
                   ),
                   if (controller.hasError) ...[
                     const SizedBox(height: 16),
-                    LandaErrorBanner(
+                    OasisErrorBanner(
                       message: controller.errorMessage!,
                       isConnectionError: controller.errorIsConnection,
                       onRetry: controller.loadDashboardData,
@@ -165,7 +165,7 @@ class _UnitsScreenState extends State<UnitsScreen>
 
                   // Units List
                   if (units.isEmpty)
-                    const LandaEmptyState(
+                    const OasisEmptyState(
                       icon: Icons.meeting_room_outlined,
                       title: 'No units yet',
                       message:
@@ -180,7 +180,7 @@ class _UnitsScreenState extends State<UnitsScreen>
                       itemCount: units.length,
                       itemBuilder: (context, index) {
                         final unit = units[index];
-                        return LandaEntrance(
+                        return OasisEntrance(
                           index: index,
                           child: _UnitCard(
                             unit: unit,
@@ -344,7 +344,7 @@ class _UnitCard extends StatelessWidget {
       child: Row(
         children: [
           // Unit Image
-          LandaNetworkImage(
+          OasisNetworkImage(
             url: unit.imagePath,
             width: 70,
             height: 70,

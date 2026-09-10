@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/core/theme/app_theme.dart';
-import 'package:landa_app/features/fix/models/fix_models.dart';
-import 'package:landa_app/features/fix/views/widgets/artisan_card.dart';
+import 'package:oasis_app/core/theme/app_theme.dart';
+import 'package:oasis_app/features/fix/models/fix_models.dart';
+import 'package:oasis_app/features/fix/views/widgets/artisan_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The artisan card is now the whole of Fix on screen. API guide 18 removed

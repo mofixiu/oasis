@@ -1,6 +1,6 @@
 /// Models for ratings and written reviews.
 ///
-/// One shape for every reviewable thing on Landa rather than a separate
+/// One shape for every reviewable thing on Oasis rather than a separate
 /// feature per surface. A guest rating a stay, a tenant rating the artisan who
 /// fixed their tap and a tenant rating the landlord they rented from are the
 /// same act: a star count, a sentence, and proof that the person writing it
@@ -128,7 +128,7 @@ class Review {
 
   /// Falls back to something addressable rather than an empty byline.
   String get displayAuthor =>
-      authorName.trim().isEmpty ? 'A Landa user' : authorName.trim();
+      authorName.trim().isEmpty ? 'An Oasis user' : authorName.trim();
 
   String get initial => displayAuthor[0].toUpperCase();
 

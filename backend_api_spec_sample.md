@@ -8,8 +8,8 @@
 ## 1. General API Conventions
 
 ### Base URLs
-- **Staging:** `https://staging-api.landaapp.com/api/v1`
-- **Production:** `https://api.landaapp.com/api/v1`
+- **Staging:** `https://staging-api.oasisapp.com/api/v1`
+- **Production:** `https://api.oasisapp.com/api/v1`
 
 ### Request & Response Format
 - All request and response bodies MUST be formatted in standard JSON (`application/json`).
@@ -233,7 +233,7 @@ Retrieves a paginated list of verified property listings with optional search fi
 ##### Request Example:
 ```http
 GET /api/v1/properties?city=Lagos&max_rent=500000000&page=1&per_page=10 HTTP/1.1
-Host: api.landaapp.com
+Host: api.oasisapp.com
 Authorization: Bearer eyJhbGciOiJIUzI1Ni...
 ```
 
@@ -255,7 +255,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1Ni...
       "bedrooms": 2,
       "bathrooms": 2,
       "is_verified": true,
-      "primary_image_url": "https://cdn.landaapp.com/properties/prop_a1b2c3d4/main.jpg",
+      "primary_image_url": "https://cdn.oasisapp.com/properties/prop_a1b2c3d4/main.jpg",
       "landlord": {
         "id": "usr_99812",
         "full_name": "Adebayo Properties Ltd",
@@ -294,7 +294,7 @@ Initializes a fraud-free escrow payment session for rent or security deposit via
   "lease_agreement_id": "agr_887123",
   "amount_kobo": 450000000,
   "payment_purpose": "ANNUAL_RENT",
-  "callback_url": "landaapp://payments/callback"
+  "callback_url": "oasisapp://payments/callback"
 }
 ```
 

@@ -8,10 +8,10 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/nigeria_locations.dart';
-import '../../../../core/widgets/landa_place_picker.dart';
-import '../../../../core/widgets/landa_pressable.dart';
-import '../../../../core/widgets/landa_sheet.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/widgets/oasis_place_picker.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
+import '../../../../core/widgets/oasis_sheet.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../../properties/controllers/landlord_controller.dart';
 import '../../../properties/views/widgets/add_units_modal.dart';
 import '../../../properties/models/property_model.dart';
@@ -44,7 +44,7 @@ const bool kAllowUploadedWalkthrough = true;
 /// recurring the next time somewhere new opens the property form.
 ///
 /// The third step exists because most landlords arriving here are not opening
-/// an empty building: they are moving one they already run onto Landa, with
+/// an empty building: they are moving one they already run onto Oasis, with
 /// tenants in it and rent already collected. Left out, their first act would
 /// be to list occupied flats as vacant, and the only way to correct it would
 /// be to invite their own tenants to apply for the homes they live in.
@@ -153,11 +153,11 @@ Future<PropertyPurpose?> _askPropertyPurpose(NavigatorState navigator) =>
     showModalBottomSheet<PropertyPurpose>(
       context: navigator.context,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => LandaSheet(
+      builder: (sheetContext) => OasisSheet(
         icon: Icons.help_outline_rounded,
         title: 'What are you listing this for?',
         subtitle:
-            'The two work differently, and Landa asks for different things '
+            'The two work differently, and Oasis asks for different things '
             'for each. You can add another property for the other kind any '
             'time.',
         children: [
@@ -209,7 +209,7 @@ Future<bool?> _askAboutExistingTenants(
 ) => showModalBottomSheet<bool>(
   context: navigator.context,
   backgroundColor: Colors.transparent,
-  builder: (sheetContext) => LandaSheet(
+  builder: (sheetContext) => OasisSheet(
     icon: Icons.groups_2_outlined,
     title: 'Anyone living here already?',
     subtitle:
@@ -219,7 +219,7 @@ Future<bool?> _askAboutExistingTenants(
     footer: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        LandaSheetButton(
+        OasisSheetButton(
           label: 'Yes, add my tenants',
           icon: Icons.person_add_alt_1_rounded,
           onPressed: () => Navigator.pop(sheetContext, true),
@@ -331,7 +331,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
       }
     } catch (error) {
       if (mounted) {
-        LandaToast.error(context, 'Unable to select photos: $error');
+        OasisToast.error(context, 'Unable to select photos: $error');
       }
     }
   }
@@ -347,7 +347,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
     final recordLive = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => LandaSheet(
+      builder: (sheetContext) => OasisSheet(
         icon: Icons.videocam_outlined,
         title: 'Add your walkthrough',
         subtitle:
@@ -355,13 +355,13 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
             'Choosing a file is for testing on a simulator, which has no '
             'camera.',
         children: [
-          LandaSheetChipButton(
+          OasisSheetChipButton(
             icon: Icons.fiber_manual_record_rounded,
             label: 'Record now',
             onTap: () => Navigator.pop(sheetContext, true),
           ),
           const SizedBox(height: 10),
-          LandaSheetChipButton(
+          OasisSheetChipButton(
             icon: Icons.folder_open_outlined,
             label: 'Choose a video file',
             onTap: () => Navigator.pop(sheetContext, false),
@@ -392,7 +392,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
       }
     } catch (error) {
       if (mounted) {
-        LandaToast.error(context, 'Unable to record video: $error');
+        OasisToast.error(context, 'Unable to record video: $error');
       }
     }
   }
@@ -411,7 +411,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
       final file = File(path);
       if (await file.length() > PropertyMediaLimits.maxVideoBytes) {
         if (mounted) {
-          LandaToast.error(
+          OasisToast.error(
             context,
             'Video must not exceed 50MB. Choose a shorter clip.',
           );
@@ -421,7 +421,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
       return file;
     } catch (error) {
       if (mounted) {
-        LandaToast.error(context, 'Unable to select video: $error');
+        OasisToast.error(context, 'Unable to select video: $error');
       }
       return null;
     }
@@ -438,7 +438,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
       }
     } catch (error) {
       if (mounted) {
-        LandaToast.error(context, 'Unable to select deed: $error');
+        OasisToast.error(context, 'Unable to select deed: $error');
       }
     }
   }
@@ -585,7 +585,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
   Future<void> _submitProperty() async {
     final problem = _problem;
     if (problem != null) {
-      LandaToast.error(context, problem);
+      OasisToast.error(context, problem);
       return;
     }
     final name = _nameCtrl.text.trim();
@@ -608,7 +608,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
     if (!mounted) return;
     setState(() => _isSubmitting = false);
     if (property == null) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         context.read<LandlordController>().errorMessage ??
             'Could not submit property.',
@@ -617,12 +617,12 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
     }
     // Handed back so the caller can carry straight on into the units sheet.
     Navigator.pop(context, property);
-    LandaToast.success(context, '${property.name} submitted for verification.');
+    OasisToast.success(context, '${property.name} submitted for verification.');
   }
 
   @override
   Widget build(BuildContext context) {
-    return LandaSheet(
+    return OasisSheet(
       icon: Icons.add_location_alt_rounded,
       title: _isShortLet ? 'Add a place for stays' : 'Add verified property',
       subtitle: _isShortLet
@@ -663,7 +663,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
             ),
             const SizedBox(height: 10),
           ],
-          LandaSheetButton(
+          OasisSheetButton(
             label: 'Submit property for review',
             icon: Icons.verified_outlined,
             color: AppTheme.primaryColor,
@@ -673,7 +673,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         ],
       ),
       children: [
-        const LandaFieldLabel('Property details'),
+        const OasisFieldLabel('Property details'),
         TextField(
           controller: _nameCtrl,
           textCapitalization: TextCapitalization.words,
@@ -682,7 +682,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
           // time something else changed.
           onChanged: (_) => setState(() {}),
           style: AppTheme.cardTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Property name',
             prefixIcon: Icons.home_work_outlined,
@@ -696,7 +696,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
           // writing to it from this point on.
           onChanged: (_) => setState(() => _addressFromPin = false),
           style: AppTheme.cardTitle(context),
-          decoration: landaInputDecoration(
+          decoration: oasisInputDecoration(
             context,
             hint: 'Street address',
             prefixIcon: Icons.signpost_outlined,
@@ -710,7 +710,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         Row(
           children: [
             Expanded(
-              child: LandaPickerField(
+              child: OasisPickerField(
                 value: _stateCtrl.text,
                 hint: 'State',
                 prefixIcon: Icons.map_outlined,
@@ -719,7 +719,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: LandaPickerField(
+              child: OasisPickerField(
                 value: _cityCtrl.text,
                 hint: 'City / area',
                 prefixIcon: Icons.location_city_rounded,
@@ -770,7 +770,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         ],
         const SizedBox(height: 24),
 
-        LandaFieldLabel(
+        OasisFieldLabel(
           'Property photos',
           trailing: _OptionalTag(
             label: _hasEnoughPhotos ? '${_photos.length} added' : 'Required',
@@ -817,7 +817,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: LandaPressable(
+                    child: OasisPressable(
                       onTap: () => setState(() => _photos.removeAt(index)),
                       pressedScale: 0.88,
                       child: Container(
@@ -844,7 +844,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         Row(
           children: [
             Expanded(
-              child: LandaSheetChipButton(
+              child: OasisSheetChipButton(
                 icon: Icons.photo_camera_outlined,
                 label: 'Camera',
                 onTap: () => _pickPhotos(ImageSource.camera),
@@ -852,7 +852,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: LandaSheetChipButton(
+              child: OasisSheetChipButton(
                 icon: Icons.photo_library_outlined,
                 label: 'Gallery',
                 onTap: () => _pickPhotos(ImageSource.gallery),
@@ -862,7 +862,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
         ),
         const SizedBox(height: 24),
 
-        LandaFieldLabel(
+        OasisFieldLabel(
           'Live ownership check',
           trailing: _OptionalTag(
             label: _hasOwnershipEvidence ? 'Complete' : 'Required',
@@ -944,7 +944,7 @@ class _AddPropertyModalState extends State<AddPropertyModal> {
 ///
 /// Tiles rather than a segmented control because each option needs a line of
 /// explanation: a landlord who has only ever let by the year does not know
-/// what Landa means by a short let, and picking the wrong one costs them the
+/// what Oasis means by a short let, and picking the wrong one costs them the
 /// whole form.
 class _PurposeTile extends StatelessWidget {
   final PropertyPurpose purpose;
@@ -957,7 +957,7 @@ class _PurposeTile extends StatelessWidget {
     final accent = purpose.isShortLet
         ? AppTheme.vacantColor
         : AppTheme.actionColor;
-    return LandaPressable(
+    return OasisPressable(
       onTap: onTap,
       pressedScale: 0.99,
       child: Container(
@@ -1067,7 +1067,7 @@ class _EvidenceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = complete ? AppTheme.successColor : AppTheme.actionColor;
-    return LandaPressable(
+    return OasisPressable(
       onTap: onTap,
       pressedScale: 0.99,
       child: Container(

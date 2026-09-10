@@ -3,9 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/widgets/landa_pressable.dart';
-import '../../../../core/widgets/landa_toast.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
+import '../../../../core/widgets/oasis_toast.dart';
 import '../../../agreements/models/agreement_model.dart';
 import '../../../agreements/views/tenancy_agreement_modal.dart';
 import '../../../vault/controllers/vault_controller.dart';
@@ -13,7 +13,7 @@ import '../../../vault/views/vault_pin_sheet.dart';
 import '../../../vault/views/widgets/vault_balance_card.dart';
 import '../../controllers/payment_controller.dart';
 import '../payment_receipt_modal.dart';
-import '../../../../core/widgets/landa_busy.dart';
+import '../../../../core/widgets/oasis_busy.dart';
 
 /// One rent bill: what it costs, when it is due, and how to settle it.
 ///
@@ -82,7 +82,7 @@ class RentDueCard extends StatelessWidget {
                 ),
               ),
               Text(
-                LandaCurrency.format(amountDue),
+                OasisCurrency.format(amountDue),
                 style: AppTheme.cardTitle(context, color: AppTheme.actionColor),
               ),
             ],
@@ -147,20 +147,20 @@ class RentDueCard extends StatelessWidget {
       ];
     }
 
-    // Money already inside Landa settles in one tap and no checkout, so when
+    // Money already inside Oasis settles in one tap and no checkout, so when
     // the vault covers the bill, that is the offer, with the card route kept
     // as a quiet alternative rather than removed.
     if (vaultCovers) {
       return [
         _CardButton(
-          label: 'Pay ${LandaCurrency.format(amountDue)} from vault',
+          label: 'Pay ${OasisCurrency.format(amountDue)} from vault',
           icon: Icons.account_balance_wallet_outlined,
           isLoading: isPaying,
           onPressed: isPaying ? null : () => _payFromVault(context, amountDue),
         ),
         const SizedBox(height: 8),
         Center(
-          child: LandaPressable(
+          child: OasisPressable(
             onTap: () => _payWithCard(context),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
@@ -221,9 +221,9 @@ class RentDueCard extends StatelessWidget {
     // never held anywhere afterwards.
     final pin = await promptVaultPin(
       context,
-      title: 'Confirm ${LandaCurrency.format(amountDue)}',
+      title: 'Confirm ${OasisCurrency.format(amountDue)}',
       subtitle: 'Enter your vault PIN to move this rent into escrow.',
-      actionLabel: 'Pay ${LandaCurrency.format(amountDue)}',
+      actionLabel: 'Pay ${OasisCurrency.format(amountDue)}',
     );
     if (!context.mounted || pin == null) return;
 
@@ -244,7 +244,7 @@ class RentDueCard extends StatelessWidget {
       final vault = context.read<VaultController>();
       await vault.refreshPinStatusAfterFailedAttempt();
       if (!context.mounted) return;
-      LandaToast.error(
+      OasisToast.error(
         context,
         vault.describeFailedAttempt(
           payments.errorMessage ??
@@ -257,7 +257,7 @@ class RentDueCard extends StatelessWidget {
     // Receipt first, refresh second. The refresh takes this card out of the
     // tree, rent is no longer due, so anything shown after it would be
     // shown from a dead context and silently skipped.
-    LandaToast.success(context, 'Rent paid and held in escrow.');
+    OasisToast.success(context, 'Rent paid and held in escrow.');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -292,15 +292,15 @@ class RentDueCard extends StatelessWidget {
     // close second, and better than sending the tenant to a blank amount.
     final shortfall =
         quotedShortfall ??
-        LandaCurrency.subtract(amountDue, vault.availableBalance) ??
+        OasisCurrency.subtract(amountDue, vault.availableBalance) ??
         amountDue;
     final unitLabel = agreement.unitNumber.isEmpty
         ? 'rent'
         : 'rent · Unit ${agreement.unitNumber}';
 
-    LandaToast.error(
+    OasisToast.error(
       context,
-      'Your vault is ${LandaCurrency.format(shortfall)} short of this rent. '
+      'Your vault is ${OasisCurrency.format(shortfall)} short of this rent. '
       'Nothing has been charged.',
     );
 
@@ -406,12 +406,12 @@ class _SavingProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final savedKobo = LandaCurrency.minorUnits(saved) ?? 0;
-    final targetKobo = LandaCurrency.minorUnits(target) ?? 0;
+    final savedKobo = OasisCurrency.minorUnits(saved) ?? 0;
+    final targetKobo = OasisCurrency.minorUnits(target) ?? 0;
     if (targetKobo <= 0) return const SizedBox.shrink();
 
     final fraction = (savedKobo / targetKobo).clamp(0.0, 1.0);
-    final remaining = LandaCurrency.subtract(target, saved);
+    final remaining = OasisCurrency.subtract(target, saved);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,8 +427,8 @@ class _SavingProgress extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          '${LandaCurrency.format(saved)} saved · '
-          '${LandaCurrency.format(remaining ?? target)} to go',
+          '${OasisCurrency.format(saved)} saved · '
+          '${OasisCurrency.format(remaining ?? target)} to go',
           style: AppTheme.labelText(
             context,
             color: AppTheme.secondaryTextColor(context),
@@ -475,7 +475,7 @@ class _CardButton extends StatelessWidget {
           : ElevatedButton.icon(
               onPressed: onPressed,
               icon: isLoading
-                  ? const LandaBusyDots(color: Colors.white)
+                  ? const OasisBusyDots(color: Colors.white)
                   : Icon(icon, size: 18, color: foreground),
               label: Text(label, style: _labelStyle(foreground)),
               style: ElevatedButton.styleFrom(

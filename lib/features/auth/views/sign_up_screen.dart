@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../fix/models/fix_models.dart';
 import '../controllers/auth_controller.dart';
 import '../models/user_model.dart';
 import 'widgets/auth_text_field.dart';
 import 'sign_in_screen.dart';
 import 'identity_verification_screen.dart';
-import '../../../core/widgets/landa_busy.dart';
+import '../../../core/widgets/oasis_busy.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -64,7 +64,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || phone.isEmpty || password.isEmpty) {
-      LandaToast.error(context, 'Please fill in all fields.');
+      OasisToast.error(context, 'Please fill in all fields.');
       return;
     }
 
@@ -73,7 +73,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     // app not working rather than a field they skipped.
     final location = _locationController.text.trim();
     if (_isArtisan && location.isEmpty) {
-      LandaToast.error(context, 'Tell tenants where you work.');
+      OasisToast.error(context, 'Tell tenants where you work.');
       return;
     }
 
@@ -81,7 +81,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (_isArtisan &&
         _experienceController.text.trim().isNotEmpty &&
         (experience == null || experience < 0)) {
-      LandaToast.error(context, 'Years of experience must be a whole number.');
+      OasisToast.error(context, 'Years of experience must be a whole number.');
       return;
     }
 
@@ -112,7 +112,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       // exists, but nothing in the app works until identity verification
       // clears, and for an artisan in particular, "created successfully"
       // read as "you are live and can be hired", which is not true yet.
-      LandaToast.success(
+      OasisToast.success(
         context,
         _isArtisan
             ? 'Account created. Verify your identity to start taking jobs.'
@@ -124,7 +124,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         (route) => false,
       );
     } else if (auth.errorMessage != null) {
-      LandaToast.error(context, auth.errorMessage!);
+      OasisToast.error(context, auth.errorMessage!);
     }
   }
 
@@ -166,8 +166,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   children: [
                     Image.asset(
                       AppTheme.isDarkMode(context)
-                          ? 'assets/images/logo_wordmark_light.png'
-                          : 'assets/images/newlogonobackground.png',
+                          ? 'assets/images/oasis_wordmark_dark.png'
+                          : 'assets/images/oasis_wordmark.png',
                       height: 44,
                       fit: BoxFit.contain,
                     ),
@@ -181,7 +181,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Secure access to Landa OS real estate platform.',
+                      'Secure access to Oasis real estate platform.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
@@ -357,7 +357,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
-                                            LandaBusyDots(color: Colors.white),
+                                            OasisBusyDots(color: Colors.white),
                                             SizedBox(width: 12),
                                             Text(
                                               'Creating account...',

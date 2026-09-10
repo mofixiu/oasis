@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/features/agreements/controllers/agreement_controller.dart';
-import 'package:landa_app/features/agreements/services/agreement_service.dart';
-import 'package:landa_app/features/auth/models/user_model.dart';
-import 'package:landa_app/features/payouts/controllers/payout_controller.dart';
-import 'package:landa_app/features/payouts/models/payout_models.dart';
-import 'package:landa_app/features/payouts/services/payout_service.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/features/agreements/controllers/agreement_controller.dart';
+import 'package:oasis_app/features/agreements/services/agreement_service.dart';
+import 'package:oasis_app/features/auth/models/user_model.dart';
+import 'package:oasis_app/features/payouts/controllers/payout_controller.dart';
+import 'package:oasis_app/features/payouts/models/payout_models.dart';
+import 'package:oasis_app/features/payouts/services/payout_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

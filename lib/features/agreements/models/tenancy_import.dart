@@ -1,13 +1,13 @@
 import 'agreement_model.dart';
 
-/// One tenancy a landlord already has, being recorded in Landa for the first
+/// One tenancy a landlord already has, being recorded in Oasis for the first
 /// time.
 ///
 /// This is not an invitation to rent somewhere. The person is already living
 /// in the unit, the money was already agreed, and often a term is already part
 /// paid, so the agreement written from this row starts in the past and the
 /// app has to say what is already settled, or the tenant's first sight of
-/// Landa is a screen telling them they owe rent they paid months ago.
+/// Oasis is a screen telling them they owe rent they paid months ago.
 class TenancyImportRow {
   final String unitId;
 
@@ -71,7 +71,7 @@ class TenancyImportRow {
     'end_date': isoDate(endDate),
     'rules': rules.trim(),
     if (rentPlan.apiValue != null) 'rent_plan': rentPlan.apiValue,
-    // Marks this as a tenancy that predates Landa, so the backend can execute
+    // Marks this as a tenancy that predates Oasis, so the backend can execute
     // it without pretending the signatures happened here.
     'is_existing_tenancy': true,
     if (rentAlreadyPaid) 'rent_paid_until': isoDate(endDate),
@@ -93,7 +93,7 @@ class TenancyImportOutcome {
   /// Why this row failed, already presentable. Null on success.
   final String? error;
 
-  /// Whether the tenant had no Landa account and was invited to claim one.
+  /// Whether the tenant had no Oasis account and was invited to claim one.
   ///
   /// Only ever true against a backend that implements the import endpoint:
   /// `POST /agreements/` rejects an unknown tenant outright, which is the gap

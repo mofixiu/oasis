@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/core/theme/app_theme.dart';
-import 'package:landa_app/core/widgets/landa_sheet.dart';
-import 'package:landa_app/features/fix/controllers/fix_controller.dart';
-import 'package:landa_app/features/properties/controllers/landlord_controller.dart';
-import 'package:landa_app/features/properties/models/property_model.dart';
+import 'package:oasis_app/core/theme/app_theme.dart';
+import 'package:oasis_app/core/widgets/oasis_sheet.dart';
+import 'package:oasis_app/features/fix/controllers/fix_controller.dart';
+import 'package:oasis_app/features/properties/controllers/landlord_controller.dart';
+import 'package:oasis_app/features/properties/models/property_model.dart';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:landa_app/core/network/api_client.dart';
-import 'package:landa_app/core/network/api_constants.dart';
-import 'package:landa_app/core/network/auth_token_storage.dart';
-import 'package:landa_app/features/agreements/controllers/agreement_controller.dart';
-import 'package:landa_app/features/agreements/services/agreement_service.dart';
-import 'package:landa_app/features/dashboard/views/widgets/add_property_modal.dart';
-import 'package:landa_app/features/dashboard/views/widgets/move_in_tenants_modal.dart';
-import 'package:landa_app/features/properties/views/widgets/add_units_modal.dart';
+import 'package:oasis_app/core/network/api_client.dart';
+import 'package:oasis_app/core/network/api_constants.dart';
+import 'package:oasis_app/core/network/auth_token_storage.dart';
+import 'package:oasis_app/features/agreements/controllers/agreement_controller.dart';
+import 'package:oasis_app/features/agreements/services/agreement_service.dart';
+import 'package:oasis_app/features/dashboard/views/widgets/add_property_modal.dart';
+import 'package:oasis_app/features/dashboard/views/widgets/move_in_tenants_modal.dart';
+import 'package:oasis_app/features/properties/views/widgets/add_units_modal.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -98,8 +98,8 @@ void main() {
     // Nothing typed yet: a backdated agreement with no move-in date is the
     // exact mistake this sheet exists to prevent, so the button must not be
     // live until the row says when the tenancy began.
-    final button = tester.widget<LandaSheetButton>(
-      find.byType(LandaSheetButton),
+    final button = tester.widget<OasisSheetButton>(
+      find.byType(OasisSheetButton),
     );
     expect(button.onPressed, isNull);
     expect(find.text('Record this tenancy'), findsOneWidget);
@@ -114,7 +114,7 @@ void main() {
       // Two empty flats, because this test fills two rows.
       bothVacant: true,
       // No import route on this backend, so the app writes one agreement per
-      // row, and Unit A2's tenant has no Landa account, which is exactly the
+      // row, and Unit A2's tenant has no Oasis account, which is exactly the
       // gap §1.4 of the v6 spec exists to close.
       client: MockClient((request) async {
         if (request.url.path.endsWith('/tenancies/import/')) {

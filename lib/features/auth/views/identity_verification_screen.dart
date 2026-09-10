@@ -5,13 +5,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../../core/widgets/main_scaffold.dart';
 import '../controllers/auth_controller.dart';
 import '../models/user_model.dart';
-import '../../../core/widgets/landa_busy.dart';
+import '../../../core/widgets/oasis_busy.dart';
 
 class IdentityVerificationScreen extends StatefulWidget {
   const IdentityVerificationScreen({super.key});
@@ -72,19 +72,19 @@ class _IdentityVerificationScreenState
       }
     } catch (e) {
       if (!mounted) return;
-      LandaToast.error(context, 'Error picking image: $e');
+      OasisToast.error(context, 'Error picking image: $e');
     }
   }
 
   Future<void> _submitVerification() async {
     final nin = _ninController.text.trim();
     if (!RegExp(r'^\d{11}$').hasMatch(nin)) {
-      LandaToast.error(context, 'NIN must contain exactly 11 digits.');
+      OasisToast.error(context, 'NIN must contain exactly 11 digits.');
       return;
     }
 
     if (_selfieFile == null) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'Please select or capture a selfie for verification.',
       );
@@ -93,7 +93,7 @@ class _IdentityVerificationScreenState
 
     if (await _selfieFile!.length() > 5 * 1024 * 1024) {
       if (mounted) {
-        LandaToast.error(context, 'Selfie image must not exceed 5MB.');
+        OasisToast.error(context, 'Selfie image must not exceed 5MB.');
       }
       return;
     }
@@ -124,13 +124,13 @@ class _IdentityVerificationScreenState
     if (status == VerificationStatus.verified) {
       _continueToProduct();
     } else if (status == VerificationStatus.pending) {
-      LandaToast.success(
+      OasisToast.success(
         context,
         'Verification request received. We’ll unlock your account once it is verified.',
       );
       _startPolling();
     } else if (status == VerificationStatus.failed) {
-      LandaToast.error(
+      OasisToast.error(
         context,
         'Verification could not be completed. Please review your details and try again.',
       );
@@ -144,10 +144,10 @@ class _IdentityVerificationScreenState
       if (accepted) {
         await _attemptVerification(nin);
       } else if (auth.errorMessage != null) {
-        LandaToast.error(context, auth.errorMessage!);
+        OasisToast.error(context, auth.errorMessage!);
       }
     } else if (auth.errorMessage != null) {
-      LandaToast.error(context, auth.errorMessage!);
+      OasisToast.error(context, auth.errorMessage!);
     }
   }
 
@@ -183,7 +183,7 @@ class _IdentityVerificationScreenState
       } else if (status == VerificationStatus.failed) {
         _verificationPoller?.cancel();
         setState(() => _isPolling = false);
-        LandaToast.error(
+        OasisToast.error(
           context,
           'Verification could not be completed. Please submit a new request.',
         );
@@ -201,7 +201,7 @@ class _IdentityVerificationScreenState
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
     _verificationPoller?.cancel();
-    LandaToast.success(context, 'Identity verified successfully.');
+    OasisToast.success(context, 'Identity verified successfully.');
     Navigator.pushAndRemoveUntil(
       context,
       FadePageRoute(page: const MainScaffold()),
@@ -243,7 +243,7 @@ class _IdentityVerificationScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  LandaEntrance(
+                  OasisEntrance(
                     index: 0,
                     child: _VerificationHeader(
                       accent: accent,
@@ -257,7 +257,7 @@ class _IdentityVerificationScreenState
                   // a stock Material warning.
                   if (isPending) ...[
                     const SizedBox(height: 20),
-                    LandaEntrance(
+                    OasisEntrance(
                       index: 1,
                       child: Container(
                         padding: const EdgeInsets.all(16),
@@ -270,7 +270,7 @@ class _IdentityVerificationScreenState
                         ),
                         child: Row(
                           children: [
-                            const LandaBusyDots(color: AppTheme.primaryColor),
+                            const OasisBusyDots(color: AppTheme.primaryColor),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Text(
@@ -289,7 +289,7 @@ class _IdentityVerificationScreenState
                   ],
 
                   const SizedBox(height: 24),
-                  LandaEntrance(
+                  OasisEntrance(
                     index: 2,
                     child: _StepCard(
                       step: '1',
@@ -346,7 +346,7 @@ class _IdentityVerificationScreenState
                   ),
 
                   const SizedBox(height: 16),
-                  LandaEntrance(
+                  OasisEntrance(
                     index: 3,
                     child: _StepCard(
                       step: '2',
@@ -397,7 +397,7 @@ class _IdentityVerificationScreenState
                           Row(
                             children: [
                               Expanded(
-                                child: LandaButton(
+                                child: OasisButton(
                                   label: 'Camera',
                                   icon: Icons.camera_alt_outlined,
                                   outlined: true,
@@ -407,7 +407,7 @@ class _IdentityVerificationScreenState
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: LandaButton(
+                                child: OasisButton(
                                   label: 'Gallery',
                                   icon: Icons.photo_library_outlined,
                                   outlined: true,
@@ -423,10 +423,10 @@ class _IdentityVerificationScreenState
                   ),
 
                   const SizedBox(height: 28),
-                  LandaEntrance(
+                  OasisEntrance(
                     index: 4,
                     child: Consumer<AuthController>(
-                      builder: (context, auth, _) => LandaButton(
+                      builder: (context, auth, _) => OasisButton(
                         label: isPending
                             ? 'Verification pending'
                             : isAlreadyVerified
@@ -447,9 +447,9 @@ class _IdentityVerificationScreenState
 
                   if (isAlreadyVerified) ...[
                     const SizedBox(height: 12),
-                    LandaEntrance(
+                    OasisEntrance(
                       index: 5,
-                      child: LandaButton(
+                      child: OasisButton(
                         label: 'Continue to dashboard',
                         outlined: true,
                         color: AppTheme.profileColor,
@@ -522,7 +522,7 @@ class _VerificationHeader extends StatelessWidget {
       const SizedBox(height: 8),
       Text(
         isVerified
-            ? 'You have full access to Landa.'
+            ? 'You have full access to Oasis.'
             : isPending
             ? 'This usually takes a moment.'
             : 'A one-time check that unlocks properties, agreements and rent payments.',
@@ -716,7 +716,7 @@ class _VerificationConsentSheet extends StatelessWidget {
           ),
           const _ConsentPoint(
             text:
-                'This data is used solely to unlock Landa product features and is not shared for any other purpose.',
+                'This data is used solely to unlock Oasis product features and is not shared for any other purpose.',
           ),
           const SizedBox(height: 20),
           SizedBox(

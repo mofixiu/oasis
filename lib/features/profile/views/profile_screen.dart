@@ -5,11 +5,11 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/fade_page_route.dart';
-import '../../../core/utils/landa_haptics.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_entrance.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_haptics.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_entrance.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../agreements/controllers/agreement_controller.dart';
 import '../../agreements/views/my_agreements_screen.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -94,7 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           Row(
             children: [
               Expanded(
-                child: LandaButton(
+                child: OasisButton(
                   label: 'Cancel',
                   outlined: true,
                   color: AppTheme.profileColor,
@@ -103,7 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: LandaButton(
+                child: OasisButton(
                   label: 'Log out',
                   color: AppTheme.logoutColor,
                   onPressed: () => Navigator.pop(dialogContext, true),
@@ -131,7 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _copy(BuildContext context, String label, String value) async {
     await Clipboard.setData(ClipboardData(text: value));
     if (!context.mounted) return;
-    LandaToast.success(context, '$label copied');
+    OasisToast.success(context, '$label copied');
   }
 
   @override
@@ -184,7 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
             sliver: SliverList.list(
               children: [
-                LandaEntrance(
+                OasisEntrance(
                   index: 0,
                   child: _IdentityHero(
                     displayName: displayName,
@@ -195,13 +195,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
                 if (status != VerificationStatus.verified) ...[
                   const SizedBox(height: 14),
-                  LandaEntrance(
+                  OasisEntrance(
                     index: 1,
                     child: _VerificationCallout(status: status),
                   ),
                 ],
                 const SizedBox(height: 24),
-                LandaEntrance(
+                OasisEntrance(
                   index: 2,
                   child: _StatsStrip(
                     tiles: isLandlord
@@ -216,7 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ),
                 const SizedBox(height: 28),
-                LandaEntrance(
+                OasisEntrance(
                   index: 3,
                   child: _Section(
                     label: 'ACCOUNT',
@@ -256,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 // landlord's profile within a year.
                 const SizedBox(height: 24),
                 if (!role.isArtisan)
-                  LandaEntrance(
+                  OasisEntrance(
                     index: 4,
                     child: _Section(
                       label: 'RECORDS',
@@ -295,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 // who saves rent here needs the same bank account and the same
                 // PIN to get it back out again.
                 const SizedBox(height: 24),
-                LandaEntrance(
+                OasisEntrance(
                   index: 5,
                   child: _Section(
                     label: 'MONEY',
@@ -326,7 +326,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ),
                 const SizedBox(height: 24),
-                LandaEntrance(
+                OasisEntrance(
                   index: 6,
                   child: _Section(
                     label: 'PREFERENCES',
@@ -357,11 +357,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                             onChanged: notifications.isSavingPreferences
                                 ? null
                                 : (value) async {
-                                    LandaHaptics.select();
+                                    OasisHaptics.select();
                                     final saved = await notifications
                                         .setEarlyRentReminderEmails(value);
                                     if (!context.mounted || saved) return;
-                                    LandaToast.error(
+                                    OasisToast.error(
                                       context,
                                       notifications.errorMessage ??
                                           'Could not save that just now. Try '
@@ -378,7 +378,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         // is actually looking at.
                         value: AppTheme.isDarkMode(context),
                         onChanged: (value) {
-                          LandaHaptics.select();
+                          OasisHaptics.select();
                           themeController.setDarkMode(value);
                         },
                         isLast: true,
@@ -387,9 +387,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ),
                 const SizedBox(height: 32),
-                LandaEntrance(
+                OasisEntrance(
                   index: 7,
-                  child: LandaButton(
+                  child: OasisButton(
                     label: 'Log out',
                     icon: Icons.logout_rounded,
                     outlined: true,
@@ -637,7 +637,7 @@ class _VerificationCallout extends StatelessWidget {
     final accent = _statusColor(status);
     final pending = status == VerificationStatus.pending;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: pending
           ? null
           : () => Navigator.push(
@@ -882,7 +882,7 @@ class _DetailRow extends StatelessWidget {
         if (onTap == null)
           row
         else
-          LandaPressable(
+          OasisPressable(
             onTap: onTap,
             // Rows sit flush against each other, so a scale dip on the whole
             // row would visibly overlap its neighbours.
@@ -974,7 +974,7 @@ class _BrandFooter extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              'SECURED BY LANDA OS',
+              'SECURED BY OASIS',
               style: AppTheme.labelText(context).copyWith(letterSpacing: 1.2),
             ),
           ],

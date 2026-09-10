@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_input_formatters.dart';
+import '../../../core/utils/oasis_input_formatters.dart';
 import '../../../core/utils/nigeria_locations.dart';
-import '../../../core/widgets/landa_place_picker.dart';
+import '../../../core/widgets/oasis_place_picker.dart';
 import '../models/marketplace_models.dart';
 
 /// Collects the `city`, `state`, `min_rent`, `max_rent`, `bedrooms`, and
@@ -31,10 +31,10 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
   late String? _state = NigeriaLocations.canonicalState(widget.initial.state);
 
   late final _minRentController = TextEditingController(
-    text: LandaThousandsFormatter.groupAmount(widget.initial.minRent),
+    text: OasisThousandsFormatter.groupAmount(widget.initial.minRent),
   );
   late final _maxRentController = TextEditingController(
-    text: LandaThousandsFormatter.groupAmount(widget.initial.maxRent),
+    text: OasisThousandsFormatter.groupAmount(widget.initial.maxRent),
   );
   late int? _bedrooms = widget.initial.bedrooms;
   late int? _bathrooms = widget.initial.bathrooms;
@@ -60,9 +60,9 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
   // `int.tryParse('450,000')` is null, which would quietly disable the
   // inverted-range check rather than failing loudly.
   int? get _minRent =>
-      int.tryParse(LandaThousandsFormatter.digitsOf(_minRentController.text));
+      int.tryParse(OasisThousandsFormatter.digitsOf(_minRentController.text));
   int? get _maxRent =>
-      int.tryParse(LandaThousandsFormatter.digitsOf(_maxRentController.text));
+      int.tryParse(OasisThousandsFormatter.digitsOf(_maxRentController.text));
 
   Future<void> _pickState() async {
     final picked = await openStatePicker(context, selected: _state);
@@ -103,8 +103,8 @@ class _MarketplaceFilterSheetState extends State<MarketplaceFilterSheet> {
       MarketplaceFilters(
         city: _city?.trim() ?? '',
         state: _state?.trim() ?? '',
-        minRent: LandaThousandsFormatter.digitsOf(_minRentController.text),
-        maxRent: LandaThousandsFormatter.digitsOf(_maxRentController.text),
+        minRent: OasisThousandsFormatter.digitsOf(_minRentController.text),
+        maxRent: OasisThousandsFormatter.digitsOf(_maxRentController.text),
         bedrooms: _bedrooms,
         bathrooms: _bathrooms,
       ),
@@ -285,7 +285,7 @@ class _FilterField extends StatelessWidget {
           // minus sign from ever reaching the query string, rather than
           // catching either after the fact.
           inputFormatters: numeric
-              ? const [LandaThousandsFormatter()]
+              ? const [OasisThousandsFormatter()]
               : null,
           style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
@@ -414,7 +414,7 @@ class _PickerFilter extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 6),
-      LandaPickerField(value: value, hint: hint, onTap: onTap),
+      OasisPickerField(value: value, hint: hint, onTap: onTap),
     ],
   );
 }

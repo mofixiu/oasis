@@ -1,4 +1,4 @@
-# Landa OS — Backend API Resolution & Feature Fix Guide
+# Oasis — Backend API Resolution & Feature Fix Guide
 
 This document is for the **Backend Developer**. It details API issue resolutions, backend fixes, and serializer adjustments needed for staging API endpoints at `https://landa-os-staging.onrender.com/api/users/`.
 

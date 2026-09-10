@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/utils/landa_currency.dart';
+import '../../../core/utils/oasis_currency.dart';
 
 /// How much of the vault the tenant is putting towards each unit.
 ///
@@ -99,17 +99,17 @@ class VaultAllocations {
     final planned = _byAgreement[agreementId] ?? 0;
     if (planned <= 0) return '0.00';
 
-    final available = LandaCurrency.minorUnits(availableBalance) ?? 0;
+    final available = OasisCurrency.minorUnits(availableBalance) ?? 0;
     if (available <= 0) return '0.00';
     if (totalMinorUnits <= available) {
-      return LandaCurrency.fromMinorUnits(planned);
+      return OasisCurrency.fromMinorUnits(planned);
     }
 
     // Over-allocated: the balance has fallen below the sum of the plans, so
     // each is scaled back by the same proportion. Trimming one to zero while
     // another stayed whole would be an arbitrary choice about whose savings
     // disappeared.
-    return LandaCurrency.fromMinorUnits(
+    return OasisCurrency.fromMinorUnits(
       (planned * available) ~/ totalMinorUnits,
     );
   }
@@ -117,11 +117,11 @@ class VaultAllocations {
   /// Whether the plans together promise more than the vault holds: true after
   /// money set aside for one thing has been spent on another.
   bool exceedsBalance(String availableBalance) =>
-      totalMinorUnits > (LandaCurrency.minorUnits(availableBalance) ?? 0);
+      totalMinorUnits > (OasisCurrency.minorUnits(availableBalance) ?? 0);
 
   /// Adds [amount] to what is set aside for [agreementId].
   VaultAllocations plus(String agreementId, String amount) {
-    final extra = LandaCurrency.minorUnits(amount) ?? 0;
+    final extra = OasisCurrency.minorUnits(amount) ?? 0;
     if (agreementId.isEmpty || extra <= 0) return this;
     return VaultAllocations._({
       ..._byAgreement,

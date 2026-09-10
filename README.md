@@ -1,6 +1,6 @@
-# Landa OS
+# Oasis
 
-Landa OS is a Nigerian prop-tech platform focused on secure, fraud-free rentals. This is the Lean MVP build.
+Oasis is a Nigerian prop-tech platform focused on secure, fraud-free rentals. This is the Lean MVP build.
 
 ## Architecture
 - **Pattern:** Feature-First MVCS (Model-View-Controller-Service)

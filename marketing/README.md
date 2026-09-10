@@ -1,4 +1,4 @@
-# Landa OS marketing
+# Oasis marketing
 
 React, TypeScript and Vite. Built from `website-brief.md`, with a shorter landlord-first story, grey light mode, optional warm dark mode, and the app’s exact bottom-navigation icons.
 
@@ -18,13 +18,13 @@ npm run preview
 
 ## Configuration
 
-For Vercel's GitHub import, select **LandaOS (root)** as the Root Directory and **Other** as the framework. The repository's root `vercel.json` installs dependencies in `marketing`, runs its static build, and publishes only `marketing/dist`. This avoids needing to select the marketing folder in Vercel's directory picker. Leave build/output overrides unset so the committed configuration applies.
+For Vercel's GitHub import, select **oasis (root)** as the Root Directory and **Other** as the framework. The repository's root `vercel.json` installs dependencies in `marketing`, runs its static build, and publishes only `marketing/dist`. This avoids needing to select the marketing folder in Vercel's directory picker. Leave build/output overrides unset so the committed configuration applies.
 
 Copy `.env.example` to `.env.local`. All values are public and embedded at build time; rebuild after changes. Never put secrets in them.
 
 | Variable                                                 | Purpose                                                                                                        |
 | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `SITE_URL`                                               | Public HTTPS origin for canonical, OG URLs, robots and sitemap; defaults to the brief’s `https://landaos.com`. |
+| `SITE_URL`                                               | Public HTTPS origin for canonical, OG URLs, robots and sitemap; on Vercel defaults to the project’s production domain; required elsewhere. |
 | `VITE_WAITLIST_ENDPOINT`                                 | JSON POST endpoint accepting `{ "email": "person@example.com" }`.                                              |
 | `VITE_PRIVACY_URL`, `VITE_TERMS_URL`, `VITE_CONTACT_URL` | Approved legal and contact destinations.                                                                       |
 | `VITE_PLAUSIBLE_SCRIPT_URL`                              | Exact unique HTTPS script URL from your Plausible site installation snippet.                                   |

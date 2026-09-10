@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/widgets/landa_pressable.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
 import '../../models/property_model.dart';
 import 'missing_photos_prompt.dart';
 
@@ -35,7 +35,7 @@ class PropertyPortfolioCard extends StatelessWidget {
     final occupied = units.where((u) => u.isOccupied).length;
     final anyOccupied = occupied > 0;
 
-    return LandaPressable(
+    return OasisPressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -130,7 +130,7 @@ class PropertyPortfolioCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      'Unit ${u.unitNumber} (${LandaCurrency.format(u.rentAmount)})',
+                      'Unit ${u.unitNumber} (${OasisCurrency.format(u.rentAmount)})',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,

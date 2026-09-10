@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/landa_currency.dart';
-import '../../../../core/utils/landa_haptics.dart';
-import '../../../../core/widgets/landa_pressable.dart';
+import '../../../../core/utils/oasis_currency.dart';
+import '../../../../core/utils/oasis_haptics.dart';
+import '../../../../core/widgets/oasis_pressable.dart';
 import '../../models/agreement_model.dart';
 
 /// How often rent falls due, chosen when the landlord writes the agreement.
@@ -42,7 +42,7 @@ class RentPlanPicker extends StatelessWidget {
               plan: plan,
               isSelected: plan == selected,
               onTap: () {
-                LandaHaptics.select();
+                OasisHaptics.select();
                 onChanged(plan);
               },
             ),
@@ -82,11 +82,11 @@ class RentPlanPicker extends StatelessWidget {
     final instalments = _instalmentsPerYear(plan);
     if (instalments == null || instalments == 1) return plan.description;
 
-    final annual = LandaCurrency.minorUnits(annualRent);
+    final annual = OasisCurrency.minorUnits(annualRent);
     if (annual == null || annual <= 0) return plan.description;
 
-    final each = LandaCurrency.fromMinorUnits(annual ~/ instalments);
-    return '${plan.description}. Around ${LandaCurrency.format(each)} each, '
+    final each = OasisCurrency.fromMinorUnits(annual ~/ instalments);
+    return '${plan.description}. Around ${OasisCurrency.format(each)} each, '
         'before fees.';
   }
 
@@ -114,7 +114,7 @@ class _PlanChip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => LandaPressable(
+  Widget build(BuildContext context) => OasisPressable(
     onTap: onTap,
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 160),

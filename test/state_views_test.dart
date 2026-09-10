@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/core/theme/app_theme.dart';
-import 'package:landa_app/core/widgets/landa_entrance.dart';
-import 'package:landa_app/core/widgets/landa_shimmer.dart';
-import 'package:landa_app/core/widgets/landa_state_views.dart';
+import 'package:oasis_app/core/theme/app_theme.dart';
+import 'package:oasis_app/core/widgets/oasis_entrance.dart';
+import 'package:oasis_app/core/widgets/oasis_shimmer.dart';
+import 'package:oasis_app/core/widgets/oasis_state_views.dart';
 
 /// Render cover for the shared state views. These sit on every fetching
 /// screen, so a layout error in one of them breaks the whole app at once.
@@ -24,7 +24,7 @@ void main() {
 
       await tester.pumpWidget(
         host(
-          LandaErrorState(
+          OasisErrorState(
             isConnectionError: true,
             onRetry: () async => retries++,
           ),
@@ -45,7 +45,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      host(const LandaErrorState(message: 'Server said no.')),
+      host(const OasisErrorState(message: 'Server said no.')),
     );
 
     expect(find.text('Something went wrong'), findsOneWidget);
@@ -59,7 +59,7 @@ void main() {
 
     await tester.pumpWidget(
       host(
-        LandaEmptyState(
+        OasisEmptyState(
           icon: Icons.inbox_outlined,
           title: 'No applications yet',
           message: 'They will show up here.',
@@ -83,7 +83,7 @@ void main() {
       host(
         Column(
           children: [
-            LandaErrorBanner(
+            OasisErrorBanner(
               message: 'Could not refresh.',
               isConnectionError: true,
               onRetry: () => retries++,
@@ -105,28 +105,28 @@ void main() {
   ) async {
     await tester.pumpWidget(
       host(
-        const LandaContentSwitcher(
+        const OasisContentSwitcher(
           stateKey: 'loading',
-          child: LandaSkeletonList(count: 2, hasAvatar: true),
+          child: OasisSkeletonList(count: 2, hasAvatar: true),
         ),
       ),
     );
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byType(LandaCardSkeleton), findsNWidgets(2));
+    expect(find.byType(OasisCardSkeleton), findsNWidgets(2));
 
     // An Expanded child inside the switcher is the shape every list screen
     // uses; it must not overflow when the switcher stacks both states.
     await tester.pumpWidget(
       host(
-        LandaContentSwitcher(
+        OasisContentSwitcher(
           stateKey: 'content',
           child: Column(
             children: [
               Expanded(
                 child: ListView(
                   children: const [
-                    LandaEntrance(index: 0, child: Text('first')),
-                    LandaEntrance(index: 1, child: Text('second')),
+                    OasisEntrance(index: 0, child: Text('first')),
+                    OasisEntrance(index: 1, child: Text('second')),
                   ],
                 ),
               ),

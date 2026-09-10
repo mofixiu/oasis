@@ -4,11 +4,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/landa_currency.dart';
-import '../../../core/widgets/landa_media_hero.dart';
-import '../../../core/widgets/landa_network_image.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_media_hero.dart';
+import '../../../core/widgets/oasis_network_image.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../reviews/models/review_models.dart';
 import '../../reviews/views/widgets/reviews_section.dart';
 import '../controllers/shortlet_controller.dart';
@@ -44,7 +44,7 @@ class ShortLetListingScreen extends StatelessWidget {
     );
     if (booking == null || !context.mounted) return;
 
-    LandaToast.success(
+    OasisToast.success(
       context,
       'Request sent. You will hear back from the host, and only pay if they '
       'say yes.',
@@ -83,12 +83,12 @@ class ShortLetListingScreen extends StatelessWidget {
             ListView(
               padding: EdgeInsets.zero,
               children: [
-                LandaMediaHero(
+                OasisMediaHero(
                   photoUrls: photos,
                   videoUrl: listing.hasVideo ? listing.videoUrl : null,
                   title: listing.title,
                   emptyIcon: Icons.holiday_village_outlined,
-                  heroTag: landaMediaHeroTag('shortlet', listing.id),
+                  heroTag: oasisMediaHeroTag('shortlet', listing.id),
                   // Name, place and rating over the photograph. The three
                   // things a guest checks first, in the order they check them,
                   // without having to scroll past the picture to find them.
@@ -126,7 +126,7 @@ class ShortLetListingScreen extends StatelessWidget {
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: LandaMediaCircleButton(
+                  child: OasisMediaCircleButton(
                     icon: Icons.arrow_back_rounded,
                     tooltip: 'Back',
                     onTap: () => Navigator.of(context).maybePop(),
@@ -170,7 +170,7 @@ class ShortLetListingScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    LandaCurrency.format(listing.nightlyPrice),
+                    OasisCurrency.format(listing.nightlyPrice),
                     style: AppTheme.sectionTitle(
                       context,
                       color: AppTheme.actionColor,
@@ -258,7 +258,7 @@ class ShortLetListingScreen extends StatelessWidget {
       ),
       const SizedBox(height: 24),
 
-      LandaButton(
+      OasisButton(
         label: 'Ask for these dates',
         icon: Icons.calendar_month_outlined,
         isBusy: isSubmitting,
@@ -427,7 +427,7 @@ class _CancellationPolicyNotice extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Your exact refund is confirmed by Landa when you cancel.',
+                'Your exact refund is confirmed by Oasis when you cancel.',
                 style: AppTheme.labelText(
                   context,
                   color: AppTheme.mutedTextColor(context),
@@ -579,7 +579,7 @@ class _CautionFeeNotice extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${LandaCurrency.format(amount)} refundable deposit',
+                '${OasisCurrency.format(amount)} refundable deposit',
                 style: AppTheme.cardTitle(context),
               ),
               const SizedBox(height: 4),

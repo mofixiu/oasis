@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/landa_network_image.dart';
-import '../../../core/utils/landa_refresh.dart';
-import '../../../core/widgets/landa_pressable.dart';
-import '../../../core/widgets/landa_state_views.dart';
-import '../../../core/widgets/landa_toast.dart';
-import '../../../core/utils/landa_currency.dart';
+import '../../../core/widgets/oasis_network_image.dart';
+import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_state_views.dart';
+import '../../../core/widgets/oasis_toast.dart';
+import '../../../core/utils/oasis_currency.dart';
 import '../../agreements/views/tenancy_agreement_modal.dart';
 import '../../dashboard/views/widgets/move_in_tenants_modal.dart';
 import '../../fix/views/unit_recommendations_sheet.dart';
@@ -85,7 +85,7 @@ class _ManagedPropertyDetailScreenState
               if (controller.hasError)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: LandaErrorBanner(
+                  child: OasisErrorBanner(
                     message: controller.errorMessage!,
                     isConnectionError: controller.errorIsConnection,
                     onRetry: () =>
@@ -126,7 +126,7 @@ class _ManagedPropertyDetailScreenState
                       ],
                     ),
                   ),
-                  LandaButton(
+                  OasisButton(
                     label: 'Add units',
                     icon: Icons.add_rounded,
                     expand: false,
@@ -216,7 +216,7 @@ class _PropertyHero extends StatelessWidget {
         SizedBox(
           height: 190,
           width: double.infinity,
-          child: LandaNetworkImage(
+          child: OasisNetworkImage(
             url: property.displayImageUrl,
             placeholderIcon: Icons.home_work_outlined,
           ),
@@ -348,7 +348,7 @@ class _UnitCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${unit.bedrooms} bed · ${unit.bathrooms} bath · ${LandaCurrency.perYear(unit.rentAmount)}',
+                    '${unit.bedrooms} bed · ${unit.bathrooms} bath · ${OasisCurrency.perYear(unit.rentAmount)}',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 5),
@@ -531,7 +531,7 @@ class _UnitInfoSheet extends StatelessWidget {
         // than somewhere they would have to know to look.
         _InfoRow(
           'Annual rent',
-          LandaCurrency.format(unit.rentAmount),
+          OasisCurrency.format(unit.rentAmount),
           onEdit: () => _openRentEditor(context),
           editTooltip: 'Change the rent',
         ),
@@ -686,12 +686,12 @@ class _RemovalPendingBanner extends StatelessWidget {
     );
     if (!context.mounted) return;
     if (cancelled) {
-      LandaToast.success(
+      OasisToast.success(
         context,
-        '${property.name} is back on Landa.',
+        '${property.name} is back on Oasis.',
       );
     } else {
-      LandaToast.error(
+      OasisToast.error(
         context,
         controller.errorMessage ??
             'Could not undo the removal. Try again in a moment.',
@@ -726,7 +726,7 @@ class _RemovalPendingBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   countdown == null
-                      ? 'Being removed from Landa'
+                      ? 'Being removed from Oasis'
                       : 'Being removed · $countdown',
                   style: AppTheme.cardTitle(
                     context,
@@ -744,7 +744,7 @@ class _RemovalPendingBanner extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Consumer<LandlordController>(
-            builder: (context, controller, _) => LandaButton(
+            builder: (context, controller, _) => OasisButton(
               label: 'Keep this property',
               icon: Icons.undo_rounded,
               isBusy: controller.isRemoving,
@@ -770,7 +770,7 @@ class _RemovePropertyAction extends StatelessWidget {
       Text('REMOVING THIS PROPERTY', style: AppTheme.labelText(context)),
       const SizedBox(height: 6),
       Text(
-        'Takes it off Landa. It cannot be removed while a tenancy is '
+        'Takes it off Oasis. It cannot be removed while a tenancy is '
         'running, money is in escrow, a stay is booked or an application is '
         'waiting.',
         style: AppTheme.bodyText(context),

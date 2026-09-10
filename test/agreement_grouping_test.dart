@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:landa_app/features/agreements/models/agreement_group.dart';
-import 'package:landa_app/features/agreements/models/agreement_model.dart';
+import 'package:oasis_app/features/agreements/models/agreement_group.dart';
+import 'package:oasis_app/features/agreements/models/agreement_model.dart';
 
 /// The archive is a record of things people signed, so the failure that
 /// matters most is losing one. These pin that first, then the ordering rules
