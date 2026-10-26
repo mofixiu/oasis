@@ -332,15 +332,36 @@ class _V2ProfileScreenState extends State<V2ProfileScreen> {
                     ? null
                     : () => _push(const IdentityVerificationScreen()),
               ),
-              _SettingsRow(
+              // Three-way rather than a switch: an on/off control has no
+              // way back to following the phone once it has been touched.
+              const _SettingsRow(
                 icon: Icons.dark_mode_outlined,
-                label: 'Dark mode',
-                trailing: Switch.adaptive(
-                  value: AppTheme.isDarkMode(context),
-                  activeTrackColor: AppTheme.terracottaColor,
-                  onChanged: (value) {
+                label: 'Appearance',
+                showDivider: false,
+              ),
+              Container(
+                padding: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: AppTheme.borderColor(context)),
+                  ),
+                ),
+                child: V2SegmentChips(
+                  labels: const ['Match phone', 'Light', 'Dark'],
+                  selected: switch (themeController.themeMode) {
+                    ThemeMode.system => 0,
+                    ThemeMode.light => 1,
+                    ThemeMode.dark => 2,
+                  },
+                  onSelected: (index) {
                     OasisHaptics.select();
-                    themeController.setDarkMode(value);
+                    themeController.setThemeMode(
+                      const [
+                        ThemeMode.system,
+                        ThemeMode.light,
+                        ThemeMode.dark,
+                      ][index],
+                    );
                   },
                 ),
               ),

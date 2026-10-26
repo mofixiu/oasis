@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/load_failure.dart';
 import '../../../core/session/session_scope.dart';
+import '../models/shortlet_details.dart';
 import '../models/shortlet_models.dart';
 import '../services/shortlet_service.dart';
 
@@ -293,6 +294,7 @@ class ShortLetController extends ChangeNotifier
     String houseRules = '',
     String checkInNotes = '',
     bool isActive = true,
+    ShortLetDetails details = const ShortLetDetails(),
   }) async {
     _isSubmitting = true;
     _existingListingId = null;
@@ -316,6 +318,7 @@ class ShortLetController extends ChangeNotifier
         houseRules: houseRules,
         checkInNotes: checkInNotes,
         isActive: isActive,
+        details: details,
       );
     } catch (e) {
       // A create refused because the unit is already listed is not really a
@@ -368,6 +371,7 @@ class ShortLetController extends ChangeNotifier
     String description = '',
     String houseRules = '',
     String checkInNotes = '',
+    ShortLetDetails details = const ShortLetDetails(),
   }) async {
     _isSubmitting = true;
     _existingListingId = null;
@@ -396,6 +400,7 @@ class ShortLetController extends ChangeNotifier
         description: description,
         houseRules: houseRules,
         checkInNotes: checkInNotes,
+        details: details,
       );
     } catch (e) {
       captureFailure(e);
@@ -466,6 +471,7 @@ class ShortLetController extends ChangeNotifier
     String houseRules = '',
     String checkInNotes = '',
     bool isActive = true,
+    ShortLetDetails details = const ShortLetDetails(),
   }) async {
     _windowWasWidened = false;
     try {
@@ -484,6 +490,7 @@ class ShortLetController extends ChangeNotifier
         houseRules: houseRules,
         checkInNotes: checkInNotes,
         isActive: isActive,
+        details: details,
       );
     } catch (e) {
       // Only when the host asked for no window in the first place. A host who
@@ -510,6 +517,7 @@ class ShortLetController extends ChangeNotifier
         houseRules: houseRules,
         checkInNotes: checkInNotes,
         isActive: isActive,
+        details: details,
       );
       _windowWasWidened = true;
       return listing;

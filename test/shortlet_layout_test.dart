@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:oasis_app/core/app_variant.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:oasis_app/core/network/api_client.dart';
@@ -63,10 +62,10 @@ void main() {
     );
   });
 
-  testWidgets('the listing sheet is capped, and yields to the keyboard', (
+  testWidgets('listing a place is a full-screen flow that checks each step', (
     tester,
   ) async {
-    // iPhone SE: the tightest screen a fixed-height sheet has to survive.
+    // iPhone SE: the tightest screen the flow has to survive.
     tester.view.physicalSize = const Size(750, 1334);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
@@ -96,30 +95,27 @@ void main() {
     await tester.pumpAndSettle();
     while (tester.takeException() != null) {}
 
-    // Idle: the sheet leaves the top third of the screen alone, so its title
-    // never lands under the status bar and the backdrop stays tappable.
-    const screenHeight = 667.0;
-    final sheet = tester.getRect(find.byType(OasisSheet));
-    expect(
-      tester
-          .getRect(
-            find.text(isOasisV2 ? 'List a place' : 'List for short stays'),
-          )
-          .top,
-      greaterThan(screenHeight * 0.25),
-      reason: 'the sheet has grown past its cap and reached the status bar',
-    );
-    expect(sheet.height, lessThanOrEqualTo(screenHeight * 0.7 + 1));
+    // A page, not a sheet: nothing of the screen behind is left showing.
+    expect(find.byType(OasisSheet), findsNothing);
+    expect(find.text('open'), findsNothing);
+    expect(find.text('Step 1 of 8'), findsOneWidget);
 
-    // Keyboard up: the cap has to lift, or the footer's own keyboard padding
-    // has nowhere to go and the sheet overflows.
+    // Next refuses an unfinished step rather than moving on.
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    while (tester.takeException() != null) {}
+    expect(find.text('Step 1 of 8'), findsOneWidget);
+
+    // Keyboard up: the bottom bar rides above it without overflowing.
     tester.view.viewInsets = const FakeViewPadding(bottom: 520);
     await tester.pumpAndSettle();
     expect(
       tester.takeException(),
       isNull,
-      reason: 'the sheet overflows once the keyboard is up',
+      reason: 'the flow overflows once the keyboard is up',
     );
+    // Lets the refusal toast run out before the test ends.
+    await tester.pump(const Duration(seconds: 6));
   });
 }
 

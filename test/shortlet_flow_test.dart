@@ -86,6 +86,14 @@ void main() {
       'house_rules': 'No parties.',
       'check_in_notes': 'Code shared after payment.',
       'is_active': true,
+      // Spec v18 details, sent with their defaults when the host set none.
+      'amenities': <String>[],
+      'best_for': <String>[],
+      'check_in_time': '14:00',
+      'check_out_time': '12:00',
+      'smoking_allowed': false,
+      'pets_allowed': false,
+      'parties_allowed': false,
     });
   });
 

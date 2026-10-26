@@ -15,6 +15,7 @@
 /// never resolve to anything that would let money move.
 library;
 
+import 'shortlet_details.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_constants.dart';
@@ -434,6 +435,9 @@ class ShortLetListing {
   /// what a guest wants to see is the room they will sleep in.
   final String? videoUrl;
 
+  /// Type, amenities, occasions, times and rule switches (spec v18).
+  final ShortLetDetails details;
+
   final String createdAt;
 
   /// How far this listing is from the coordinates the search was made with.
@@ -486,6 +490,7 @@ class ShortLetListing {
     this.photoUrls = const [],
     this.selectedCoverPhotoUrl,
     this.videoUrl,
+    this.details = const ShortLetDetails(),
     this.createdAt = '',
     this.distanceKm,
     this.isAvailableForPeriod,
@@ -565,6 +570,7 @@ class ShortLetListing {
             unitMap['image_url'],
       ),
       videoUrl: _readNonEmpty(json['video_url'] ?? unitMap['video_url']),
+      details: ShortLetDetails.fromJson(json),
       createdAt: json['created_at']?.toString() ?? '',
       distanceKm: _readDouble(json['distance_km']),
       // Strictly a bool: a missing key and a non-bool value both mean "not

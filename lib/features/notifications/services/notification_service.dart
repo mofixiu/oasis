@@ -103,8 +103,13 @@ class NotificationService {
     return NotificationPreferences.fromJson(response);
   }
 
-  /// Mark notification as read
-  Future<NotificationItemModel> markNotificationRead(
+  /// Mark notification as read.
+  ///
+  /// Returns the server's copy when the response contains it, else null.
+  /// Parsing the reply as a single object, as the guide shows, failed on
+  /// staging with a list. The read has succeeded by then either way, so an
+  /// unexpected shape must not surface as an error.
+  Future<NotificationItemModel?> markNotificationRead(
     String notificationId,
   ) async {
     final endpoint = ApiConstants.markNotificationReadEndpoint(notificationId);
@@ -112,11 +117,20 @@ class NotificationService {
       '[NOTIFICATION SERVICE] Marking notification read PATCH $endpoint',
     );
     final response = await _apiClient.patch(endpoint, body: {});
-    final notification = NotificationItemModel.fromJson(response);
+    final rows = response is Map<String, dynamic>
+        ? (response['results'] is List ? response['results'] : [response])
+        : response;
+    if (rows is! List) return null;
+    for (final row in rows.whereType<Map<String, dynamic>>()) {
+      if (row['id']?.toString() == notificationId) {
+        return NotificationItemModel.fromJson(row);
+      }
+    }
     debugPrint(
-      '[NOTIFICATION SERVICE] Notification marked as read: ID=${notification.id}',
+      '[NOTIFICATION SERVICE] Read response had no copy of $notificationId '
+      '(${response.runtimeType})',
     );
-    return notification;
+    return null;
   }
 }
 

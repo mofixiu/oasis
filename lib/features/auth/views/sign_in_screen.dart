@@ -32,6 +32,9 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   void _handleLogin() async {
+    // Closed first: the next screen replaces this one, and a keyboard left
+    // up for a field that no longer exists has no way to be dismissed.
+    FocusManager.instance.primaryFocus?.unfocus();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 

@@ -68,6 +68,9 @@ class AuthController extends ChangeNotifier with LoadFailureState {
     // on the way in guarantees a signed-in user never inherits cached data,
     // however the previous session ended.
     SessionScope.resetAll();
+    // The same goes for the stored token and cached profile: left in place, a
+    // sign-in that fails part-way would fall back to the previous account.
+    await AuthTokenStorage.clear();
 
     try {
       _currentUser = await _authService.login(email: email, password: password);
@@ -138,6 +141,9 @@ class AuthController extends ChangeNotifier with LoadFailureState {
     _setLoading(true);
     clearFailure();
     SessionScope.resetAll();
+    // Without this a sign-up whose automatic sign-in fails leaves the previous
+    // account's token in storage, and the next launch restores that account.
+    await AuthTokenStorage.clear();
 
     try {
       _currentUser = await _authService.register(

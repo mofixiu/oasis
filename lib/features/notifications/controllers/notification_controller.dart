@@ -313,7 +313,7 @@ class NotificationController extends ChangeNotifier
       );
       // Reconciled with the server's copy where the row is still on screen.
       final at = _notifications.indexWhere((n) => n.id == notificationId);
-      if (at != -1) _notifications[at] = updated;
+      if (at != -1 && updated != null) _notifications[at] = updated;
       notifyListeners();
     } catch (e) {
       // Put it back. An unread notification silently marked read is one the

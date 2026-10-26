@@ -92,22 +92,21 @@ class ApiAuthService implements IAuthService {
       requiresAuth: false,
     );
 
-    if (response is Map<String, dynamic> &&
-        response.containsKey('access') &&
-        response.containsKey('refresh')) {
-      debugPrint(
-        '[AUTH SERVICE] Storing JWT tokens locally (Access & Refresh)',
-      );
-      await AuthTokenStorage.saveTokens(
-        access: response['access'],
-        refresh: response['refresh'],
-      );
+    if (response is! Map<String, dynamic> ||
+        response['access'] is! String ||
+        response['refresh'] is! String) {
+      // Carrying on would read the profile with whatever token was stored
+      // before, which belongs to someone else or to nobody.
+      throw ApiException('Sign-in didn’t complete. Please try again.');
     }
+    debugPrint('[AUTH SERVICE] Storing JWT tokens locally (Access & Refresh)');
+    await AuthTokenStorage.saveTokens(
+      access: response['access'],
+      refresh: response['refresh'],
+    );
 
     UserModel profile;
-    if (response is Map<String, dynamic> &&
-        response.containsKey('user') &&
-        response['user'] != null) {
+    if (response['user'] is Map<String, dynamic>) {
       profile = UserModel.fromJson(response['user']);
       debugPrint(
         '[AUTH SERVICE] Profile received directly in /login/ payload: ID=${profile.id}, Role=${profile.role.toServerString()}, Verification=${profile.verificationStatus.label}',

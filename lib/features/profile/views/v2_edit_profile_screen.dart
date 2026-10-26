@@ -367,25 +367,17 @@ class _V2EditProfileScreenState extends State<V2EditProfileScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Account type',
-                style: AppTheme.bodyText(context).copyWith(fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              IgnorePointer(
-                child: V2SegmentChips(
-                  labels: const ['Guest', 'Host'],
-                  selected: role == UserRole.owner ? 1 : 0,
-                  onSelected: (_) {},
+              // Read-only, like email: the role is fixed at sign-up. A
+              // disabled Guest/Host toggle read as an invitation to switch.
+              _FieldBox(
+                label: 'Account type',
+                child: Text(
+                  role == UserRole.owner ? 'Host' : 'Guest',
+                  style: AppTheme.bodyText(
+                    context,
+                    color: AppTheme.secondaryTextColor(context),
+                  ).copyWith(fontSize: 15),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                role == UserRole.owner
-                    ? 'You’re a host. Guest accounts are managed separately.'
-                    : 'You’re a guest. Host accounts are managed separately.',
-                style: AppTheme.bodyText(context).copyWith(fontSize: 12),
               ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
+import '../models/shortlet_details.dart';
 import '../models/shortlet_models.dart';
 
 /// Talks to the short-let endpoints.
@@ -75,6 +76,7 @@ class ShortLetService {
     String houseRules = '',
     String checkInNotes = '',
     bool isActive = true,
+    ShortLetDetails details = const ShortLetDetails(),
   }) async {
     final isEdit = listingId != null && listingId.isNotEmpty;
     final endpoint = isEdit
@@ -97,6 +99,7 @@ class ShortLetService {
       'house_rules': houseRules,
       'check_in_notes': checkInNotes,
       'is_active': isActive,
+      ...details.toJson(),
     };
 
     debugPrint(
@@ -141,6 +144,7 @@ class ShortLetService {
     String description = '',
     String houseRules = '',
     String checkInNotes = '',
+    ShortLetDetails details = const ShortLetDetails(),
   }) async {
     final body = <String, dynamic>{
       'property_name': propertyName,
@@ -163,6 +167,7 @@ class ShortLetService {
       'description': description,
       'house_rules': houseRules,
       'check_in_notes': checkInNotes,
+      ...details.toJson(),
     };
     debugPrint(
       '[SHORTLET SERVICE] Creating a new place POST '

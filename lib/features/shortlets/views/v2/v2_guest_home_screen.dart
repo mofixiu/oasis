@@ -10,6 +10,7 @@ import '../../../../core/widgets/v2_ui.dart';
 import '../../../auth/controllers/auth_controller.dart';
 import '../../controllers/saved_shortlets_controller.dart';
 import '../../controllers/shortlet_controller.dart';
+import '../../models/shortlet_details.dart';
 import '../../models/shortlet_models.dart';
 import '../shortlet_browse_screen.dart';
 import '../shortlet_listing_screen.dart';
@@ -183,18 +184,22 @@ class _V2GuestHomeScreenState extends State<V2GuestHomeScreen> {
                 onSearch: _openSearch,
               ),
               const SizedBox(height: 22),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  children: [
-                    for (final occasion in _occasions)
-                      Expanded(
-                        child: _OccasionTile(
-                          occasion: occasion,
-                          onTap: _openSearch,
-                        ),
-                      ),
-                  ],
+              // Scrolls rather than squeezing: the same list hosts pick
+              // "best for" from, which is far more than fits across a phone.
+              SizedBox(
+                height: 108,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: ShortLetOccasion.values.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) => SizedBox(
+                    width: 76,
+                    child: _OccasionTile(
+                      occasion: ShortLetOccasion.values[index],
+                      onTap: _openSearch,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 26),
@@ -342,23 +347,9 @@ class _Hero extends StatelessWidget {
   }
 }
 
-class _Occasion {
-  final String label;
-  final IconData icon;
-
-  const _Occasion(this.label, this.icon);
-}
-
-const _occasions = [
-  _Occasion('Staycation', Icons.holiday_village_outlined),
-  _Occasion('Birthdays', Icons.cake_outlined),
-  _Occasion('Baecation', Icons.favorite_border_rounded),
-  _Occasion('Parties', Icons.celebration_outlined),
-];
-
 /// A rounded tile per occasion, icon over label.
 class _OccasionTile extends StatelessWidget {
-  final _Occasion occasion;
+  final ShortLetOccasion occasion;
   final VoidCallback onTap;
 
   const _OccasionTile({required this.occasion, required this.onTap});
@@ -373,7 +364,7 @@ class _OccasionTile extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 62,
+            width: 66,
             height: 62,
             decoration: BoxDecoration(
               color: AppTheme.surfaceColor(context),
@@ -389,7 +380,8 @@ class _OccasionTile extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             occasion.label,
-            maxLines: 1,
+            maxLines: 2,
+            textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
             style: AppTheme.bodyText(context).copyWith(
               color: AppTheme.primaryTextColor(context),

@@ -40,17 +40,29 @@ class ThemeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setDarkMode(bool isDarkModeEnabled) async {
+  /// Saves the appearance choice. [ThemeMode.system] ("Match phone") is
+  /// stored by removing the key, so it reads back exactly like a user who
+  /// never chose.
+  Future<void> setThemeMode(ThemeMode mode) async {
     try {
-      await _storage.write(
-        key: _themeModeKey,
-        value: isDarkModeEnabled ? 'dark' : 'light',
-      );
+      if (mode == ThemeMode.system) {
+        await _storage.delete(key: _themeModeKey);
+      } else {
+        await _storage.write(
+          key: _themeModeKey,
+          value: mode == ThemeMode.dark ? 'dark' : 'light',
+        );
+      }
     } catch (_) {
       // Keep the in-memory theme choice even if persistence fails.
     }
 
-    _themeMode = isDarkModeEnabled ? ThemeMode.dark : ThemeMode.light;
+    _themeMode = mode;
     notifyListeners();
   }
+
+  /// The original app's on/off switch. Either position is an explicit
+  /// choice; [setThemeMode] is the only way back to following the phone.
+  Future<void> setDarkMode(bool isDarkModeEnabled) =>
+      setThemeMode(isDarkModeEnabled ? ThemeMode.dark : ThemeMode.light);
 }
