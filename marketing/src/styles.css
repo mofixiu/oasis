@@ -196,8 +196,8 @@ p {
   position: relative;
   flex-shrink: 0;
 }
-/* The mark is two-colour, so it cannot be a single-colour mask; each theme
-   gets its own image, the dark one with white lettering and a lifted green. */
+/* The new two-color Oasis wordmark is provided in both theme slots. Its orange
+   lettering and lime palm remain legible on the light and dark surfaces. */
 .logo img {
   position: absolute;
   inset: 0;

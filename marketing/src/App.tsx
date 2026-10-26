@@ -57,14 +57,14 @@ function Wordmark({ className = "" }: { className?: string }) {
         className="logo-light"
         src="/images/oasis-wordmark.webp"
         width={382}
-        height={160}
+        height={118}
         alt=""
       />
       <img
         className="logo-dark"
         src="/images/oasis-wordmark-dark.webp"
         width={382}
-        height={160}
+        height={118}
         alt=""
       />
     </span>

@@ -36,7 +36,7 @@ Fees, the named escrow provider/custody arrangements, and failed-handover/refund
 ## Performance and sharing
 
 - Display-sized WebP photos: about 74 KiB combined; below-fold media is lazy-loaded. All content images have dimensions, and the hero image has high fetch priority.
-- Lossless resized wordmark and a small favicon reuse the original shield silhouette. Full-size PNGs remain in the parent app’s `assets/images/`, not in the deployment.
+- The lossless wordmark and favicon use the new orange Oasis lettering and lime palm. The palm-only mark on black is the app icon. Full-size PNGs remain in the parent app’s `assets/images/`.
 - Four Latin-only Montserrat WOFF2 weights (400–700), about 73 KiB combined. No Cyrillic/Vietnamese/WOFF copies.
 - `public/og.jpg`: generated 1200×630 sharing card; it is metadata-only and does not download as page content.
 - Complete Open Graph and Twitter metadata, absolute canonical, `robots.txt`, and a one-page sitemap. Section anchors are not separate sitemap pages.

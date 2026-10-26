@@ -325,11 +325,10 @@ dynamic content beyond a waitlist form.
 
 | File | Size | Use |
 |---|---|---|
-| `oasis_logo.png` | 400×540 | Stacked logo (mark over OASIS), transparent |
-| `oasis_logo_dark.png` | 400×540 | Stacked logo for dark backgrounds |
-| `oasis_wordmark.png` | 572×240 | Mark and OASIS side by side, transparent — headers |
-| `oasis_wordmark_dark.png` | 572×240 | Side-by-side wordmark for dark backgrounds |
-| `oasis_mark.png` | 507×512 | Mark alone — favicon and app icon |
+| `oasis_wordmark.png` | 574×177 | Orange OASIS wordmark with lime palm — headers and splash |
+| `oasis_wordmark_dark.png` | 574×177 | Same transparent wordmark, legible on dark surfaces |
+| `oasis_mark.png` | 522×523 | Lime palm alone, transparent |
+| `oasis_app_icon.png` | 1024×1024 | Lime palm on black — app icon |
 | `room_interior.png`, `quality_hero.png` | 1024² | Interior imagery |
 | `artisan_*.png` | 1024² | Artisan portraits (demo likenesses — check rights before public use) |
 
