@@ -151,12 +151,12 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
 
     return OasisSheet(
       icon: Icons.calendar_month_outlined,
-      title: 'Ask for these dates',
+      title: 'Book your stay',
       subtitle:
-          'The host has to approve before anything is charged. '
-          '${widget.listing.title}.',
+          'Choose your dates and send them to the host. They must approve '
+          'before anything is charged. ${widget.listing.title}.',
       footer: OasisSheetButton(
-        label: 'Send request',
+        label: 'Send to host',
         icon: Icons.send_rounded,
         isLoading: controller.isSubmitting,
         onPressed: controller.isSubmitting || _problem != null ? null : _submit,

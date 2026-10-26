@@ -18,11 +18,11 @@ import 'my_shortlet_bookings_screen.dart';
 import 'request_booking_sheet.dart';
 import '../../../core/utils/fade_page_route.dart';
 
-/// One short let, and the button that asks the host for dates.
+/// One short let, and the button that starts its booking flow.
 ///
-/// Requesting is not booking: nothing is held and nothing is charged until the
-/// host approves. The screen says so plainly rather than presenting a Book
-/// button that would set the wrong expectation.
+/// The host still approves every booking before the guest pays. The booking
+/// button says "Book now" while the price bar and booking sheet make that step
+/// clear before the guest sends their dates.
 class ShortLetListingScreen extends StatelessWidget {
   final ShortLetListing listing;
   final bool isV2;
@@ -49,7 +49,7 @@ class ShortLetListingScreen extends StatelessWidget {
 
     OasisToast.success(
       context,
-      'Request sent. You will hear back from the host, and only pay if they '
+      'Dates sent. You will hear back from the host, and only pay if they '
       'say yes.',
     );
     Navigator.push(
@@ -485,7 +485,7 @@ class ShortLetListingScreen extends StatelessWidget {
       const SizedBox(height: 24),
 
       OasisButton(
-        label: 'Ask for these dates',
+        label: 'Book now',
         icon: Icons.calendar_month_outlined,
         isBusy: isSubmitting,
         onPressed: isSubmitting ? null : () => _request(context),
@@ -502,7 +502,7 @@ class ShortLetListingScreen extends StatelessWidget {
       ),
       const SizedBox(height: 32),
 
-      // Below the request button rather than above it. Reviews are what a
+      // Below the booking button rather than above it. Reviews are what a
       // guest reads when they are unsure; someone already convinced
       // should not have to scroll past twelve of them to book.
       ReviewsSection(
@@ -684,10 +684,7 @@ class _V2ReadMoreState extends State<_V2ReadMore> {
   }
 }
 
-/// Price and the request button, pinned to the bottom of the listing.
-///
-/// "Request to book", not "Book now": nothing is held or charged until the
-/// host approves.
+/// Price and the booking button, pinned to the bottom of the listing.
 class _V2RequestBar extends StatelessWidget {
   final ShortLetListing listing;
   final bool isSubmitting;
@@ -721,7 +718,7 @@ class _V2RequestBar extends StatelessWidget {
               V2NightlyPrice(amount: listing.nightlyPrice, fontSize: 18),
               const SizedBox(height: 2),
               Text(
-                'Pay only if the host approves',
+                'Host approval before payment',
                 style: AppTheme.bodyText(context).copyWith(fontSize: 11),
               ),
             ],
@@ -729,7 +726,7 @@ class _V2RequestBar extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         OasisButton(
-          label: 'Request to book',
+          label: 'Book now',
           expand: false,
           isBusy: isSubmitting,
           onPressed: isSubmitting ? null : onRequest,
