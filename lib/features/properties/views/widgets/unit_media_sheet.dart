@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/app_variant.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/oasis_network_image.dart';
 import '../../../../core/widgets/oasis_pressable.dart';
@@ -25,7 +26,10 @@ import '../../../../core/widgets/oasis_busy.dart';
 Future<void> openUnitMediaSheet(
   BuildContext context, {
   required UnitModel unit,
-  required String propertyId,
+
+  /// Refreshes that property's detail after a change. Null where there is
+  /// none on screen to refresh, as on the v2 host's My places.
+  String? propertyId,
 }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
@@ -45,9 +49,9 @@ Future<void> openUnitMediaSheet(
 
 class _UnitMediaSheet extends StatefulWidget {
   final UnitModel unit;
-  final String propertyId;
+  final String? propertyId;
 
-  const _UnitMediaSheet({required this.unit, required this.propertyId});
+  const _UnitMediaSheet({required this.unit, this.propertyId});
 
   @override
   State<_UnitMediaSheet> createState() => _UnitMediaSheetState();
@@ -191,111 +195,133 @@ class _UnitMediaSheetState extends State<_UnitMediaSheet> {
     final videoUrl = _videoUrl;
     final busy = controller.isMediaBusy;
 
+    // v2 hosts list shortlets for guests: photos are what a guest books on,
+    // so they come first, and the walkthrough is an extra rather than a gap.
+    final videoSection = <Widget>[
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              'TOUR VIDEO',
+              style: AppTheme.labelText(context).copyWith(letterSpacing: 0.9),
+            ),
+          ),
+          Text(
+            videoUrl != null
+                ? 'ADDED'
+                : isOasisV2
+                ? 'OPTIONAL'
+                : 'MISSING',
+            style: AppTheme.labelText(
+              context,
+              color: videoUrl != null
+                  ? AppTheme.successColor
+                  : isOasisV2
+                  ? AppTheme.mutedTextColor(context)
+                  : AppTheme.actionColor,
+            ).copyWith(fontSize: 10, letterSpacing: 0.6),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      if (videoUrl == null)
+        _EmptyMediaCard(
+          icon: Icons.videocam_outlined,
+          message: isOasisV2
+              ? 'A short walkthrough helps guests picture the stay. Add one '
+                    'whenever you like.'
+              : 'This unit has no walkthrough. Tenants browsing the '
+                    'marketplace see a still photo and nothing else, which is '
+                    'the single biggest reason a listing gets skipped.',
+          actionLabel: 'Upload tour video',
+          onAction: busy ? null : () => _uploadVideo(replacing: false),
+        )
+      else
+        Column(
+          children: [
+            OasisVideoPlayer(url: videoUrl),
+            const SizedBox(height: 10),
+            OasisSheetChipButton(
+              icon: Icons.swap_horiz_rounded,
+              label: 'Replace video',
+              onTap: busy ? () {} : () => _uploadVideo(replacing: true),
+            ),
+          ],
+        ),
+    ];
+
+    final photoSection = <Widget>[
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              'PHOTOS',
+              style: AppTheme.labelText(context).copyWith(letterSpacing: 0.9),
+            ),
+          ),
+          Text(
+            '${photos.length}/${PropertyMediaLimits.maxUnitPhotos}',
+            style: AppTheme.labelText(
+              context,
+              color: AppTheme.mutedTextColor(context),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      if (photos.isEmpty)
+        _EmptyMediaCard(
+          icon: Icons.photo_library_outlined,
+          message: isOasisV2
+              ? 'No photos yet. The first one is the cover guests see when '
+                    'they browse.'
+              : 'No photos of this unit yet. The first one becomes the image '
+                    'tenants see in the marketplace.',
+          actionLabel: 'Add photos',
+          onAction: busy ? null : () => _addPhotos(0),
+        )
+      else ...[
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: photos.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemBuilder: (context, index) => _PhotoTile(
+            photo: photos[index],
+            isCover: index == 0,
+            enabled: !busy,
+            onDelete: () => _deletePhoto(photos[index]),
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (photos.length < PropertyMediaLimits.maxUnitPhotos)
+          OasisSheetChipButton(
+            icon: Icons.add_photo_alternate_outlined,
+            label: 'Add more photos',
+            onTap: busy ? () {} : () => _addPhotos(photos.length),
+          ),
+      ],
+    ];
+
     return OasisSheet(
       icon: Icons.perm_media_outlined,
-      title: 'Unit ${widget.unit.unitNumber} media',
-      subtitle:
-          'What a tenant sees before they apply. The tour video is the one '
-          'that decides it. Nobody applies for a flat they cannot see '
-          'inside.',
+      title: isOasisV2
+          ? 'Photos of your place'
+          : 'Unit ${widget.unit.unitNumber} media',
+      subtitle: isOasisV2
+          ? 'What guests see before they book. Add a photo of every room; '
+                'the first is your cover.'
+          : 'What a tenant sees before they apply. The tour video is the one '
+                'that decides it. Nobody applies for a flat they cannot see '
+                'inside.',
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'TOUR VIDEO',
-                style: AppTheme.labelText(context).copyWith(letterSpacing: 0.9),
-              ),
-            ),
-            Text(
-              videoUrl == null ? 'MISSING' : 'ADDED',
-              style: AppTheme.labelText(
-                context,
-                color: videoUrl == null
-                    ? AppTheme.actionColor
-                    : AppTheme.successColor,
-              ).copyWith(fontSize: 10, letterSpacing: 0.6),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (videoUrl == null)
-          _EmptyMediaCard(
-            icon: Icons.videocam_outlined,
-            message:
-                'This unit has no walkthrough. Tenants browsing the '
-                'marketplace see a still photo and nothing else, which is the '
-                'single biggest reason a listing gets skipped.',
-            actionLabel: 'Upload tour video',
-            onAction: busy ? null : () => _uploadVideo(replacing: false),
-          )
-        else
-          Column(
-            children: [
-              OasisVideoPlayer(url: videoUrl),
-              const SizedBox(height: 10),
-              OasisSheetChipButton(
-                icon: Icons.swap_horiz_rounded,
-                label: 'Replace video',
-                onTap: busy ? () {} : () => _uploadVideo(replacing: true),
-              ),
-            ],
-          ),
+        ...(isOasisV2 ? photoSection : videoSection),
         const SizedBox(height: 22),
-
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'PHOTOS',
-                style: AppTheme.labelText(context).copyWith(letterSpacing: 0.9),
-              ),
-            ),
-            Text(
-              '${photos.length}/${PropertyMediaLimits.maxUnitPhotos}',
-              style: AppTheme.labelText(
-                context,
-                color: AppTheme.mutedTextColor(context),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (photos.isEmpty)
-          _EmptyMediaCard(
-            icon: Icons.photo_library_outlined,
-            message:
-                'No photos of this unit yet. The first one becomes the image '
-                'tenants see in the marketplace.',
-            actionLabel: 'Add photos',
-            onAction: busy ? null : () => _addPhotos(0),
-          )
-        else ...[
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: photos.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemBuilder: (context, index) => _PhotoTile(
-              photo: photos[index],
-              isCover: index == 0,
-              enabled: !busy,
-              onDelete: () => _deletePhoto(photos[index]),
-            ),
-          ),
-          const SizedBox(height: 10),
-          if (photos.length < PropertyMediaLimits.maxUnitPhotos)
-            OasisSheetChipButton(
-              icon: Icons.add_photo_alternate_outlined,
-              label: 'Add more photos',
-              onTap: busy ? () {} : () => _addPhotos(photos.length),
-            ),
-        ],
-
+        ...(isOasisV2 ? videoSection : photoSection),
         if (busy) ...[
           const SizedBox(height: 16),
           const OasisBusyLine(label: 'Uploading'),

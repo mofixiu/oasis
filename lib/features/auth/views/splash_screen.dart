@@ -128,25 +128,26 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // The forest-green lettering disappears on the dark
-                    // background, so dark mode gets the white-lettered variant.
-                    // 168 matches the iOS LaunchImage, so the hand-off from
-                    // the OS splash does not jump.
+                    // The orange wordmark and lime palm are legible on both
+                    // launch backgrounds. Keep the same 250-point width as the
+                    // iOS LaunchImage so the hand-off from the OS splash does
+                    // not jump.
                     Image.asset(
                       isDarkMode
-                          ? 'assets/images/oasis_logo_dark.png'
-                          : 'assets/images/oasis_logo.png',
-                      height: 168,
+                          ? 'assets/images/oasis_wordmark_dark.png'
+                          : 'assets/images/oasis_wordmark.png',
+                      width: 250,
+                      height: 77,
                       fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      'RADICAL CLARITY',
+                      'THOUGHTFUL SHORT STAYS, FOUND ON YOUR TERMS',
                       style: TextStyle(
                         color: accentTextColor,
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 4.5,
+                        letterSpacing: 1.2,
                       ),
                     ),
                   ],

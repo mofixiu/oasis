@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+import '../../../core/app_variant.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/oasis_pressable.dart';
@@ -12,6 +15,17 @@ import '../controllers/messaging_controller.dart';
 import '../models/conversation_models.dart';
 import '../../../core/widgets/oasis_busy.dart';
 import '../../../core/widgets/oasis_shimmer.dart';
+import '../../../core/utils/fade_page_route.dart';
+import '../../shortlets/controllers/shortlet_controller.dart';
+import '../../shortlets/models/shortlet_models.dart';
+import '../../shortlets/views/v2/v2_booking_details_screen.dart';
+import '../../shortlets/views/v2/v2_stay_widgets.dart';
+import 'conversations_screen.dart';
+import 'v2_message_time.dart';
+import '../../support/views/v2_support_message_sheet.dart';
+import '../../support/services/support_service.dart';
+import '../../../core/widgets/oasis_toast.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// One thread between a landlord and a tenant.
 ///
@@ -135,22 +149,29 @@ class _ConversationScreenState extends State<ConversationScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: AppBar(
-        backgroundColor: AppTheme.pageBackground(context),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        iconTheme: IconThemeData(color: AppTheme.primaryTextColor(context)),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              conversation.counterparty.displayName,
-              style: AppTheme.cardTitle(context),
+      appBar: isOasisV2
+          ? _v2AppBar(context, conversation)
+          : AppBar(
+              backgroundColor: AppTheme.pageBackground(context),
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              iconTheme: IconThemeData(
+                color: AppTheme.primaryTextColor(context),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    conversation.counterparty.displayName,
+                    style: AppTheme.cardTitle(context),
+                  ),
+                  Text(
+                    conversation.subjectLine,
+                    style: AppTheme.labelText(context),
+                  ),
+                ],
+              ),
             ),
-            Text(conversation.subjectLine, style: AppTheme.labelText(context)),
-          ],
-        ),
-      ),
       // `bottom: false` deliberately: the composer sits flush against the
       // bottom edge and absorbs the home-indicator inset into its own padding.
       // Letting SafeArea do it instead leaves a dead strip of page background
@@ -183,13 +204,354 @@ class _ConversationScreenState extends State<ConversationScreen>
     );
   }
 
+  /// The stay's photo and name, with who is on the other end underneath.
+  PreferredSizeWidget _v2AppBar(
+    BuildContext context,
+    Conversation conversation,
+  ) {
+    final counterparty = conversation.counterparty;
+    final role = switch (counterparty.role.toUpperCase()) {
+      'OWNER' || 'LANDLORD' || 'HOST' => 'Host',
+      'TENANT' || 'GUEST' => 'Guest',
+      _ => '',
+    };
+    final title = conversation.propertyName.isNotEmpty
+        ? conversation.propertyName
+        : counterparty.displayName;
+    final subtitle = conversation.propertyName.isNotEmpty
+        ? [if (role.isNotEmpty) role, counterparty.displayName].join(' · ')
+        : (role.isNotEmpty ? role : conversation.subjectLine);
+
+    return AppBar(
+      backgroundColor: AppTheme.pageBackground(context),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      titleSpacing: 0,
+      iconTheme: IconThemeData(color: AppTheme.primaryTextColor(context)),
+      shape: Border(bottom: BorderSide(color: AppTheme.borderColor(context))),
+      actions: [
+        IconButton(
+          tooltip: 'Booking details',
+          onPressed: () => _showV2Details(context, conversation),
+          icon: const Icon(Icons.more_horiz_rounded),
+        ),
+        const SizedBox(width: 4),
+      ],
+      title: Row(
+        children: [
+          V2ThreadAvatar(conversation: conversation, size: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.cardTitle(
+                    context,
+                  ).copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                if (subtitle.isNotEmpty)
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.bodyText(context).copyWith(fontSize: 12),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The shortlet this thread is about: photo, dates, guests, and the way to
+  /// its booking.
+  void _showV2Details(BuildContext context, Conversation conversation) {
+    ShortLetBooking? booking;
+    for (final candidate in context.read<ShortLetController>().bookings) {
+      if (candidate.id == conversation.contextId) booking = candidate;
+    }
+    final place = conversation.propertyName.isNotEmpty
+        ? conversation.propertyName
+        : (booking?.title ?? conversation.counterparty.displayName);
+    final address = booking?.address ?? '';
+    final roleWord = switch (conversation.counterparty.role.toUpperCase()) {
+      'TENANT' || 'GUEST' => 'guest',
+      _ => 'host',
+    };
+    final phone = conversation.counterparty.phone.trim();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.9,
+        ),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor(sheetContext),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppTheme.radiusLg),
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                V2StayPhoto(
+                  url: conversation.propertyPhotoUrl,
+                  height: 190,
+                  // The conversation may simply not carry the photo.
+                  listingKnown: false,
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    18,
+                    20,
+                    MediaQuery.paddingOf(sheetContext).bottom + 16,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(place, style: AppTheme.sectionTitle(sheetContext)),
+                      if (address.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 15,
+                              color: AppTheme.secondaryTextColor(sheetContext),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                address,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTheme.bodyText(sheetContext),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (booking != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.subtleSurfaceColor(sheetContext),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 18,
+                                color: AppTheme.secondaryTextColor(
+                                  sheetContext,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      v2DateRange(booking),
+                                      style: AppTheme.cardTitle(sheetContext),
+                                    ),
+                                    if (booking.nights > 0)
+                                      Text(
+                                        v2Plural(
+                                          booking.nights,
+                                          'night',
+                                          'nights',
+                                        ),
+                                        style: AppTheme.bodyText(
+                                          sheetContext,
+                                        ).copyWith(fontSize: 12),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.people_outline_rounded,
+                                size: 18,
+                                color: AppTheme.secondaryTextColor(
+                                  sheetContext,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                v2Plural(booking.guestCount, 'guest', 'guests'),
+                                style: AppTheme.cardTitle(sheetContext),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            Icons.receipt_long_outlined,
+                            color: AppTheme.primaryTextColor(sheetContext),
+                          ),
+                          title: Text(
+                            'View booking details',
+                            style: AppTheme.cardTitle(sheetContext),
+                          ),
+                          subtitle: Text(
+                            'Dates, payment, check-in info',
+                            style: AppTheme.bodyText(
+                              sheetContext,
+                            ).copyWith(fontSize: 12),
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppTheme.mutedTextColor(sheetContext),
+                          ),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            Navigator.push(
+                              context,
+                              FadePageRoute(
+                                page: V2BookingDetailsScreen(booking: booking!),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 4),
+                      _V2SheetRow(
+                        icon: Icons.call_outlined,
+                        title: 'Call $roleWord',
+                        // The backend leaves the number blank until the
+                        // booking is paid (API guide 20). Said as that,
+                        // rather than as something missing.
+                        subtitle: phone.isNotEmpty
+                            ? phone
+                            : booking == null
+                            ? 'Shared once a booking is paid'
+                            : booking.status.isPaid
+                            ? 'Their number isn’t available'
+                            : 'Shared once the booking is paid',
+                        onTap: phone.isEmpty
+                            ? null
+                            : () => launchUrl(Uri(scheme: 'tel', path: phone)),
+                      ),
+                      _V2SheetRow(
+                        icon: Icons.flag_outlined,
+                        title: 'Report an issue',
+                        subtitle: 'Tell the Oasis team what happened',
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          showV2SupportMessageSheet(
+                            context,
+                            title: 'Report an issue',
+                            initialCategory: SupportCategory.safety,
+                            shortLetBookingId: booking?.id,
+                            conversationId: conversation.id,
+                          );
+                        },
+                      ),
+                      if (!conversation.status.isClosed) ...[
+                        const SizedBox(height: 14),
+                        V2DestructiveButton(
+                          label: 'Block $roleWord',
+                          onTap: () async {
+                            Navigator.pop(sheetContext);
+                            await _confirmBlock(
+                              context,
+                              conversation,
+                              roleWord,
+                            );
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Asks before blocking, then closes the thread.
+  Future<void> _confirmBlock(
+    BuildContext context,
+    Conversation conversation,
+    String roleWord,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(dialogContext),
+        shape: RoundedRectangleBorder(borderRadius: AppTheme.cornerLg),
+        title: Text(
+          'Block this $roleWord?',
+          style: AppTheme.sectionTitle(dialogContext),
+        ),
+        content: Text(
+          'They will not be able to message you, and this conversation '
+          'becomes read-only. Your booking itself is not cancelled.',
+          style: AppTheme.bodyText(dialogContext),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep talking'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              'Block',
+              style: AppTheme.cardTitle(
+                dialogContext,
+                color: AppTheme.disputeColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final messaging = context.read<MessagingController>();
+    final blocked = await messaging.blockConversation(conversation);
+    if (!context.mounted) return;
+    if (blocked) {
+      OasisToast.success(context, 'Blocked. They can’t message you any more.');
+    } else {
+      OasisToast.error(
+        context,
+        messaging.errorMessage ?? 'Could not block them. Try again.',
+      );
+    }
+  }
+
   /// Why the thread is read-only, in terms of the relationship that ended.
   String _closedNotice(Conversation conversation) {
     switch (conversation.context) {
       case ConversationContext.application:
         return 'This application is closed, so messages are read-only.';
       case ConversationContext.shortLet:
-        return 'This stay is over, so messages are read-only.';
+        return isOasisV2
+            ? 'This booking is over, so messages are read-only.'
+            : 'This stay is over, so messages are read-only.';
       case ConversationContext.tenancy:
       case ConversationContext.unknown:
         return 'This tenancy has ended, so messages are read-only.';
@@ -235,7 +597,7 @@ class _ConversationScreenState extends State<ConversationScreen>
             // box: it is faster to answer a prompt than to compose one.
             ? 'Arrange the practical bits: what time you are arriving, where '
                   'the key is, the gate code. Messages stay attached to this '
-                  'stay.'
+                  '${isOasisV2 ? 'booking' : 'stay'}.'
             : 'Ask about the unit, arrange a viewing, or sort out something '
                   'in the property. Messages stay attached to this unit.',
       );
@@ -247,11 +609,45 @@ class _ConversationScreenState extends State<ConversationScreen>
       itemCount: controller.messages.length,
       itemBuilder: (context, index) {
         final message = controller.messages[index];
-        if (message.isSystem) return _SystemLine(message: message);
-        return _Bubble(
-          message: message,
-          isMine: message.isMine(myRole),
-          onRetry: message.hasFailed ? () => controller.retry(message) : null,
+        final Widget line = message.isSystem
+            ? _SystemLine(message: message)
+            : _Bubble(
+                message: message,
+                isMine: message.isMine(myRole),
+                onRetry: message.hasFailed
+                    ? () => controller.retry(message)
+                    : null,
+              );
+        if (!isOasisV2) return line;
+
+        // A day label wherever the date changes, as in any messaging app.
+        final day = v2LocalTime(message.createdAt);
+        final previous = index == 0
+            ? null
+            : v2LocalTime(controller.messages[index - 1].createdAt);
+        final startsDay =
+            day != null &&
+            (previous == null ||
+                previous.year != day.year ||
+                previous.month != day.month ||
+                previous.day != day.day);
+        if (!startsDay) return line;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 8, 0, 14),
+              child: Text(
+                v2DayLabel(day),
+                textAlign: TextAlign.center,
+                style: AppTheme.bodyText(
+                  context,
+                  color: AppTheme.mutedTextColor(context),
+                ).copyWith(fontSize: 12),
+              ),
+            ),
+            line,
+          ],
         );
       },
     );
@@ -266,8 +662,109 @@ class _Bubble extends StatelessWidget {
 
   const _Bubble({required this.message, required this.isMine, this.onRetry});
 
+  /// White for theirs, terracotta for mine, with the time tucked inside.
+  Widget _buildV2(BuildContext context) {
+    final sentAt = v2LocalTime(message.createdAt);
+    final foreground = isMine
+        ? AppTheme.whiteColor
+        : AppTheme.primaryTextColor(context);
+    final meta = isMine
+        ? AppTheme.whiteColor.withValues(alpha: 0.78)
+        : AppTheme.mutedTextColor(context);
+    const corner = Radius.circular(18);
+    const tail = Radius.circular(6);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: isMine
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.sizeOf(context).width * 0.76,
+            ),
+            child: Opacity(
+              opacity: message.isPending ? 0.55 : 1,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+                decoration: BoxDecoration(
+                  color: isMine
+                      ? AppTheme.terracottaColor
+                      : AppTheme.surfaceColor(context),
+                  border: isMine
+                      ? null
+                      : Border.all(color: AppTheme.borderColor(context)),
+                  borderRadius: BorderRadius.only(
+                    topLeft: corner,
+                    topRight: corner,
+                    bottomLeft: isMine ? corner : tail,
+                    bottomRight: isMine ? tail : corner,
+                  ),
+                ),
+                child: IntrinsicWidth(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        message.body,
+                        style: TextStyle(
+                          color: foreground,
+                          fontSize: 15,
+                          height: 1.4,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (sentAt != null)
+                            Text(
+                              DateFormat('h:mm a').format(sentAt),
+                              style: TextStyle(color: meta, fontSize: 11),
+                            ),
+                          if (isMine && !message.isPending) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              message.isRead
+                                  ? Icons.done_all_rounded
+                                  : Icons.done_rounded,
+                              size: 14,
+                              color: meta,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (message.hasFailed)
+            OasisPressable(
+              onTap: onRetry,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, right: 4),
+                child: Text(
+                  'Not sent. Tap to retry',
+                  style: AppTheme.labelText(
+                    context,
+                    color: AppTheme.disputeColor,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isOasisV2) return _buildV2(context);
     final isDark = AppTheme.isDarkMode(context);
     final mineColor = AppTheme.actionColor;
     final theirsColor = isDark
@@ -401,6 +898,74 @@ class _Composer extends StatelessWidget {
     this.closedNotice,
   });
 
+  /// A rounded field and a round send button, as in the v2 mockups.
+  Widget _buildV2(BuildContext context, double bottomInset) => Container(
+    padding: EdgeInsets.fromLTRB(16, 10, 16, 10 + bottomInset),
+    decoration: BoxDecoration(
+      color: AppTheme.surfaceColor(context),
+      border: Border(top: BorderSide(color: AppTheme.borderColor(context))),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            minLines: 1,
+            maxLines: 4,
+            maxLength: 2000,
+            textCapitalization: TextCapitalization.sentences,
+            style: AppTheme.bodyText(
+              context,
+              color: AppTheme.primaryTextColor(context),
+            ).copyWith(fontSize: 15),
+            decoration: InputDecoration(
+              hintText: 'Type a message…',
+              hintStyle: AppTheme.bodyText(
+                context,
+                color: AppTheme.mutedTextColor(context),
+              ).copyWith(fontSize: 15),
+              counterText: '',
+              filled: true,
+              fillColor: AppTheme.subtleSurfaceColor(context),
+              contentPadding: const EdgeInsets.fromLTRB(18, 13, 18, 13),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Semantics(
+          button: true,
+          label: 'Send',
+          child: OasisPressable(
+            onTap: isSending ? null : onSend,
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                color: AppTheme.terracottaColor,
+                shape: BoxShape.circle,
+              ),
+              child: isSending
+                  ? const Padding(
+                      padding: EdgeInsets.all(17),
+                      child: OasisBusyDots(color: AppTheme.whiteColor),
+                    )
+                  : const Icon(
+                      Icons.send_rounded,
+                      size: 20,
+                      color: AppTheme.whiteColor,
+                    ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     // Space taken by the home indicator. Goes to zero while the keyboard is
@@ -421,6 +986,8 @@ class _Composer extends StatelessWidget {
         ),
       );
     }
+
+    if (isOasisV2) return _buildV2(context, bottomInset);
 
     return Container(
       padding: EdgeInsets.fromLTRB(16, 10, 16, 10 + bottomInset),
@@ -474,4 +1041,38 @@ class _Composer extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A tappable line in the conversation details sheet.
+class _V2SheetRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  const _V2SheetRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    enabled: onTap != null,
+    onTap: onTap,
+    leading: Icon(icon, color: AppTheme.primaryTextColor(context)),
+    title: Text(title, style: AppTheme.cardTitle(context)),
+    subtitle: Text(
+      subtitle,
+      style: AppTheme.bodyText(context).copyWith(fontSize: 12),
+    ),
+    trailing: onTap == null
+        ? null
+        : Icon(
+            Icons.chevron_right_rounded,
+            color: AppTheme.mutedTextColor(context),
+          ),
+  );
 }

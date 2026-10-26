@@ -345,6 +345,79 @@ class ShortLetController extends ChangeNotifier
     return listing;
   }
 
+  /// Creates a new place and its listing in one go, for a host with nothing
+  /// to pick from yet. Null on failure, with the reason in [errorMessage].
+  Future<HostListingResult?> createHostListing({
+    required String propertyName,
+    required String address,
+    required String city,
+    required String state,
+    required double latitude,
+    required double longitude,
+    required String unitNumber,
+    required int bedrooms,
+    required int bathrooms,
+    required String nightlyPrice,
+    required int minimumNights,
+    required int maximumGuests,
+    String cautionFee = '0.00',
+    ShortLetCancellationPolicy cancellationPolicy =
+        ShortLetCancellationPolicy.flexible,
+    String? availableFrom,
+    String? availableTo,
+    String description = '',
+    String houseRules = '',
+    String checkInNotes = '',
+  }) async {
+    _isSubmitting = true;
+    _existingListingId = null;
+    clearFailure();
+    notifyListeners();
+
+    final HostListingResult result;
+    try {
+      result = await _service.createHostListing(
+        propertyName: propertyName,
+        address: address,
+        city: city,
+        state: state,
+        latitude: latitude,
+        longitude: longitude,
+        unitNumber: unitNumber,
+        bedrooms: bedrooms,
+        bathrooms: bathrooms,
+        nightlyPrice: nightlyPrice,
+        minimumNights: minimumNights,
+        maximumGuests: maximumGuests,
+        cautionFee: cautionFee,
+        cancellationPolicy: cancellationPolicy,
+        availableFrom: availableFrom,
+        availableTo: availableTo,
+        description: description,
+        houseRules: houseRules,
+        checkInNotes: checkInNotes,
+      );
+    } catch (e) {
+      captureFailure(e);
+      _isSubmitting = false;
+      notifyListeners();
+      return null;
+    }
+
+    // Created. As with [saveListing], a failed refresh only means the new
+    // listing is patched in locally until the next one.
+    try {
+      _listings = await _service.getLandlordListings();
+    } catch (e) {
+      debugPrint('[SHORTLET] Created, but the list refresh failed: $e');
+      if (result.listing.id.isNotEmpty) _mergeListing(result.listing);
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+    return result;
+  }
+
   /// Puts [listing] into the local set, replacing the entry for the same id
   /// or unit rather than adding a second row for one place.
   void _mergeListing(ShortLetListing listing) {
@@ -995,6 +1068,40 @@ class ShortLetController extends ChangeNotifier
         evidence: evidence,
       );
       return true;
+    } catch (e) {
+      captureFailure(e);
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// Host confirms all is well after checkout, so the caution fee goes back
+  /// to the guest now. Returns true when it was released. A 404 means the
+  /// backend has not shipped early release yet; the fee still goes back on
+  /// its own when the 24 hours are up, and the message says so.
+  Future<bool> releaseCautionFee(ShortLetBooking booking) async {
+    _isSubmitting = true;
+    clearFailure();
+    notifyListeners();
+
+    try {
+      await _service.releaseCautionFee(booking.id);
+      return true;
+    } on ApiException catch (e) {
+      if (e.statusCode == 404 || e.statusCode == 405) {
+        captureFailure(
+          ApiException(
+            'Refunding early is not available yet. The caution fee goes '
+            'back to the guest automatically when the 24 hours are up.',
+            statusCode: e.statusCode,
+          ),
+        );
+      } else {
+        captureFailure(e);
+      }
+      return false;
     } catch (e) {
       captureFailure(e);
       return false;

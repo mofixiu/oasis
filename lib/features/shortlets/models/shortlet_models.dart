@@ -19,6 +19,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_constants.dart';
 import '../../../core/utils/oasis_currency.dart';
+import '../../../core/app_variant.dart';
 
 /// The cancellation terms a host selects for a short-let listing.
 ///
@@ -84,7 +85,7 @@ enum HostPayoutStatus {
   /// No booking, or a booking that has not been paid for yet.
   notFunded,
 
-  /// Paid, and waiting for the release time: normally check-in.
+  /// Paid, and waiting for the release time: 24 hours after checkout.
   held,
 
   /// Paid out to the host.
@@ -149,8 +150,8 @@ enum ShortLetBookingStatus {
   approved,
 
   /// Paid. What happens to the host's money from here is tracked separately
-  /// on [ShortLetBooking.hostPayoutStatus]: it is held until check-in, not
-  /// released the moment this status is reached.
+  /// on [ShortLetBooking.hostPayoutStatus]: it is held until a day after
+  /// checkout, not released the moment this status is reached.
   paid,
 
   /// The guest has arrived. Nothing about the money changes here; this exists
@@ -159,8 +160,8 @@ enum ShortLetBookingStatus {
   checkedIn,
 
   /// The guest has left. The caution fee's 24-hour claim window opens here,
-  /// and the host payout releases on its own schedule around this point too:
-  /// again, tracked on [ShortLetBooking.hostPayoutStatus], not here.
+  /// and the host payout releases when the same 24 hours are up: again,
+  /// tracked on [ShortLetBooking.hostPayoutStatus], not here.
   checkedOut,
 
   /// Fully settled: stayed, checked out, and nothing left to claim or
@@ -257,7 +258,7 @@ enum ShortLetBookingStatus {
       case ShortLetBookingStatus.checkedOut:
         return 'Checked out';
       case ShortLetBookingStatus.completed:
-        return 'Stay complete';
+        return isOasisV2 ? 'Completed' : 'Stay complete';
       case ShortLetBookingStatus.disputed:
         return 'Under review';
       case ShortLetBookingStatus.rejected:
@@ -286,15 +287,15 @@ enum ShortLetBookingStatus {
       case ShortLetBookingStatus.paid:
         // Deliberately silent on the money here, that is what
         // [ShortLetBooking.hostPayoutStatusLabel] is for, shown alongside
-        // this pill rather than folded into it. Payout is held until
-        // check-in, not released the moment a booking is paid.
+        // this pill rather than folded into it. Payout is held until a day
+        // after checkout, not released the moment a booking is paid.
         return 'Paid, booking confirmed';
       case ShortLetBookingStatus.checkedIn:
         return 'Guest checked in';
       case ShortLetBookingStatus.checkedOut:
         return 'Guest checked out';
       case ShortLetBookingStatus.completed:
-        return 'Stay complete';
+        return isOasisV2 ? 'Completed' : 'Stay complete';
       case ShortLetBookingStatus.disputed:
         return 'Guest raised a problem';
       case ShortLetBookingStatus.rejected:
@@ -704,6 +705,63 @@ class ShortLetListing {
       iso == null || iso.isEmpty ? null : DateTime.tryParse(iso);
 }
 
+/// What `POST /host/listings/` made: the listing, plus the ids of the
+/// property and unit behind it, which the app needs to add photos next.
+///
+/// The response is the ordinary short-let listing, with `property` and
+/// `unit` nested in it (confirmed by the backend, 2026-10-23). Ids sent bare
+/// rather than nested are read too. The unit's details fall back to what the
+/// host just typed.
+class HostListingResult {
+  final ShortLetListing listing;
+  final String propertyId;
+  final String unitId;
+  final String unitNumber;
+  final int bedrooms;
+  final int bathrooms;
+
+  const HostListingResult({
+    required this.listing,
+    required this.propertyId,
+    required this.unitId,
+    required this.unitNumber,
+    required this.bedrooms,
+    required this.bathrooms,
+  });
+
+  factory HostListingResult.fromJson(
+    Map<String, dynamic> json, {
+    required String fallbackUnitNumber,
+    required int fallbackBedrooms,
+    required int fallbackBathrooms,
+  }) {
+    String idOf(Object? value) => switch (value) {
+      Map() => value['id']?.toString() ?? '',
+      null => '',
+      _ => value.toString(),
+    };
+    String firstOf(List<String> values) =>
+        values.firstWhere((value) => value.isNotEmpty, orElse: () => '');
+
+    final listing = ShortLetListing.fromJson(json);
+    final unit = json['unit'] is Map<String, dynamic>
+        ? json['unit'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    return HostListingResult(
+      listing: listing,
+      propertyId: firstOf([
+        idOf(json['property']),
+        idOf(json['property_id']),
+        idOf(unit['property']),
+      ]),
+      unitId: firstOf([listing.unitId, idOf(json['unit_id'])]),
+      unitNumber: firstOf([listing.unitNumber, fallbackUnitNumber]),
+      bedrooms: _readInt(unit['bedrooms']) ?? fallbackBedrooms,
+      bathrooms: _readInt(unit['bathrooms']) ?? fallbackBathrooms,
+    );
+  }
+}
+
 /// One booking of a short let, from either role's booking endpoint.
 class ShortLetBooking {
   final String id;
@@ -772,9 +830,9 @@ class ShortLetBooking {
   final String hostPayoutStatusLabel;
   final String hostPayoutStatusDescription;
 
-  /// When the payout is due to release: normally check-in, 12:00 PM
-  /// Africa/Lagos, per the backend's stated default. Null once released, and
-  /// null before payment.
+  /// When the payout is due to release: 24 hours after checkout (API guide
+  /// 20; it used to be 12:00 PM on the check-in date). Null once released,
+  /// and null before payment.
   final String? hostPayoutReleaseAt;
 
   /// When the payout actually left, if it has.
@@ -786,7 +844,15 @@ class ShortLetBooking {
   /// [isCautionFeeRefunded] check below, so a second enum would be
   /// ceremony without a use.
   final String cautionFeeEscrowStatus;
+
+  /// When the host's 24-hour claim window closes and, unclaimed, the caution
+  /// fee goes back to the guest.
   final String? cautionFeeReleaseReadyAt;
+
+  /// The host's claim against the caution fee, when there is one (spec v16
+  /// §7). Null means no claim has been made, or the backend has not started
+  /// sending it yet.
+  final CautionClaim? cautionClaim;
 
   /// The thread for this stay, once the backend has opened one.
   ///
@@ -859,6 +925,7 @@ class ShortLetBooking {
     this.hostPaidAt,
     this.cautionFeeEscrowStatus = '',
     this.cautionFeeReleaseReadyAt,
+    this.cautionClaim,
     this.conversationId = '',
     this.hasReview = false,
     this.tenantEmail = '',
@@ -982,8 +1049,13 @@ class ShortLetBooking {
                   payment['host_payout_status_description'] ??
                   '')
               .toString(),
+      // `escrow_release_at` carries the same moment (API guide 20), for a
+      // payload that only has the payment's own field.
       hostPayoutReleaseAt:
-          (json['host_payout_release_at'] ?? payment['host_payout_release_at'])
+          (json['host_payout_release_at'] ??
+                  payment['host_payout_release_at'] ??
+                  json['escrow_release_at'] ??
+                  payment['escrow_release_at'])
               ?.toString(),
       hostPaidAt:
           (json['host_paid_at'] ??
@@ -1000,6 +1072,10 @@ class ShortLetBooking {
           (json['caution_fee_release_ready_at'] ??
                   payment['caution_fee_release_ready_at'])
               ?.toString(),
+      cautionClaim: switch (json['caution_claim'] ?? payment['caution_claim']) {
+        final Map<String, dynamic> claim => CautionClaim.fromJson(claim),
+        _ => null,
+      },
       tenantEmail: (json['tenant_email'] ?? json['guest_email'] ?? '')
           .toString(),
       tenantName:
@@ -1115,15 +1191,64 @@ class ShortLetBooking {
   }
 
   /// Whether the host may open a caution-fee claim: there is a deposit, it
-  /// has not already gone back to the guest, and the stay is over. The
-  /// backend enforces the 24-hour claim window itself; this only stops the
-  /// button appearing on a stay that has not happened yet.
+  /// has not already gone back to the guest, the stay is over, no claim is
+  /// open yet, and the 24-hour window has not closed. The backend enforces
+  /// the window itself; this stops the button outliving it.
   bool get canClaimCautionFee =>
       hasCautionFee &&
       !isCautionFeeRefunded &&
-      (status == ShortLetBookingStatus.checkedOut ||
-          status == ShortLetBookingStatus.completed ||
-          (status.isPaid && hasCheckedOut));
+      cautionClaim == null &&
+      _isStayOver &&
+      !_claimWindowClosed;
+
+  bool get _isStayOver =>
+      status == ShortLetBookingStatus.checkedOut ||
+      status == ShortLetBookingStatus.completed ||
+      (status.isPaid && hasCheckedOut);
+
+  /// When the claim window closes, in local time, if the backend said.
+  DateTime? get cautionClaimDeadline =>
+      DateTime.tryParse(cautionFeeReleaseReadyAt ?? '')?.toLocal();
+
+  bool get _claimWindowClosed {
+    final deadline = cautionClaimDeadline;
+    return deadline != null && !DateTime.now().isBefore(deadline);
+  }
+
+  /// Time the host has left to inspect and claim, or null when that is not
+  /// the situation or the backend sent no deadline.
+  Duration? get cautionClaimWindowLeft {
+    if (!isAwaitingCheckoutInspection) return null;
+    final deadline = cautionClaimDeadline;
+    if (deadline == null) return null;
+    final left = deadline.difference(DateTime.now());
+    return left.isNegative ? Duration.zero : left;
+  }
+
+  /// The stay is over, the caution fee is still held, and the host has not
+  /// claimed or released it: the host's checkout inspection is due.
+  bool get isAwaitingCheckoutInspection =>
+      canClaimCautionFee && status != ShortLetBookingStatus.disputed;
+
+  /// Where the guest's caution fee stands, for the guest's own screens.
+  CautionFeeStage get cautionFeeStage {
+    if (!hasCautionFee) return CautionFeeStage.none;
+    if (isCautionFeeRefunded) return CautionFeeStage.returned;
+    final claim = cautionClaim;
+    if (claim != null) {
+      if (claim.status == CautionClaimStatus.open) {
+        return CautionFeeStage.claimed;
+      }
+      if (claim.status.isUnderReview) return CautionFeeStage.underReview;
+      return CautionFeeStage.settled;
+    }
+    if (status == ShortLetBookingStatus.disputed) {
+      return CautionFeeStage.underReview;
+    }
+    if (!status.isPaid) return CautionFeeStage.none;
+    if (_isStayOver) return CautionFeeStage.inspection;
+    return CautionFeeStage.held;
+  }
 
   /// What the stay itself costs, with the deposit taken back out.
   ///
@@ -1225,6 +1350,7 @@ class ShortLetBooking {
     String? hostPaidAt,
     String? cautionFeeEscrowStatus,
     String? cautionFeeReleaseReadyAt,
+    CautionClaim? cautionClaim,
     String? conversationId,
     bool? hasReview,
     String? tenantEmail,
@@ -1277,6 +1403,7 @@ class ShortLetBooking {
         cautionFeeEscrowStatus ?? this.cautionFeeEscrowStatus,
     cautionFeeReleaseReadyAt:
         cautionFeeReleaseReadyAt ?? this.cautionFeeReleaseReadyAt,
+    cautionClaim: cautionClaim ?? this.cautionClaim,
     conversationId: conversationId ?? this.conversationId,
     hasReview: hasReview ?? this.hasReview,
     tenantEmail: tenantEmail ?? this.tenantEmail,
@@ -1383,3 +1510,89 @@ String _isoDate(DateTime date) =>
 
 /// `YYYY-MM-DD` for the API, from a picked date.
 String shortLetIsoDate(DateTime date) => _isoDate(date);
+
+/// Where a guest's caution fee stands.
+enum CautionFeeStage {
+  /// No caution fee on this booking, or nothing paid yet.
+  none,
+
+  /// Paid and held while the stay is ahead or under way.
+  held,
+
+  /// The stay is over and the host is inside the 24-hour claim window.
+  inspection,
+
+  /// The host has claimed some or all of it and the guest needs to answer.
+  claimed,
+
+  /// The guest rejected or countered, or reported a problem: Oasis decides.
+  underReview,
+
+  /// A claim was agreed and the money has been split.
+  settled,
+
+  /// Back in the guest's vault.
+  returned,
+}
+
+enum CautionClaimStatus {
+  /// Waiting for the guest to accept, reject or counter.
+  open,
+  accepted,
+  rejected,
+  countered,
+
+  /// Settled by Oasis support after a rejection or counter.
+  resolved,
+  unknown;
+
+  static CautionClaimStatus fromString(String? value) =>
+      switch (value?.trim().toUpperCase()) {
+        'OPEN' || 'PENDING' || 'AWAITING_TENANT' => CautionClaimStatus.open,
+        'ACCEPTED' => CautionClaimStatus.accepted,
+        'REJECTED' => CautionClaimStatus.rejected,
+        'COUNTERED' => CautionClaimStatus.countered,
+        'RESOLVED' || 'CLOSED' || 'SETTLED' => CautionClaimStatus.resolved,
+        _ => CautionClaimStatus.unknown,
+      };
+
+  bool get isUnderReview =>
+      this == CautionClaimStatus.rejected ||
+      this == CautionClaimStatus.countered;
+}
+
+/// A host's claim against a guest's caution fee (spec v16 §7).
+class CautionClaim {
+  final String id;
+  final CautionClaimStatus status;
+  final String claimedAmount;
+  final String reason;
+  final String counterAmount;
+  final List<String> evidence;
+  final String createdAt;
+
+  const CautionClaim({
+    required this.id,
+    required this.status,
+    this.claimedAmount = '0.00',
+    this.reason = '',
+    this.counterAmount = '',
+    this.evidence = const [],
+    this.createdAt = '',
+  });
+
+  factory CautionClaim.fromJson(Map<String, dynamic> json) => CautionClaim(
+    id: json['id']?.toString() ?? '',
+    status: CautionClaimStatus.fromString(json['status']?.toString()),
+    claimedAmount: (json['claimed_amount'] ?? json['amount'] ?? '0.00')
+        .toString(),
+    reason: (json['reason'] ?? '').toString(),
+    counterAmount: (json['counter_amount'] ?? '').toString(),
+    evidence: [
+      for (final url
+          in (json['evidence'] is List ? json['evidence'] as List : const []))
+        if (url is String && url.isNotEmpty) url,
+    ],
+    createdAt: (json['created_at'] ?? '').toString(),
+  );
+}

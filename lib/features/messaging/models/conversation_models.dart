@@ -77,11 +77,16 @@ class Counterparty {
   final String role;
   final String verificationStatus;
 
+  /// The other person's phone number, when the backend shares it: for a paid
+  /// shortlet booking, so a guest can call their host (spec v16 §5).
+  final String phone;
+
   const Counterparty({
     this.id = '',
     this.fullName = '',
     this.role = '',
     this.verificationStatus = '',
+    this.phone = '',
   });
 
   factory Counterparty.fromJson(Map<String, dynamic> json) => Counterparty(
@@ -89,6 +94,7 @@ class Counterparty {
     fullName: json['full_name']?.toString() ?? '',
     role: json['role']?.toString() ?? '',
     verificationStatus: json['verification_status']?.toString() ?? '',
+    phone: (json['phone'] ?? json['phone_number'] ?? '').toString(),
   );
 
   bool get isVerified => verificationStatus.toUpperCase() == 'VERIFIED';

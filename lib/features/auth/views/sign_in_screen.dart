@@ -11,6 +11,7 @@ import 'password_reset_sheet.dart';
 import 'widgets/auth_text_field.dart';
 import 'sign_up_screen.dart';
 import '../../../core/widgets/oasis_busy.dart';
+import '../../../core/app_variant.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -96,7 +97,9 @@ class _SignInScreenState extends State<SignInScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Secure access to your property portfolio.',
+                      isOasisV2
+                          ? 'Shortlets for every plan.'
+                          : 'Secure access to your property portfolio.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,

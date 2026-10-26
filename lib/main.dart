@@ -22,6 +22,7 @@ import 'features/payments/controllers/payment_controller.dart';
 import 'features/payouts/controllers/payout_controller.dart';
 import 'features/properties/controllers/landlord_controller.dart';
 import 'features/reviews/controllers/review_controller.dart';
+import 'features/shortlets/controllers/saved_shortlets_controller.dart';
 import 'features/shortlets/controllers/shortlet_controller.dart';
 import 'features/vault/controllers/vault_controller.dart';
 
@@ -49,6 +50,7 @@ Future<void> main() async {
   final vaultController = VaultController();
   final messagingController = MessagingController();
   final shortLetController = ShortLetController();
+  final savedShortLetsController = SavedShortLetsController();
   final fixController = FixController();
   final reviewController = ReviewController();
 
@@ -62,6 +64,7 @@ Future<void> main() async {
     vaultController,
     messagingController,
     shortLetController,
+    savedShortLetsController,
     fixController,
     reviewController,
   ]);
@@ -118,6 +121,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: vaultController),
         ChangeNotifierProvider.value(value: messagingController),
         ChangeNotifierProvider.value(value: shortLetController),
+        ChangeNotifierProvider.value(value: savedShortLetsController),
         ChangeNotifierProvider.value(value: fixController),
         ChangeNotifierProvider.value(value: reviewController),
         Provider<RealtimeHub>.value(value: realtimeHub),

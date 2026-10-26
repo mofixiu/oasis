@@ -14,6 +14,8 @@
 /// browsed.
 library;
 
+import '../../../core/app_variant.dart';
+
 /// What is being reviewed.
 ///
 /// The value strings are the backend's `subject_type`, so they are sent as
@@ -59,7 +61,7 @@ enum ReviewSubject {
   String get noun {
     switch (this) {
       case ReviewSubject.shortLet:
-        return 'this stay';
+        return isOasisV2 ? 'this shortlet' : 'this stay';
       case ReviewSubject.artisan:
         return 'this artisan';
       case ReviewSubject.landlord:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../app_variant.dart';
 import '../utils/fade_page_route.dart';
 
 /// AppTheme defines the global styling for Oasis.
@@ -49,7 +50,16 @@ class AppTheme {
   // terracotta palette: a dot in brand colour would disappear against the
   // terracotta-tinted selected nav icon it sits on.
   static const Color alertDotColor = Color(0xFFE5484D);
-  static const Color backgroundColor = slateSurfaceColor;
+  static const Color backgroundColor = isOasisV2
+      ? creamColor
+      : slateSurfaceColor;
+
+  // The short-stay app (APP_VARIANT=v2) uses cream where the original app
+  // uses white and slate. Only the page and surface fills change; text,
+  // accents and borders are the same palette as above.
+  static const Color creamColor = Color(0xFFF8F4EE);
+  static const Color creamCardColor = Color(0xFFFFFDFA);
+  static const Color creamRecessedColor = Color(0xFFF1EBE3);
 
   /// The page behind everything. Not `#000`: a true black gives a card no
   /// edge to be seen against, which is why every surface used to read as one
@@ -186,15 +196,18 @@ class AppTheme {
   }
 
   static Color surfaceColor(BuildContext context) {
-    return isDarkMode(context) ? darkCardColor : whiteColor;
+    if (isDarkMode(context)) return darkCardColor;
+    return isOasisV2 ? creamCardColor : whiteColor;
   }
 
   static Color elevatedSurfaceColor(BuildContext context) {
-    return isDarkMode(context) ? darkRaisedColor : whiteColor;
+    if (isDarkMode(context)) return darkRaisedColor;
+    return isOasisV2 ? creamCardColor : whiteColor;
   }
 
   static Color subtleSurfaceColor(BuildContext context) {
-    return isDarkMode(context) ? darkRecessedColor : slateSurfaceColor;
+    if (isDarkMode(context)) return darkRecessedColor;
+    return isOasisV2 ? creamRecessedColor : slateSurfaceColor;
   }
 
   // Tinted status surfaces: the fills behind pills, callouts and quoted
@@ -226,11 +239,14 @@ class AppTheme {
 
   static Color logoutSurface(BuildContext context) => disputeSurface(context);
 
-  static Color slateSurface(BuildContext context) =>
-      isDarkMode(context) ? const Color(0xFF191D23) : slateSurfaceColor;
+  static Color slateSurface(BuildContext context) {
+    if (isDarkMode(context)) return const Color(0xFF191D23);
+    return isOasisV2 ? creamRecessedColor : slateSurfaceColor;
+  }
 
   static Color inputFillColor(BuildContext context) {
-    return isDarkMode(context) ? const Color(0xFF262626) : whiteColor;
+    if (isDarkMode(context)) return const Color(0xFF262626);
+    return isOasisV2 ? creamCardColor : whiteColor;
   }
 
   static Color borderColor(BuildContext context) {
@@ -294,7 +310,7 @@ class AppTheme {
     return ThemeData(
       primaryColor: primaryColor,
       scaffoldBackgroundColor: backgroundColor,
-      cardColor: whiteColor,
+      cardColor: isOasisV2 ? creamCardColor : whiteColor,
       textTheme: _tracked(GoogleFonts.montserratTextTheme()),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
@@ -324,7 +340,7 @@ class AppTheme {
         primary: primaryColor,
         secondary: secondaryColor,
         error: warningColor,
-        surface: whiteColor,
+        surface: isOasisV2 ? creamCardColor : whiteColor,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

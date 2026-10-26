@@ -1,13 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/app_variant.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/nigeria_locations.dart';
 import '../../../core/utils/oasis_currency.dart';
+import '../../../core/widgets/oasis_place_picker.dart';
 import '../../../core/widgets/oasis_sheet.dart';
 import '../../../core/widgets/oasis_toast.dart';
+import '../../../core/widgets/v2_ui.dart';
 import '../../properties/controllers/landlord_controller.dart';
 import '../../properties/models/property_model.dart';
+import '../../properties/services/geocoding_service.dart';
+import '../../properties/views/widgets/property_location_picker.dart';
+import '../../properties/views/widgets/unit_media_sheet.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
 import '../../../core/utils/oasis_input_formatters.dart';
@@ -42,6 +52,9 @@ Future<bool> openCreateShortLetSheet(
   final saved = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
+    // Keeps the sheet below the status bar when the keyboard lifts the
+    // height cap below; without it the title runs into the clock.
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     // Capped at 70% rather than left to grow with the form. This is the
     // longest sheet in the app, and unconstrained it reaches the top of the
@@ -114,18 +127,42 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
   DateTimeRange? _window;
   bool _isActive = true;
 
+  /// v2 only: the place is not one of the host's units yet, so the property
+  /// and unit are made in the same request as the listing
+  /// (`POST /host/listings/`). A new host has nothing to pick from, and the
+  /// v1 add-property flow that used to come first is not part of v2.
+  bool _newPlace = false;
+  final _placeNameController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _unitNumberController = TextEditingController();
+  String _state = '';
+  String _city = '';
+  LatLng? _pin;
+  int _bedrooms = 1;
+  int _bathrooms = 1;
+
+  /// Which of the address boxes the pin filled in, so dropping the pin
+  /// again updates them, but never overwrites what the host typed.
+  bool _addressFromPin = false;
+  bool _cityFromPin = false;
+  bool _stateFromPin = false;
+
   bool get _isEditing => widget.existing != null;
+
+  /// Whether this sheet can make a new place at all: v2, adding rather than
+  /// editing, and not handed a unit by the v1 add-property flow.
+  bool get _canAddNewPlace =>
+      isOasisV2 && !_isEditing && widget.initialUnit == null;
 
   @override
   void initState() {
     super.initState();
     _property = widget.initialProperty;
     _unit = widget.initialUnit;
+    _newPlace = _canAddNewPlace;
     final seededPrice = widget.initialNightlyPrice;
     if (seededPrice != null) {
-      _priceController.text = OasisThousandsFormatter.groupAmount(
-        seededPrice,
-      );
+      _priceController.text = OasisThousandsFormatter.groupAmount(seededPrice);
     }
     final existing = widget.existing;
     if (existing != null) {
@@ -174,6 +211,9 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
     _descriptionController.dispose();
     _rulesController.dispose();
     _checkInController.dispose();
+    _placeNameController.dispose();
+    _addressController.dispose();
+    _unitNumberController.dispose();
     super.dispose();
   }
 
@@ -204,7 +244,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
   /// The listing this unit already has, when the host has picked one that is
   /// let by the night. Null while editing: editing *is* that listing.
   ShortLetListing? get _duplicateListing {
-    if (_isEditing) return null;
+    if (_isEditing || _newPlace) return null;
     final unitId = _unit?.id;
     if (unitId == null) return null;
     return context.read<ShortLetController>().listingForUnit(unitId);
@@ -242,6 +282,7 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
   }
 
   Future<void> _save() async {
+    if (_newPlace) return _saveNewPlace();
     final unitId = _unitId;
     if (unitId == null || unitId.isEmpty) {
       OasisToast.error(context, 'Pick the unit you want to let by the night.');
@@ -331,10 +372,273 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
         context,
         _isEditing
             ? 'Listing updated.'
+            : isOasisV2
+            ? 'Your place is listed.'
             : 'Your place is listed for short stays.',
       );
     }
   }
+
+  /// The first thing a new place is still missing, or null when it is ready.
+  /// Checked in the order the fields appear, so the toast points at the
+  /// highest one left to fill in.
+  String? get _newPlaceProblem {
+    if (_placeNameController.text.trim().isEmpty) {
+      return 'Give your place a name.';
+    }
+    if (_addressController.text.trim().isEmpty) {
+      return 'Add the street address.';
+    }
+    if (_state.isEmpty) return 'Pick the state.';
+    if (_city.isEmpty) return 'Pick the city or area.';
+    if (_pin == null) return 'Drop a pin on the map so guests can find it.';
+    if (!_hasPrice) return 'Set a nightly price.';
+    return null;
+  }
+
+  /// Creates the property, unit and listing together, then offers to add
+  /// photos straight away: the new place has none, and a listing without
+  /// them is one guests scroll past.
+  Future<void> _saveNewPlace() async {
+    if (_newPlaceProblem case final problem?) {
+      OasisToast.error(context, problem);
+      return;
+    }
+    final pin = _pin!;
+    final unitNumber = _unitNumberController.text.trim();
+    final controller = context.read<ShortLetController>();
+    final landlord = context.read<LandlordController>();
+    final navigator = Navigator.of(context);
+
+    final result = await controller.createHostListing(
+      propertyName: _placeNameController.text.trim(),
+      address: _addressController.text.trim(),
+      city: _city,
+      state: _state,
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      // Optional for the host: a whole house has no flat number, and the
+      // backend needs one, so it gets the plainest possible.
+      unitNumber: unitNumber.isEmpty ? '1' : unitNumber,
+      bedrooms: _bedrooms,
+      bathrooms: _bathrooms,
+      nightlyPrice: '$_rawPrice.00',
+      minimumNights: _minimumNights,
+      maximumGuests: _maximumGuests,
+      cautionFee: _hasCaution ? '$_rawCaution.00' : '0.00',
+      cancellationPolicy: _cancellationPolicy,
+      availableFrom: _window == null ? null : shortLetIsoDate(_window!.start),
+      availableTo: _window == null ? null : shortLetIsoDate(_window!.end),
+      description: _descriptionController.text.trim(),
+      houseRules: _rulesController.text.trim(),
+      checkInNotes: _checkInController.text.trim(),
+    );
+    if (!mounted) return;
+    if (result == null) {
+      OasisToast.error(
+        context,
+        controller.errorMessage ??
+            'Could not list your place. Try again in a moment.',
+      );
+      return;
+    }
+
+    navigator.pop(true);
+    // So the place shows under the host's properties, and the next listing
+    // can be added to it, without waiting for the next refresh.
+    unawaited(landlord.loadLandlordProperties());
+    if (result.unitId.isEmpty) {
+      OasisToast.success(
+        navigator.context,
+        'Your place is listed. Add photos to it from My places.',
+      );
+      return;
+    }
+    // Guests can see the place as soon as it exists, photos or not
+    // (backend, 2026-10-23), so this comes straight away.
+    OasisToast.success(
+      navigator.context,
+      'Your place is live. Add a few photos so guests can see it.',
+    );
+    await openUnitMediaSheet(
+      navigator.context,
+      unit: UnitModel(
+        id: result.unitId,
+        unitNumber: result.unitNumber,
+        bedrooms: result.bedrooms,
+        bathrooms: result.bathrooms,
+        rentAmount: '0.00',
+        isOccupied: false,
+        createdAt: '',
+      ),
+      propertyId: result.propertyId.isEmpty ? null : result.propertyId,
+    );
+    // The photos belong to the unit; the listing card reads them from there.
+    await controller.loadLandlordListings();
+  }
+
+  /// Opens the state list, and clears a city that no longer belongs to it.
+  Future<void> _pickState() async {
+    final picked = await openStatePicker(context, selected: _state);
+    if (picked == null || !mounted) return;
+    final cityStillValid =
+        _city.isEmpty ||
+        NigeriaLocations.canonicalCity(state: picked, city: _city) != null;
+    setState(() {
+      _state = picked;
+      _stateFromPin = false;
+      if (!cityStillValid) {
+        _city = '';
+        _cityFromPin = false;
+      }
+    });
+  }
+
+  Future<void> _pickCity() async {
+    final picked = await openCityPicker(
+      context,
+      state: _state,
+      selected: _city,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _city = picked;
+      _cityFromPin = false;
+    });
+  }
+
+  /// Fills the address boxes from where the pin landed, leaving anything the
+  /// host typed themselves alone.
+  void _applyResolvedAddress(GeocodeAddress address) {
+    if (!mounted) return;
+    setState(() {
+      final street = address.addressLine?.trim() ?? '';
+      if (street.isNotEmpty &&
+          (_addressController.text.trim().isEmpty || _addressFromPin)) {
+        _addressController.text = street;
+        _addressFromPin = true;
+      }
+      final city = address.city?.trim() ?? '';
+      if (city.isNotEmpty && (_city.isEmpty || _cityFromPin)) {
+        _city = city;
+        _cityFromPin = true;
+      }
+      final state = address.state?.trim() ?? '';
+      if (state.isNotEmpty && (_state.isEmpty || _stateFromPin)) {
+        _state = state;
+        _stateFromPin = true;
+      }
+    });
+  }
+
+  /// Where the place is and what it is: the fields `POST /host/listings/`
+  /// needs on top of the listing's own.
+  List<Widget> _newPlaceFields(BuildContext context) => [
+    const OasisFieldLabel('Place name'),
+    TextField(
+      controller: _placeNameController,
+      textCapitalization: TextCapitalization.words,
+      onChanged: (_) => setState(() {}),
+      style: AppTheme.cardTitle(context),
+      decoration: oasisInputDecoration(
+        context,
+        hint: 'e.g. The Lekki Loft',
+        prefixIcon: Icons.home_work_outlined,
+      ),
+    ),
+    const SizedBox(height: 6),
+    Text(
+      'Guests see this as the title of your listing.',
+      style: AppTheme.labelText(
+        context,
+        color: AppTheme.secondaryTextColor(context),
+      ),
+    ),
+    const SizedBox(height: 18),
+    const OasisFieldLabel('Address'),
+    TextField(
+      controller: _addressController,
+      textCapitalization: TextCapitalization.words,
+      // Typing hands the box back to the host: the pin stops writing to it.
+      onChanged: (_) => setState(() => _addressFromPin = false),
+      style: AppTheme.cardTitle(context),
+      decoration: oasisInputDecoration(
+        context,
+        hint: 'Street address',
+        prefixIcon: Icons.signpost_outlined,
+      ),
+    ),
+    const SizedBox(height: 12),
+    Row(
+      children: [
+        Expanded(
+          child: OasisPickerField(
+            value: _state,
+            hint: 'State',
+            prefixIcon: Icons.map_outlined,
+            onTap: _pickState,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OasisPickerField(
+            value: _city,
+            hint: 'City / area',
+            prefixIcon: Icons.location_city_rounded,
+            onTap: _pickCity,
+          ),
+        ),
+      ],
+    ),
+    const SizedBox(height: 18),
+    PropertyLocationPicker(
+      city: _city,
+      state: _state,
+      onChanged: (pin) => setState(() => _pin = pin),
+      addressResolver: () => _addressController.text.trim(),
+      onAddressResolved: _applyResolvedAddress,
+    ),
+    const SizedBox(height: 18),
+    OasisFieldLabel(
+      'Flat or unit',
+      trailing: const _OptionalPill(label: 'Optional'),
+    ),
+    TextField(
+      controller: _unitNumberController,
+      textCapitalization: TextCapitalization.characters,
+      style: AppTheme.cardTitle(context),
+      decoration: oasisInputDecoration(
+        context,
+        hint: 'e.g. 3B. Leave empty for a whole house',
+        prefixIcon: Icons.meeting_room_outlined,
+      ),
+    ),
+    const SizedBox(height: 18),
+    Row(
+      children: [
+        Expanded(
+          child: _Stepper(
+            label: 'Bedrooms',
+            value: _bedrooms,
+            min: 1,
+            max: 12,
+            onChanged: (value) => setState(() => _bedrooms = value),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _Stepper(
+            label: 'Bathrooms',
+            value: _bathrooms,
+            min: 1,
+            max: 12,
+            onChanged: (value) => setState(() => _bathrooms = value),
+          ),
+        ),
+      ],
+    ),
+    const SizedBox(height: 18),
+  ];
 
   /// Closes this sheet and reopens it on the listing that already exists.
   ///
@@ -382,9 +686,14 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
 
     return OasisSheet(
       icon: Icons.holiday_village_outlined,
-      title: _isEditing ? 'Edit short let' : 'List for short stays',
+      title: isOasisV2
+          ? (_isEditing ? 'Edit shortlet' : 'List a place')
+          : (_isEditing ? 'Edit short let' : 'List for short stays'),
       subtitle: _isEditing
           ? widget.existing!.title
+          : _newPlace
+          ? 'Tell guests where it is and what it costs. You approve every '
+                'booking before anyone pays.'
           : 'Offer a unit by the night. You approve every booking before '
                 'anyone pays.',
       footer: OasisSheetButton(
@@ -396,9 +705,20 @@ class _CreateShortLetSheetState extends State<_CreateShortLetSheet> {
             : _save,
       ),
       children: [
+        // Only offered once there is something to pick: a new host goes
+        // straight to the new-place fields.
+        if (_canAddNewPlace && landlord.properties.isNotEmpty) ...[
+          V2SegmentChips(
+            labels: const ['A new place', 'One of my units'],
+            selected: _newPlace ? 0 : 1,
+            onSelected: (index) => setState(() => _newPlace = index == 0),
+          ),
+          const SizedBox(height: 18),
+        ],
+        if (_newPlace) ..._newPlaceFields(context),
         // The unit is fixed when editing, because the backend keys a listing
         // to its unit and changing it here would make a second listing.
-        if (!_isEditing) ...[
+        if (!_isEditing && !_newPlace) ...[
           const OasisFieldLabel('Property'),
           DropdownButtonFormField<PropertyModel>(
             initialValue: _property,

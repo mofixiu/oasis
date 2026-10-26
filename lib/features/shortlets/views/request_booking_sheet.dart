@@ -8,6 +8,7 @@ import '../../../core/widgets/oasis_sheet.dart';
 import '../../../core/widgets/oasis_toast.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
+import '../../../core/app_variant.dart';
 
 /// Asks the host for dates. Returns the booking on success, null otherwise.
 Future<ShortLetBooking?> openRequestBookingSheet(
@@ -106,7 +107,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
       lastDate: last,
       currentDate: today,
       initialDateRange: _stay,
-      helpText: 'Select your stay',
+      helpText: isOasisV2 ? 'Select your dates' : 'Select your stay',
       saveText: 'Done',
     );
     if (picked != null) setState(() => _stay = picked);
@@ -161,7 +162,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
         onPressed: controller.isSubmitting || _problem != null ? null : _submit,
       ),
       children: [
-        const OasisFieldLabel('Your stay'),
+        OasisFieldLabel(isOasisV2 ? 'Your dates' : 'Your stay'),
         _DateField(stay: stay, nights: _nights, onTap: _pickDates),
         const SizedBox(height: 20),
 

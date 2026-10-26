@@ -159,6 +159,14 @@ class MessagingService {
     );
   }
 
+  /// Blocks the other person in [conversationId]: the thread closes and
+  /// they can no longer message this user (spec v16 §6).
+  Future<void> blockConversation(String conversationId, {String? reason}) =>
+      _apiClient.post(
+        ApiConstants.blockConversationEndpoint(conversationId),
+        body: {if (reason != null && reason.isNotEmpty) 'reason': reason},
+      );
+
   /// Total unread across every thread, for the badge.
   Future<int> getUnreadCount() async {
     final response = await _apiClient.get(

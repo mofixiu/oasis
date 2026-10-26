@@ -12,6 +12,7 @@ import '../../../core/widgets/main_scaffold.dart';
 import '../controllers/auth_controller.dart';
 import '../models/user_model.dart';
 import '../../../core/widgets/oasis_busy.dart';
+import '../../../core/app_variant.dart';
 
 class IdentityVerificationScreen extends StatefulWidget {
   const IdentityVerificationScreen({super.key});
@@ -525,6 +526,8 @@ class _VerificationHeader extends StatelessWidget {
             ? 'You have full access to Oasis.'
             : isPending
             ? 'This usually takes a moment.'
+            : isOasisV2
+            ? 'A one-time check that keeps guests and hosts safe.'
             : 'A one-time check that unlocks properties, agreements and rent payments.',
         textAlign: TextAlign.center,
         style: AppTheme.bodyText(

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:oasis_app/core/app_variant.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:oasis_app/core/network/api_client.dart';
@@ -100,7 +101,11 @@ void main() {
     const screenHeight = 667.0;
     final sheet = tester.getRect(find.byType(OasisSheet));
     expect(
-      tester.getRect(find.text('List for short stays')).top,
+      tester
+          .getRect(
+            find.text(isOasisV2 ? 'List a place' : 'List for short stays'),
+          )
+          .top,
       greaterThan(screenHeight * 0.25),
       reason: 'the sheet has grown past its cap and reached the status bar',
     );

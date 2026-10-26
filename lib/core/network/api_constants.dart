@@ -288,6 +288,45 @@ class ApiConstants {
   static const String conversationsUnreadCountEndpoint =
       '/conversations/unread-count/';
 
+  // ----------------------------------------------------------- v2 (spec v16)
+  // Paths the v2 short-stay app added. Everything here is live on staging
+  // (API guide 20) except the two caution-fee paths, spec v16 §7, which still
+  // fall back gracefully on a 404. See `backend docs/backend_change_spec_v16.md`.
+
+  /// A guest's saved shortlets: GET lists, POST `{listing_id}` saves.
+  static const String savedShortLetsEndpoint = '/tenant/saved-short-lets/';
+
+  /// DELETE unsaves one listing.
+  static String savedShortLetEndpoint(String listingId) =>
+      '/tenant/saved-short-lets/$listingId/';
+
+  /// Multipart upload of the profile photo, field `avatar`.
+  static const String profileAvatarEndpoint = '/profile/avatar/';
+
+  /// Public app settings: support contacts and legal document links.
+  static const String appConfigEndpoint = '/app-config/';
+
+  /// A message to the Oasis support team.
+  static const String supportTicketsEndpoint = '/support/tickets/';
+
+  /// Host confirms the place is fine after checkout, so the caution fee goes
+  /// back to the guest now instead of when the 24-hour window ends.
+  static String releaseShortLetCautionFeeEndpoint(String bookingId) =>
+      '/landlord/short-let-bookings/$bookingId/caution-fee/release/';
+
+  /// Multipart upload of one damage photo for a caution-fee claim, field
+  /// `photo`; returns its URL for the claim's `evidence` list.
+  static String shortLetCautionEvidenceEndpoint(String bookingId) =>
+      '/landlord/short-let-bookings/$bookingId/caution-claims/evidence/';
+
+  /// Blocks the other person in a conversation.
+  static String blockConversationEndpoint(String conversationId) =>
+      '/conversations/$conversationId/block/';
+
+  /// A new host's first place: creates the property, a unit and its nightly
+  /// listing in one request, all or nothing.
+  static const String hostListingsEndpoint = '/host/listings/';
+
   // Landlord announcements, fanned out into each tenant's notification list.
   static const String landlordBroadcastsEndpoint = '/landlord/broadcasts/';
 

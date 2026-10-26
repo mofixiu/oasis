@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/app_variant.dart';
 
 /// Hand-built illustrations for the onboarding flow.
 ///
@@ -176,7 +177,7 @@ class OnboardingListingArt extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '2 Bedroom Flat',
+                            isOasisV2 ? '2 Bedroom Shortlet' : '2 Bedroom Flat',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
@@ -199,7 +200,7 @@ class OnboardingListingArt extends StatelessWidget {
                             textBaseline: TextBaseline.alphabetic,
                             children: [
                               const Text(
-                                '₦1,200,000',
+                                isOasisV2 ? '₦180,000' : '₦1,200,000',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
@@ -209,7 +210,7 @@ class OnboardingListingArt extends StatelessWidget {
                               ),
                               const SizedBox(width: 3),
                               Text(
-                                '/yr',
+                                isOasisV2 ? '/night' : '/yr',
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w600,
@@ -250,7 +251,7 @@ class OnboardingListingArt extends StatelessWidget {
           child: _Bob(
             child: _FloatingChip(
               icon: Icons.task_alt_rounded,
-              label: 'Application sent',
+              label: isOasisV2 ? 'Request sent' : 'Application sent',
               accent: AppTheme.sageGreenColor,
             ),
           ),
@@ -454,7 +455,7 @@ class _OnboardingEscrowArtState extends State<OnboardingEscrowArt>
           top: 12,
           child: _FlowNode(
             icon: Icons.person_rounded,
-            label: 'Tenant pays',
+            label: isOasisV2 ? 'Guest pays' : 'Tenant pays',
             accent: AppTheme.slateGreyColor,
           ),
         ),
@@ -499,7 +500,7 @@ class _OnboardingEscrowArtState extends State<OnboardingEscrowArt>
                 ),
                 const Spacer(),
                 Text(
-                  '₦1,200,000',
+                  isOasisV2 ? '₦540,000' : '₦1,200,000',
                   style: TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
@@ -517,7 +518,9 @@ class _OnboardingEscrowArtState extends State<OnboardingEscrowArt>
                     // overflow the card rather than wrap.
                     Expanded(
                       child: Text(
-                        'Held until move-in day',
+                        isOasisV2
+                            ? 'Held safely by Oasis'
+                            : 'Held until move-in day',
                         style: TextStyle(
                           fontSize: 8.5,
                           fontWeight: FontWeight.w600,
@@ -537,7 +540,7 @@ class _OnboardingEscrowArtState extends State<OnboardingEscrowArt>
           bottom: 8,
           child: _FlowNode(
             icon: Icons.account_balance_rounded,
-            label: 'Landlord paid',
+            label: isOasisV2 ? 'Host paid' : 'Landlord paid',
             accent: AppTheme.sageGreenColor,
           ),
         ),
@@ -721,7 +724,9 @@ class OnboardingVerifiedArt extends StatelessWidget {
             phase: 0.4,
             child: _FloatingChip(
               icon: Icons.folder_shared_rounded,
-              label: 'Docs in your vault',
+              label: isOasisV2
+                  ? 'Guests & hosts checked'
+                  : 'Docs in your vault',
               accent: AppTheme.slateGreyColor,
             ),
           ),

@@ -7,6 +7,7 @@ import '../../../core/network/realtime_socket.dart';
 import '../../../core/session/session_scope.dart';
 import '../models/conversation_models.dart';
 import '../services/messaging_service.dart';
+import '../../../core/network/api_client.dart';
 
 /// Holds the inbox and the currently open thread.
 ///
@@ -92,6 +93,44 @@ class MessagingController extends ChangeNotifier
       markLoaded(kInboxKey);
       notifyListeners();
     }
+  }
+
+  /// Blocks the other person in [conversation] and closes the thread here
+  /// straight away. False, with [errorMessage] set, when it could not be done;
+  /// a 404 means the backend has not shipped blocking yet.
+  Future<bool> blockConversation(
+    Conversation conversation, {
+    String? reason,
+  }) async {
+    clearFailure();
+    try {
+      await _service.blockConversation(conversation.id, reason: reason);
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) {
+        captureFailure(
+          ApiException('Blocking is not available yet.', statusCode: 404),
+        );
+      } else {
+        captureFailure(e);
+      }
+      notifyListeners();
+      return false;
+    } catch (e) {
+      captureFailure(e);
+      notifyListeners();
+      return false;
+    }
+
+    final closed = conversation.copyWith(status: ConversationStatus.closed);
+    _conversations = [
+      for (final item in _conversations)
+        if (item.id == conversation.id) closed else item,
+    ];
+    if (_activeConversation?.id == conversation.id) {
+      _activeConversation = closed;
+    }
+    notifyListeners();
+    return true;
   }
 
   /// Refreshes only the badge number, without pulling the whole inbox.

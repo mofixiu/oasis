@@ -9,6 +9,7 @@ import '../../../core/widgets/oasis_media_hero.dart';
 import '../../../core/widgets/oasis_network_image.dart';
 import '../../../core/widgets/oasis_pressable.dart';
 import '../../../core/widgets/oasis_toast.dart';
+import 'v2/v2_stay_widgets.dart';
 import '../../reviews/models/review_models.dart';
 import '../../reviews/views/widgets/reviews_section.dart';
 import '../controllers/shortlet_controller.dart';
@@ -24,6 +25,7 @@ import '../../../core/utils/fade_page_route.dart';
 /// button that would set the wrong expectation.
 class ShortLetListingScreen extends StatelessWidget {
   final ShortLetListing listing;
+  final bool isV2;
 
   /// The dates the tenant searched with, when they arrived from a dated
   /// search. Seeds the booking sheet so they do not pick the same stay twice,
@@ -33,6 +35,7 @@ class ShortLetListingScreen extends StatelessWidget {
   const ShortLetListingScreen({
     super.key,
     required this.listing,
+    this.isV2 = false,
     this.requestedDates,
   });
 
@@ -51,7 +54,7 @@ class ShortLetListingScreen extends StatelessWidget {
     );
     Navigator.push(
       context,
-      FadePageRoute(page: const MyShortLetBookingsScreen()),
+      FadePageRoute(page: MyShortLetBookingsScreen(isV2: isV2)),
     );
   }
 
@@ -66,6 +69,7 @@ class ShortLetListingScreen extends StatelessWidget {
     final photos = listing.photoUrls.isNotEmpty
         ? listing.photoUrls
         : [if (listing.coverPhotoUrl != null) listing.coverPhotoUrl!];
+    if (isV2) return _buildV2(context, isSubmitting, photos);
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
@@ -139,6 +143,228 @@ class ShortLetListingScreen extends StatelessWidget {
       ),
     );
   }
+
+  /// The v2 listing: photos, then the name and rating on the page, the
+  /// space at a glance, the host's description, and a price bar that stays
+  /// on screen with the request button.
+  Widget _buildV2(
+    BuildContext context,
+    bool isSubmitting,
+    List<String> photos,
+  ) {
+    return Scaffold(
+      backgroundColor: AppTheme.pageBackground(context),
+      extendBodyBehindAppBar: true,
+      body: _V2PhotoScrollChrome(
+        builder: (context, controller, pastPhoto) => Stack(
+          children: [
+            ListView(
+              controller: controller,
+              padding: const EdgeInsets.only(bottom: 120),
+              children: [
+                OasisMediaHero(
+                  photoUrls: photos,
+                  videoUrl: listing.hasVideo ? listing.videoUrl : null,
+                  title: listing.title,
+                  emptyIcon: Icons.holiday_village_outlined,
+                  heroTag: oasisMediaHeroTag('shortlet', listing.id),
+                  overlayBottomInset: 46,
+                  counterAtBottom: true,
+                  counterBottomInset: 40,
+                ),
+                Transform.translate(
+                  offset: const Offset(0, -24),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.pageBackground(context),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(AppTheme.radiusLg),
+                      ),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _v2Details(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // Once the photo has scrolled away, a bar slides in behind the
+            // back and save buttons so they never sit on the text.
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: pastPhoto ? 1 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: Container(
+                    height: MediaQuery.paddingOf(context).top + 60,
+                    decoration: BoxDecoration(
+                      color: AppTheme.pageBackground(context),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: AppTheme.borderColor(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              left: 12,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: OasisMediaCircleButton(
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: 'Back',
+                    onTap: () => Navigator.of(context).maybePop(),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              right: 16,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: V2SaveButton(listing: listing, size: 42),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _V2RequestBar(
+                listing: listing,
+                isSubmitting: isSubmitting,
+                onRequest: () => _request(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _v2Details(BuildContext context) => [
+    Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            listing.title,
+            style: AppTheme.screenTitle(
+              context,
+            ).copyWith(fontSize: 24, letterSpacing: -0.8),
+          ),
+        ),
+        if (listing.hasRating) ...[
+          const SizedBox(width: 12),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: V2RatingLine(listing: listing, compact: true),
+          ),
+        ],
+      ],
+    ),
+    if (listing.location.isNotEmpty) ...[
+      const SizedBox(height: 4),
+      Text(
+        listing.location,
+        style: AppTheme.bodyText(context).copyWith(fontSize: 14),
+      ),
+    ],
+    const SizedBox(height: 20),
+    Row(
+      children: [
+        if (listing.bedrooms > 0)
+          Expanded(
+            child: _V2Amenity(
+              icon: Icons.king_bed_outlined,
+              label: v2Plural(listing.bedrooms, 'Bedroom', 'Bedrooms'),
+            ),
+          ),
+        if (listing.bathrooms > 0)
+          Expanded(
+            child: _V2Amenity(
+              icon: Icons.bathtub_outlined,
+              label: v2Plural(listing.bathrooms, 'Bath', 'Baths'),
+            ),
+          ),
+        Expanded(
+          child: _V2Amenity(
+            icon: Icons.people_outline_rounded,
+            label: v2Plural(listing.maximumGuests, 'Guest', 'Guests'),
+          ),
+        ),
+        Expanded(
+          child: _V2Amenity(
+            icon: Icons.nights_stay_outlined,
+            label:
+                '${listing.minimumNights}+ '
+                '${listing.minimumNights == 1 ? 'night' : 'nights'}',
+          ),
+        ),
+      ],
+    ),
+    const SizedBox(height: 20),
+    Divider(height: 1, color: AppTheme.borderColor(context)),
+    const SizedBox(height: 20),
+    if (listing.isUnavailableForPeriod) ...[
+      _UnavailableNotice(
+        reason: listing.unavailableLabel,
+        dates: requestedDates,
+      ),
+      const SizedBox(height: 18),
+    ],
+    if (listing.hasDescription) ...[
+      Text('About this shortlet', style: AppTheme.sectionTitle(context)),
+      const SizedBox(height: 8),
+      _V2ReadMore(text: listing.description),
+      const SizedBox(height: 20),
+    ],
+    if (listing.hasCautionFee) ...[
+      _CautionFeeNotice(amount: listing.cautionFee),
+      const SizedBox(height: 14),
+    ],
+    _CancellationPolicyNotice(listing: listing),
+    const SizedBox(height: 20),
+    if (_availability(listing) case final window?) ...[
+      _Detail(
+        icon: Icons.event_available_outlined,
+        title: 'Available',
+        body: window,
+      ),
+      const SizedBox(height: 14),
+    ],
+    if (listing.houseRules.isNotEmpty) ...[
+      _Detail(
+        icon: Icons.rule_outlined,
+        title: 'House rules',
+        body: listing.houseRules,
+      ),
+      const SizedBox(height: 14),
+    ],
+    _Detail(
+      icon: Icons.vpn_key_outlined,
+      title: 'Getting in',
+      body: 'The host shares check-in details once your booking is paid for.',
+    ),
+    const SizedBox(height: 28),
+    ReviewsSection(
+      subject: ReviewSubject.shortLet,
+      subjectId: listing.id,
+      title: 'What guests said',
+    ),
+  ];
 
   /// Everything below the photo header.
   ///
@@ -304,6 +530,213 @@ class ShortLetListingScreen extends StatelessWidget {
     if (end != null) return 'Until ${format.format(end)}';
     return null;
   }
+}
+
+/// Tracks whether the photo header has scrolled away, and sets the status
+/// bar to match: light over the photo, dark over the page.
+class _V2PhotoScrollChrome extends StatefulWidget {
+  final Widget Function(
+    BuildContext context,
+    ScrollController controller,
+    bool pastPhoto,
+  )
+  builder;
+
+  const _V2PhotoScrollChrome({required this.builder});
+
+  @override
+  State<_V2PhotoScrollChrome> createState() => _V2PhotoScrollChromeState();
+}
+
+class _V2PhotoScrollChromeState extends State<_V2PhotoScrollChrome> {
+  /// Roughly where the photo header ends under the status bar and buttons.
+  static const double _threshold = 250;
+
+  final _controller = ScrollController();
+  bool _pastPhoto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() {
+      final past = _controller.offset > _threshold;
+      if (past != _pastPhoto) setState(() => _pastPhoto = past);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final light = !_pastPhoto || AppTheme.isDarkMode(context);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: light ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: widget.builder(context, _controller, _pastPhoto),
+    );
+  }
+}
+
+/// An icon in a soft circle with a short label, for the space at a glance.
+class _V2Amenity extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _V2Amenity({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor(context),
+          shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.borderColor(context)),
+        ),
+        child: Icon(icon, size: 22, color: AppTheme.primaryTextColor(context)),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTheme.bodyText(context).copyWith(
+          color: AppTheme.primaryTextColor(context),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ],
+  );
+}
+
+/// The host's description, four lines first with a way to read the rest.
+class _V2ReadMore extends StatefulWidget {
+  final String text;
+
+  const _V2ReadMore({required this.text});
+
+  @override
+  State<_V2ReadMore> createState() => _V2ReadMoreState();
+}
+
+class _V2ReadMoreState extends State<_V2ReadMore> {
+  static const _collapsedLines = 4;
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppTheme.bodyText(
+      context,
+      color: AppTheme.readingTextColor(context).withValues(alpha: 0.82),
+    ).copyWith(fontSize: 14, height: 1.55);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: widget.text, style: style),
+          maxLines: _collapsedLines,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        final overflows = painter.didExceedMaxLines;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.text,
+              style: style,
+              maxLines: _expanded ? null : _collapsedLines,
+              overflow: _expanded ? null : TextOverflow.ellipsis,
+            ),
+            if (overflows || _expanded)
+              TextButton.icon(
+                onPressed: () => setState(() => _expanded = !_expanded),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  foregroundColor: AppTheme.primaryTextColor(context),
+                ),
+                iconAlignment: IconAlignment.end,
+                icon: Icon(
+                  _expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                ),
+                label: Text(
+                  _expanded ? 'Show less' : 'Read more',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Price and the request button, pinned to the bottom of the listing.
+///
+/// "Request to book", not "Book now": nothing is held or charged until the
+/// host approves.
+class _V2RequestBar extends StatelessWidget {
+  final ShortLetListing listing;
+  final bool isSubmitting;
+  final VoidCallback onRequest;
+
+  const _V2RequestBar({
+    required this.listing,
+    required this.isSubmitting,
+    required this.onRequest,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: EdgeInsets.fromLTRB(
+      20,
+      12,
+      20,
+      12 + MediaQuery.paddingOf(context).bottom,
+    ),
+    decoration: BoxDecoration(
+      color: AppTheme.surfaceColor(context),
+      border: Border(top: BorderSide(color: AppTheme.borderColor(context))),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              V2NightlyPrice(amount: listing.nightlyPrice, fontSize: 18),
+              const SizedBox(height: 2),
+              Text(
+                'Pay only if the host approves',
+                style: AppTheme.bodyText(context).copyWith(fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        OasisButton(
+          label: 'Request to book',
+          expand: false,
+          isBusy: isSubmitting,
+          onPressed: isSubmitting ? null : onRequest,
+        ),
+      ],
+    ),
+  );
 }
 
 /// The name, place and rating, laid over the bottom of the photo header.

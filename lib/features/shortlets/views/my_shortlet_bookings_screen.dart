@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/fade_page_route.dart';
 import '../../../core/utils/oasis_currency.dart';
 import '../../../core/utils/oasis_refresh.dart';
 import '../../../core/widgets/oasis_app_bar.dart';
@@ -11,6 +12,7 @@ import '../../../core/widgets/oasis_pressable.dart';
 import '../../../core/widgets/oasis_shimmer.dart';
 import '../../../core/widgets/oasis_state_views.dart';
 import '../../../core/widgets/oasis_toast.dart';
+import '../../../core/widgets/v2_ui.dart';
 import '../../messaging/views/widgets/message_action_button.dart';
 import '../../reviews/models/review_models.dart';
 import '../../reviews/views/leave_review_sheet.dart';
@@ -19,7 +21,13 @@ import '../../vault/views/vault_pin_sheet.dart';
 import '../../vault/views/widgets/vault_balance_card.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
+import 'respond_to_caution_claim_sheet.dart';
+import 'widgets/caution_fee_widgets.dart';
 import 'widgets/shortlet_booking_card.dart';
+import 'v2/v2_booking_details_screen.dart';
+import 'v2/v2_empty_state.dart';
+import 'v2/v2_stay_widgets.dart';
+import '../../../core/app_variant.dart';
 
 /// The guest's side of short lets: what they have asked for, what the host has
 /// said, and what still needs paying.
@@ -27,7 +35,16 @@ import 'widgets/shortlet_booking_card.dart';
 /// Payment lives here rather than on the listing because it only becomes
 /// possible after approval: by which point the guest is no longer browsing.
 class MyShortLetBookingsScreen extends StatefulWidget {
-  const MyShortLetBookingsScreen({super.key});
+  final bool isV2;
+  final bool isTabRoot;
+  final VoidCallback? onExplore;
+
+  const MyShortLetBookingsScreen({
+    super.key,
+    this.isV2 = false,
+    this.isTabRoot = false,
+    this.onExplore,
+  });
 
   @override
   State<MyShortLetBookingsScreen> createState() =>
@@ -39,6 +56,9 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
   /// The booking whose provider checkout is open. Held so returning to the app
   /// verifies the right payment and nothing else.
   String? _awaitingCheckoutFor;
+
+  /// V2 only: 0 shows upcoming stays, 1 shows past and cancelled ones.
+  int _tripTab = 0;
 
   /// Polls while open. This is the screen a guest sits on waiting for the host
   /// to say yes, and the answer arrives on someone else's phone: without
@@ -76,6 +96,9 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     final controller = context.read<ShortLetController>();
     return Future.wait([
       controller.loadMyBookings(),
+      // Trip cards show the listing's photo, so the listings are needed too.
+      if (isOasisV2 && controller.browseListings.isEmpty)
+        controller.loadBrowseListings(),
       // The vault balance decides whether paying from it is even offered.
       context.read<VaultController>().loadVault(),
     ]);
@@ -96,7 +119,12 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
       return;
     }
     if (verified.status.isPaid) {
-      OasisToast.success(context, 'Paid. Your stay is confirmed.');
+      OasisToast.success(
+        context,
+        isOasisV2
+            ? 'Paid. Your booking is confirmed.'
+            : 'Paid. Your stay is confirmed.',
+      );
       await _reload();
     } else {
       OasisToast.error(
@@ -138,7 +166,9 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     final pin = await promptVaultPin(
       context,
       title: 'Confirm ${OasisCurrency.format(booking.totalAmount)}',
-      subtitle: 'Enter your vault PIN to pay for this stay.',
+      subtitle: isOasisV2
+          ? 'Enter your vault PIN to pay for this booking.'
+          : 'Enter your vault PIN to pay for this stay.',
       actionLabel: 'Pay ${OasisCurrency.format(booking.totalAmount)}',
     );
     if (!mounted || pin == null) return;
@@ -168,7 +198,12 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
       return;
     }
 
-    OasisToast.success(context, 'Paid. Your stay is confirmed.');
+    OasisToast.success(
+      context,
+      isOasisV2
+          ? 'Paid. Your booking is confirmed.'
+          : 'Paid. Your stay is confirmed.',
+    );
     await _reload();
   }
 
@@ -231,14 +266,15 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
 
     OasisToast.error(
       context,
-      'Your vault is ${OasisCurrency.format(shortfall)} short of this stay. '
+      'Your vault is ${OasisCurrency.format(shortfall)} short of this '
+      '${isOasisV2 ? 'booking' : 'stay'}. '
       'Nothing has been charged.',
     );
 
     final funded = await openTopUpSheet(
       context,
       targetAmount: shortfall,
-      targetLabel: 'your stay',
+      targetLabel: isOasisV2 ? 'your booking' : 'your stay',
     );
     if (funded && mounted) await _reload();
   }
@@ -264,7 +300,8 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
           children: [
             Text(
               'Your refundable caution fee stays held while this is looked '
-              'into. The stay payout is handled separately.',
+              'into. The ${isOasisV2 ? 'host' : 'stay'} payout is handled '
+              'separately.',
               style: AppTheme.bodyText(dialogContext),
             ),
             const SizedBox(height: 14),
@@ -421,7 +458,9 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
         backgroundColor: AppTheme.surfaceColor(dialogContext),
         shape: RoundedRectangleBorder(borderRadius: AppTheme.cornerLg),
         title: Text(
-          target.status.isPaid ? 'Cancel this stay?' : 'Cancel this request?',
+          target.status.isPaid
+              ? (isOasisV2 ? 'Cancel this booking?' : 'Cancel this stay?')
+              : 'Cancel this request?',
           style: AppTheme.sectionTitle(dialogContext),
         ),
         content: Text(
@@ -476,10 +515,14 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<ShortLetController>();
+    if (widget.isV2) return _buildV2(context, controller);
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const OasisAppBar(showBackButton: true),
+      appBar: OasisAppBar(
+        showBackButton: !widget.isTabRoot,
+        shortLetOnlyProfile: widget.isV2,
+      ),
       body: RefreshIndicator(
         onRefresh: _reload,
         child: _buildBody(context, controller),
@@ -509,6 +552,17 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
     }
 
     if (controller.bookings.isEmpty) {
+      if (widget.isV2) {
+        return V2IllustratedEmptyState(
+          title: 'Your next stay awaits.',
+          message:
+              'You have not booked a stay yet. Find a place that fits your '
+              'plans, and your trip details will be kept here.',
+          actionLabel: 'Explore short stays',
+          artwork: V2EmptyArtwork.suitcase,
+          onAction: widget.onExplore ?? () => Navigator.maybePop(context),
+        );
+      }
       return OasisEmptyState(
         icon: Icons.luggage_outlined,
         title: 'No stays yet',
@@ -523,7 +577,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+      padding: EdgeInsets.fromLTRB(20, 4, 20, widget.isTabRoot ? 118 : 40),
       children: [
         Text(
           'My stays',
@@ -538,6 +592,14 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
               index: index,
               child: ShortLetBookingCard(
                 booking: live[index],
+                onTap: widget.isV2
+                    ? () => Navigator.push(
+                        context,
+                        FadePageRoute(
+                          page: V2BookingDetailsScreen(booking: live[index]),
+                        ),
+                      )
+                    : null,
                 actions: _actionsFor(live[index], controller),
               ),
             ),
@@ -553,11 +615,200 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
           for (final booking in closed)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: ShortLetBookingCard(booking: booking),
+              child: ShortLetBookingCard(
+                booking: booking,
+                onTap: widget.isV2
+                    ? () => Navigator.push(
+                        context,
+                        FadePageRoute(
+                          page: V2BookingDetailsScreen(booking: booking),
+                        ),
+                      )
+                    : null,
+              ),
             ),
         ],
       ],
     );
+  }
+
+  Widget _buildV2(BuildContext context, ShortLetController controller) {
+    final all = controller.bookings;
+    final upcoming = all.where((b) => !v2IsPastTrip(b)).toList();
+    final past = all.where(v2IsPastTrip).toList();
+    final shown = _tripTab == 0 ? upcoming : past;
+
+    final Widget content;
+    if (!controller.hasLoaded(ShortLetController.kBookingsKey) ||
+        (controller.isLoading && all.isEmpty)) {
+      content = const OasisSkeletonList(count: 2, hasThumbnail: true);
+    } else if (controller.hasError && all.isEmpty) {
+      content = OasisErrorState(
+        message: controller.errorMessage,
+        isConnectionError: controller.errorIsConnection,
+        onRetry: _reload,
+      );
+    } else if (shown.isEmpty) {
+      content = _tripTab == 0
+          ? V2IllustratedEmptyState(
+              title: 'Your next trip awaits.',
+              message: all.isEmpty
+                  ? 'You haven’t booked a shortlet yet. Find a place that fits '
+                        'your plans.'
+                  : 'Nothing coming up right now. Find a place for your '
+                        'next plans.',
+              actionLabel: 'Explore shortlets',
+              artwork: V2EmptyArtwork.suitcase,
+              onAction: widget.onExplore ?? () => Navigator.maybePop(context),
+            )
+          : const V2IllustratedEmptyState(
+              title: 'No past trips yet.',
+              message:
+                  'Trips you have checked out of, and any cancelled '
+                  'requests, will show up here.',
+              artwork: V2EmptyArtwork.suitcase,
+            );
+    } else {
+      content = ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(20, 18, 20, widget.isTabRoot ? 118 : 40),
+        itemCount: shown.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 16),
+        itemBuilder: (context, index) {
+          final booking = shown[index];
+          return OasisEntrance(
+            index: index,
+            child: _V2TripCard(
+              booking: booking,
+              listing: v2ListingFor(controller, booking),
+              actions: _v2ActionsFor(booking, controller),
+              onOpen: () => _openV2Details(booking),
+              onMessage: booking.canMessage
+                  ? () => v2OpenBookingConversation(context, booking.id)
+                  : null,
+              onRespondToClaim: () => _respondToCautionClaim(booking),
+            ),
+          );
+        },
+      );
+    }
+
+    return V2StatusBar(
+      child: Scaffold(
+        backgroundColor: AppTheme.pageBackground(context),
+        appBar: widget.isTabRoot
+            ? null
+            : const OasisAppBar(
+                showBackButton: true,
+                showProfileIcon: false,
+                shortLetOnlyProfile: true,
+              ),
+        body: SafeArea(
+          bottom: false,
+          top: widget.isTabRoot,
+          child: Column(
+            children: [
+              V2PageHeader(
+                title: 'My trips',
+                trailing: widget.isTabRoot ? const V2ProfileButton() : null,
+              ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: V2UnderlineTabs(
+                  labels: [
+                    upcoming.isEmpty
+                        ? 'Upcoming'
+                        : 'Upcoming (${upcoming.length})',
+                    'Past',
+                  ],
+                  selected: _tripTab,
+                  onSelected: (tab) => setState(() => _tripTab = tab),
+                ),
+              ),
+              Expanded(
+                child: RefreshIndicator(onRefresh: _reload, child: content),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openV2Details(ShortLetBooking booking) => Navigator.push(
+    context,
+    FadePageRoute(
+      page: V2BookingDetailsScreen(
+        booking: booking,
+        actionsFor: (current) =>
+            _v2ActionsFor(current, context.read<ShortLetController>()),
+        onRespondToClaim: _respondToCautionClaim,
+      ),
+    ),
+  );
+
+  /// Opens the answer sheet for the host's claim on this trip's caution fee.
+  Future<void> _respondToCautionClaim(ShortLetBooking booking) async {
+    final claim = booking.cautionClaim;
+    if (claim == null || claim.id.isEmpty) return;
+    final responded = await openRespondToCautionClaimSheet(
+      context,
+      claimId: claim.id,
+      claimedAmount: claim.claimedAmount,
+      hostReason: claim.reason,
+    );
+    if (responded && mounted) await _reload();
+  }
+
+  /// What the guest can do about [booking] right now, most important first.
+  /// Messaging is left out: the card and the details screen each give it a
+  /// place of its own.
+  List<V2BookingAction> _v2ActionsFor(
+    ShortLetBooking booking,
+    ShortLetController controller,
+  ) {
+    final busy = controller.isSubmitting;
+    return [
+      if (booking.status.needsPayment)
+        V2BookingAction(
+          label: 'Pay ${OasisCurrency.format(booking.totalAmount)}',
+          icon: Icons.lock_outline_rounded,
+          isPrimary: true,
+          isBusy: busy,
+          onTap: () => _pay(booking),
+        ),
+      if (booking.canReview)
+        V2BookingAction(
+          label: 'Rate this shortlet',
+          icon: Icons.star_outline_rounded,
+          isEnabled: !busy,
+          onTap: () => _review(booking),
+        ),
+      if (booking.status == ShortLetBookingStatus.disputed)
+        V2BookingAction(
+          label: 'Mark issue resolved',
+          icon: Icons.check_circle_outline_rounded,
+          isEnabled: !busy,
+          onTap: () => _resolveDispute(booking),
+        ),
+      if (booking.canDispute)
+        V2BookingAction(
+          label: 'Report a problem',
+          icon: Icons.flag_outlined,
+          isEnabled: !busy,
+          onTap: () => _dispute(booking),
+        ),
+      if (booking.canBeCancelledByTenant)
+        V2BookingAction(
+          label: 'Cancel booking',
+          icon: Icons.close_rounded,
+          isDestructive: true,
+          isEnabled: !busy,
+          isBusy: controller.isPreviewingCancellation(booking.id),
+          onTap: () => _cancel(booking),
+        ),
+    ];
   }
 
   List<Widget> _actionsFor(
@@ -656,6 +907,247 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
       subjectName: booking.title,
     );
     if (posted && mounted) await refreshNow();
+  }
+}
+
+/// One stay in the v2 Trips tab: photo and status, the facts, then a row per
+/// thing the guest can do.
+class _V2TripCard extends StatelessWidget {
+  final ShortLetBooking booking;
+  final ShortLetListing? listing;
+  final List<V2BookingAction> actions;
+  final VoidCallback onOpen;
+  final VoidCallback? onMessage;
+  final VoidCallback onRespondToClaim;
+
+  const _V2TripCard({
+    required this.booking,
+    required this.listing,
+    required this.actions,
+    required this.onOpen,
+    required this.onMessage,
+    required this.onRespondToClaim,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = actions.where((action) => action.isPrimary).toList();
+    final secondary = actions.where((action) => !action.isPrimary).toList();
+    final payWindow = v2PayWindow(booking);
+    final location = listing?.location.isNotEmpty == true
+        ? listing!.location
+        : booking.address;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: AppTheme.cardShadow(context),
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OasisPressable(
+            onTap: onOpen,
+            pressedScale: 0.99,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    children: [
+                      V2StayPhoto(
+                        url: listing?.coverPhotoUrl,
+                        height: 150,
+                        listingKnown: listing != null,
+                      ),
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: V2StatusPill(
+                          label: booking.status.label,
+                          tone: v2ToneFor(booking.status),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 14, 4, 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              booking.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTheme.cardTitle(context).copyWith(
+                                fontSize: AppTheme.textLg,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (location.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTheme.bodyText(context),
+                              ),
+                            ],
+                            const SizedBox(height: 10),
+                            Text(
+                              v2DateRange(booking),
+                              style: AppTheme.bodyText(
+                                context,
+                                color: AppTheme.primaryTextColor(context),
+                              ).copyWith(fontSize: 14),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              [
+                                v2Plural(booking.guestCount, 'guest', 'guests'),
+                                if (booking.nights > 0)
+                                  v2Plural(booking.nights, 'night', 'nights'),
+                                OasisCurrency.format(booking.totalAmount),
+                              ].join(' · '),
+                              style: AppTheme.bodyText(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppTheme.mutedTextColor(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (booking.cautionFeeStage != CautionFeeStage.none) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: GuestCautionFeeStatus(
+                booking: booking,
+                onRespond: onRespondToClaim,
+              ),
+            ),
+          ],
+          if (payWindow != null) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: V2IconText(
+                icon: Icons.timer_outlined,
+                text: payWindow,
+                color: AppTheme.isDarkMode(context)
+                    ? AppTheme.sandColor
+                    : const Color(0xFF85602F),
+              ),
+            ),
+          ],
+          for (final action in primary) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: OasisButton(
+                label: action.label,
+                icon: action.icon,
+                isBusy: action.isBusy,
+                onPressed: action.onTapIfEnabled,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Divider(height: 1, color: AppTheme.borderColor(context)),
+          _V2TripRow(
+            icon: Icons.receipt_long_outlined,
+            label: 'View booking details',
+            onTap: onOpen,
+          ),
+          if (onMessage != null)
+            _V2TripRow(
+              icon: Icons.chat_bubble_outline_rounded,
+              label: 'Message host',
+              onTap: onMessage,
+            ),
+          for (final action in secondary)
+            _V2TripRow(
+              icon: action.icon,
+              label: action.label,
+              destructive: action.isDestructive,
+              isBusy: action.isBusy,
+              onTap: action.onTapIfEnabled,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _V2TripRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool destructive;
+  final bool isBusy;
+
+  const _V2TripRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.destructive = false,
+    this.isBusy = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = destructive
+        ? (AppTheme.isDarkMode(context)
+              ? const Color(0xFFE59A8F)
+              : AppTheme.brickRedColor)
+        : AppTheme.primaryTextColor(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 12, 4, 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTheme.cardTitle(
+                  context,
+                  color: color,
+                ).copyWith(fontWeight: FontWeight.w500),
+              ),
+            ),
+            if (isBusy)
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              )
+            else
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppTheme.mutedTextColor(context),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

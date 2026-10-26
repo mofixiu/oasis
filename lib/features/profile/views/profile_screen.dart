@@ -24,6 +24,7 @@ import '../../payouts/models/payout_models.dart';
 import '../../payouts/views/payout_account_screen.dart';
 import '../../properties/controllers/landlord_controller.dart';
 import '../../shortlets/views/my_shortlet_bookings_screen.dart';
+import '../../shortlets/views/v2/v2_payments_screen.dart';
 import '../../vault/controllers/vault_controller.dart';
 import '../../vault/views/vault_pin_sheet.dart';
 
@@ -34,7 +35,20 @@ import '../../vault/views/vault_pin_sheet.dart';
 /// premise, so it gets the hero treatment at the top rather than being a chip
 /// tucked beside an email address.
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final bool isTabRoot;
+  final bool shortLetOnly;
+  final VoidCallback? onExplore;
+  final VoidCallback? onOpenTrips;
+  final VoidCallback? onManageStays;
+
+  const ProfileScreen({
+    super.key,
+    this.isTabRoot = false,
+    this.shortLetOnly = false,
+    this.onExplore,
+    this.onOpenTrips,
+    this.onManageStays,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -163,246 +177,272 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            backgroundColor: AppTheme.pageBackground(context),
-            iconTheme: IconThemeData(color: AppTheme.primaryTextColor(context)),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              onPressed: () => Navigator.pop(context),
+      body: Padding(
+        padding: EdgeInsets.only(bottom: widget.isTabRoot ? 96 : 0),
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              backgroundColor: AppTheme.pageBackground(context),
+              iconTheme: IconThemeData(
+                color: AppTheme.primaryTextColor(context),
+              ),
+              leading: widget.isTabRoot
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+              title: Text(
+                'Account',
+                style: TextStyle(color: AppTheme.primaryTextColor(context)),
+              ),
             ),
-            title: Text(
-              'Account',
-              style: TextStyle(color: AppTheme.primaryTextColor(context)),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
-            sliver: SliverList.list(
-              children: [
-                OasisEntrance(
-                  index: 0,
-                  child: _IdentityHero(
-                    displayName: displayName,
-                    email: email,
-                    role: role,
-                    status: status,
-                  ),
-                ),
-                if (status != VerificationStatus.verified) ...[
-                  const SizedBox(height: 14),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+              sliver: SliverList.list(
+                children: [
                   OasisEntrance(
-                    index: 1,
-                    child: _VerificationCallout(status: status),
+                    index: 0,
+                    child: _IdentityHero(
+                      displayName: displayName,
+                      email: email,
+                      role: role,
+                      status: status,
+                    ),
                   ),
-                ],
-                const SizedBox(height: 24),
-                OasisEntrance(
-                  index: 2,
-                  child: _StatsStrip(
-                    tiles: isLandlord
-                        ? _landlordStats(landlordController)
-                        : role.isArtisan
-                        ? _artisanStats(context)
-                        : _tenantStats(
-                            landlordController,
-                            agreementController,
-                            paymentController,
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                OasisEntrance(
-                  index: 3,
-                  child: _Section(
-                    label: 'ACCOUNT',
-                    children: [
-                      _DetailRow(
-                        label: 'Email',
-                        value: email.isEmpty ? 'Not provided' : email,
-                        onTap: email.isEmpty
-                            ? null
-                            : () => _copy(context, 'Email', email),
+                  if (status != VerificationStatus.verified) ...[
+                    const SizedBox(height: 14),
+                    OasisEntrance(
+                      index: 1,
+                      child: _VerificationCallout(status: status),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  if (!widget.shortLetOnly) ...[
+                    OasisEntrance(
+                      index: 2,
+                      child: _StatsStrip(
+                        tiles: isLandlord
+                            ? _landlordStats(landlordController)
+                            : role.isArtisan
+                            ? _artisanStats(context)
+                            : _tenantStats(
+                                landlordController,
+                                agreementController,
+                                paymentController,
+                              ),
                       ),
-                      _DetailRow(
-                        label: 'Phone',
-                        value: phone,
-                        onTap: user?.phone.isNotEmpty == true
-                            ? () => _copy(context, 'Phone number', user!.phone)
-                            : null,
-                      ),
-                      _DetailRow(label: 'Role', value: role.displayName),
-                      _DetailRow(
-                        label: 'Identity',
-                        value: _statusCopy(status),
-                        valueColor: _statusColor(status),
-                        isLast: true,
-                      ),
-                    ],
-                  ),
-                ),
-                // Signed agreements live behind here rather than on the
-                // dashboard. A dashboard is a list of things to do; a fully
-                // signed agreement is a record, and this is where people look
-                // for records. Unsigned ones stay on the dashboard.
-                //
-                // A row rather than the list itself: the archive grows by one
-                // per unit per term and would push everything below it
-                // (payouts, preferences, log out) off the bottom of a
-                // landlord's profile within a year.
-                const SizedBox(height: 24),
-                if (!role.isArtisan)
+                    ),
+                    const SizedBox(height: 28),
+                  ],
                   OasisEntrance(
-                    index: 4,
+                    index: 3,
                     child: _Section(
-                      label: 'RECORDS',
+                      label: 'ACCOUNT',
                       children: [
                         _DetailRow(
-                          label: 'My agreements',
-                          value: _agreementCountCopy(agreementController),
-                          isLast: isLandlord,
-                          trailingIcon: Icons.chevron_right_rounded,
-                          onTap: () => Navigator.push(
-                            context,
-                            FadePageRoute(page: const MyAgreementsScreen()),
-                          ),
+                          label: 'Email',
+                          value: email.isEmpty ? 'Not provided' : email,
+                          onTap: email.isEmpty
+                              ? null
+                              : () => _copy(context, 'Email', email),
                         ),
-                        // Guests only: a landlord's short-let bookings are
-                        // decisions to make, and live on their Short Lets
-                        // screen rather than in their own records.
-                        if (isTenant)
+                        _DetailRow(
+                          label: 'Phone',
+                          value: phone,
+                          onTap: user?.phone.isNotEmpty == true
+                              ? () =>
+                                    _copy(context, 'Phone number', user!.phone)
+                              : null,
+                        ),
+                        _DetailRow(label: 'Role', value: role.displayName),
+                        _DetailRow(
+                          label: 'Identity',
+                          value: _statusCopy(status),
+                          valueColor: _statusColor(status),
+                          isLast: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Signed agreements live behind here rather than on the
+                  // dashboard. A dashboard is a list of things to do; a fully
+                  // signed agreement is a record, and this is where people look
+                  // for records. Unsigned ones stay on the dashboard.
+                  //
+                  // A row rather than the list itself: the archive grows by one
+                  // per unit per term and would push everything below it
+                  // (payouts, preferences, log out) off the bottom of a
+                  // landlord's profile within a year.
+                  const SizedBox(height: 24),
+                  if (!widget.shortLetOnly && !role.isArtisan)
+                    OasisEntrance(
+                      index: 4,
+                      child: _Section(
+                        label: 'RECORDS',
+                        children: [
                           _DetailRow(
-                            label: 'My stays',
-                            value: 'Short lets',
-                            isLast: true,
+                            label: 'My agreements',
+                            value: _agreementCountCopy(agreementController),
+                            isLast: isLandlord,
+                            trailingIcon: Icons.chevron_right_rounded,
+                            onTap: () => Navigator.push(
+                              context,
+                              FadePageRoute(page: const MyAgreementsScreen()),
+                            ),
+                          ),
+                          // Guests only: a landlord's short-let bookings are
+                          // decisions to make, and live on their Short Lets
+                          // screen rather than in their own records.
+                          if (isTenant)
+                            _DetailRow(
+                              label: 'My stays',
+                              value: 'Short lets',
+                              isLast: true,
+                              trailingIcon: Icons.chevron_right_rounded,
+                              onTap: () => Navigator.push(
+                                context,
+                                FadePageRoute(
+                                  page: const MyShortLetBookingsScreen(),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  // Both roles hold a vault and both can withdraw from it, so
+                  // neither of these rows is landlord-only any more: a tenant
+                  // who saves rent here needs the same bank account and the same
+                  // PIN to get it back out again.
+                  const SizedBox(height: 24),
+                  OasisEntrance(
+                    index: 5,
+                    child: _Section(
+                      label: 'MONEY',
+                      children: [
+                        if (widget.shortLetOnly)
+                          _DetailRow(
+                            label: 'Payment ledger',
+                            value: 'Stay payments and receipts',
                             trailingIcon: Icons.chevron_right_rounded,
                             onTap: () => Navigator.push(
                               context,
                               FadePageRoute(
-                                page: const MyShortLetBookingsScreen(),
+                                page: V2PaymentsScreen(
+                                  onExplore: widget.onExplore,
+                                  onOpenTrips: widget.onOpenTrips,
+                                  onManageStays: widget.onManageStays,
+                                ),
                               ),
                             ),
                           ),
+                        Consumer<PayoutController>(
+                          builder: (context, payout, _) => _DetailRow(
+                            label: 'Payout account',
+                            value: _payoutCopy(payout, user),
+                            valueColor: _payoutColor(payout, user),
+                            trailingIcon: Icons.chevron_right_rounded,
+                            onTap: () => Navigator.push(
+                              context,
+                              FadePageRoute(page: const PayoutAccountScreen()),
+                            ),
+                          ),
+                        ),
+                        Consumer<VaultController>(
+                          builder: (context, vault, _) => _DetailRow(
+                            label: 'Vault PIN',
+                            value: _vaultPinCopy(vault),
+                            valueColor: _vaultPinColor(vault),
+                            isLast: true,
+                            trailingIcon: Icons.chevron_right_rounded,
+                            onTap: () => openVaultPinManager(context),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                // Both roles hold a vault and both can withdraw from it, so
-                // neither of these rows is landlord-only any more: a tenant
-                // who saves rent here needs the same bank account and the same
-                // PIN to get it back out again.
-                const SizedBox(height: 24),
-                OasisEntrance(
-                  index: 5,
-                  child: _Section(
-                    label: 'MONEY',
-                    children: [
-                      Consumer<PayoutController>(
-                        builder: (context, payout, _) => _DetailRow(
-                          label: 'Payout account',
-                          value: _payoutCopy(payout, user),
-                          valueColor: _payoutColor(payout, user),
-                          trailingIcon: Icons.chevron_right_rounded,
-                          onTap: () => Navigator.push(
-                            context,
-                            FadePageRoute(page: const PayoutAccountScreen()),
+                  const SizedBox(height: 24),
+                  OasisEntrance(
+                    index: 6,
+                    child: _Section(
+                      label: 'PREFERENCES',
+                      children: [
+                        // No push switch here. The backend can take the
+                        // preference (API guide 19 §2) but the app sends no
+                        // device token — phone push is out of MVP scope — so a
+                        // switch would promise alerts that never arrive, which
+                        // is worse than not offering the setting. It comes back
+                        // with the Firebase work, not before.
+                        //
+                        // Tenants only: these are rent reminders, and neither a
+                        // landlord nor an artisan is ever the one being reminded
+                        // to pay rent.
+                        if (isTenant && !widget.shortLetOnly)
+                          Consumer<NotificationController>(
+                            builder: (context, notifications, _) => _SwitchRow(
+                              title: 'Early rent reminder emails',
+                              subtitle:
+                                  'Emails 6, 3 and 1 month before rent is due. '
+                                  'Reminders in the app, and the ones close to '
+                                  'the date, are sent either way.',
+                              // Defaults to on because these are opt-out, and
+                              // holds the last known value while a change is in
+                              // flight rather than flicking back and forth.
+                              value:
+                                  notifications.earlyRentReminderEmails ?? true,
+                              onChanged: notifications.isSavingPreferences
+                                  ? null
+                                  : (value) async {
+                                      OasisHaptics.select();
+                                      final saved = await notifications
+                                          .setEarlyRentReminderEmails(value);
+                                      if (!context.mounted || saved) return;
+                                      OasisToast.error(
+                                        context,
+                                        notifications.errorMessage ??
+                                            'Could not save that just now. Try '
+                                                'again in a moment.',
+                                      );
+                                    },
+                            ),
                           ),
-                        ),
-                      ),
-                      Consumer<VaultController>(
-                        builder: (context, vault, _) => _DetailRow(
-                          label: 'Vault PIN',
-                          value: _vaultPinCopy(vault),
-                          valueColor: _vaultPinColor(vault),
+                        _SwitchRow(
+                          title: 'Dark mode',
+                          subtitle: 'Use the black theme across the app',
+                          // Resolved brightness, not the stored choice: on
+                          // ThemeMode.system the switch must show what the user
+                          // is actually looking at.
+                          value: AppTheme.isDarkMode(context),
+                          onChanged: (value) {
+                            OasisHaptics.select();
+                            themeController.setDarkMode(value);
+                          },
                           isLast: true,
-                          trailingIcon: Icons.chevron_right_rounded,
-                          onTap: () => openVaultPinManager(context),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                OasisEntrance(
-                  index: 6,
-                  child: _Section(
-                    label: 'PREFERENCES',
-                    children: [
-                      // No push switch here. The backend can take the
-                      // preference (API guide 19 §2) but the app sends no
-                      // device token — phone push is out of MVP scope — so a
-                      // switch would promise alerts that never arrive, which
-                      // is worse than not offering the setting. It comes back
-                      // with the Firebase work, not before.
-                      //
-                      // Tenants only: these are rent reminders, and neither a
-                      // landlord nor an artisan is ever the one being reminded
-                      // to pay rent.
-                      if (isTenant)
-                        Consumer<NotificationController>(
-                          builder: (context, notifications, _) => _SwitchRow(
-                            title: 'Early rent reminder emails',
-                            subtitle:
-                                'Emails 6, 3 and 1 month before rent is due. '
-                                'Reminders in the app, and the ones close to '
-                                'the date, are sent either way.',
-                            // Defaults to on because these are opt-out, and
-                            // holds the last known value while a change is in
-                            // flight rather than flicking back and forth.
-                            value:
-                                notifications.earlyRentReminderEmails ?? true,
-                            onChanged: notifications.isSavingPreferences
-                                ? null
-                                : (value) async {
-                                    OasisHaptics.select();
-                                    final saved = await notifications
-                                        .setEarlyRentReminderEmails(value);
-                                    if (!context.mounted || saved) return;
-                                    OasisToast.error(
-                                      context,
-                                      notifications.errorMessage ??
-                                          'Could not save that just now. Try '
-                                              'again in a moment.',
-                                    );
-                                  },
-                          ),
-                        ),
-                      _SwitchRow(
-                        title: 'Dark mode',
-                        subtitle: 'Use the black theme across the app',
-                        // Resolved brightness, not the stored choice: on
-                        // ThemeMode.system the switch must show what the user
-                        // is actually looking at.
-                        value: AppTheme.isDarkMode(context),
-                        onChanged: (value) {
-                          OasisHaptics.select();
-                          themeController.setDarkMode(value);
-                        },
-                        isLast: true,
-                      ),
-                    ],
+                  const SizedBox(height: 32),
+                  OasisEntrance(
+                    index: 7,
+                    child: OasisButton(
+                      label: 'Log out',
+                      icon: Icons.logout_rounded,
+                      outlined: true,
+                      color: AppTheme.logoutColor,
+                      onPressed: () => _handleLogout(context),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 32),
-                OasisEntrance(
-                  index: 7,
-                  child: OasisButton(
-                    label: 'Log out',
-                    icon: Icons.logout_rounded,
-                    outlined: true,
-                    color: AppTheme.logoutColor,
-                    onPressed: () => _handleLogout(context),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const _BrandFooter(),
-              ],
+                  const SizedBox(height: 28),
+                  const _BrandFooter(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

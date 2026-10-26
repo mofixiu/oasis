@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/app_variant.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
@@ -14,7 +15,9 @@ import '../models/notification_model.dart';
 import 'broadcast_composer_sheet.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+  final bool isEmbedded;
+
+  const NotificationsScreen({super.key, this.isEmbedded = false});
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -58,6 +61,21 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Widget build(BuildContext context) {
     final controller = context.watch<NotificationController>();
     final primaryTextColor = AppTheme.primaryTextColor(context);
+
+    final body = Column(
+      children: [
+        // The type filters are v1 rental events; v2 shows one list.
+        if (!isOasisV2) _FilterBar(controller: controller),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: controller.loadNotifications,
+            child: _buildBody(context, controller),
+          ),
+        ),
+      ],
+    );
+
+    if (widget.isEmbedded) return body;
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
@@ -108,17 +126,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          _FilterBar(controller: controller),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: controller.loadNotifications,
-              child: _buildBody(context, controller),
-            ),
-          ),
-        ],
-      ),
+      body: body,
     );
   }
 

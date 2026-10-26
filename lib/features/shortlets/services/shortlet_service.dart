@@ -113,6 +113,74 @@ class ShortLetService {
     );
   }
 
+  /// A new host's first place, in one request: the property, a unit and the
+  /// nightly listing (`POST /host/listings/`, API guide 20). The backend
+  /// creates all three or none, so a failure leaves nothing half-made.
+  ///
+  /// Unlike [saveListing], the booking window is left out when the host did
+  /// not set one, rather than sent as `null`: this endpoint documents both
+  /// dates as optional, and there is no earlier window to clear.
+  Future<HostListingResult> createHostListing({
+    required String propertyName,
+    required String address,
+    required String city,
+    required String state,
+    required double latitude,
+    required double longitude,
+    required String unitNumber,
+    required int bedrooms,
+    required int bathrooms,
+    required String nightlyPrice,
+    required int minimumNights,
+    required int maximumGuests,
+    String cautionFee = '0.00',
+    ShortLetCancellationPolicy cancellationPolicy =
+        ShortLetCancellationPolicy.flexible,
+    String? availableFrom,
+    String? availableTo,
+    String description = '',
+    String houseRules = '',
+    String checkInNotes = '',
+  }) async {
+    final body = <String, dynamic>{
+      'property_name': propertyName,
+      'address': address,
+      'city': city,
+      'state': state,
+      // Six decimal places is what the property serializer stores.
+      'latitude': latitude.toStringAsFixed(6),
+      'longitude': longitude.toStringAsFixed(6),
+      'unit_number': unitNumber,
+      'bedrooms': bedrooms,
+      'bathrooms': bathrooms,
+      'nightly_price': nightlyPrice,
+      'minimum_nights': minimumNights,
+      'maximum_guests': maximumGuests,
+      'caution_fee': cautionFee,
+      'cancellation_policy': cancellationPolicy.wireValue,
+      'available_from': ?availableFrom,
+      'available_to': ?availableTo,
+      'description': description,
+      'house_rules': houseRules,
+      'check_in_notes': checkInNotes,
+    };
+    debugPrint(
+      '[SHORTLET SERVICE] Creating a new place POST '
+      '${ApiConstants.hostListingsEndpoint} ($propertyName, $city, '
+      '₦$nightlyPrice/night)',
+    );
+    final response = await _apiClient.post(
+      ApiConstants.hostListingsEndpoint,
+      body: body,
+    );
+    return HostListingResult.fromJson(
+      response is Map<String, dynamic> ? response : const {},
+      fallbackUnitNumber: unitNumber,
+      fallbackBedrooms: bedrooms,
+      fallbackBathrooms: bathrooms,
+    );
+  }
+
   /// Booking requests across all of the landlord's listings.
   Future<List<ShortLetBooking>> getLandlordBookings() async {
     debugPrint(
@@ -476,6 +544,14 @@ class ShortLetService {
 
   /// Tenant answers a caution-fee claim: accept it, reject it, or counter
   /// with a smaller amount.
+  /// Host releases the caution fee back to the guest before the claim window
+  /// ends (spec v16 §7).
+  Future<void> releaseCautionFee(String bookingId) async {
+    final endpoint = ApiConstants.releaseShortLetCautionFeeEndpoint(bookingId);
+    debugPrint('[SHORTLET SERVICE] Releasing caution fee POST $endpoint');
+    await _apiClient.post(endpoint);
+  }
+
   Future<Map<String, dynamic>> respondToCautionClaim({
     required String claimId,
     required String response,

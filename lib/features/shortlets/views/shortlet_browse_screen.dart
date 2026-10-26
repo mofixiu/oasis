@@ -17,11 +17,14 @@ import '../../../core/widgets/oasis_search_field.dart';
 import '../../../core/widgets/oasis_sheet.dart';
 import '../../../core/widgets/oasis_shimmer.dart';
 import '../../../core/widgets/oasis_state_views.dart';
+import '../../../core/widgets/v2_ui.dart';
 import '../../reviews/views/widgets/rating_stars.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
 import 'my_shortlet_bookings_screen.dart';
 import 'shortlet_listing_screen.dart';
+import 'v2/v2_empty_state.dart';
+import 'v2/v2_stay_widgets.dart';
 import '../../../core/utils/fade_page_route.dart';
 import '../../../core/utils/oasis_prefetch.dart';
 import '../../../core/utils/oasis_input_formatters.dart';
@@ -33,7 +36,17 @@ import '../../../core/utils/oasis_input_formatters.dart';
 /// booking has its own money and its own deadlines to come back to, which is
 /// what earns it a permanent place in the bar.
 class ShortLetBrowseScreen extends StatefulWidget {
-  const ShortLetBrowseScreen({super.key});
+  final bool isV2;
+
+  /// V2 only: the pushed Search screen (field and results) rather than the
+  /// Discover tab (photo grid).
+  final bool isSearch;
+
+  const ShortLetBrowseScreen({
+    super.key,
+    this.isV2 = false,
+    this.isSearch = false,
+  });
 
   @override
   State<ShortLetBrowseScreen> createState() => _ShortLetBrowseScreenState();
@@ -72,7 +85,11 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
     );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await refreshNow();
-      if (mounted) await _requestLocationOnce();
+      // The v2 Discover grid is for browsing; nearby sorting belongs to
+      // Search, where the Near me control is.
+      if (mounted && (!widget.isV2 || widget.isSearch)) {
+        await _requestLocationOnce();
+      }
     });
   }
 
@@ -197,20 +214,319 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
 
   void _openBookings() => Navigator.push(
     context,
-    FadePageRoute(page: const MyShortLetBookingsScreen()),
+    FadePageRoute(page: MyShortLetBookingsScreen(isV2: widget.isV2)),
   );
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<ShortLetController>();
+    if (widget.isV2) return _buildV2(context, controller);
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const OasisAppBar(),
+      appBar: OasisAppBar(shortLetOnlyProfile: widget.isV2),
       body: RefreshIndicator(
         onRefresh: _reload,
         child: _buildBody(context, controller),
       ),
+    );
+  }
+
+  void _openListing(ShortLetController controller, ShortLetListing listing) {
+    OasisPrefetch.images(context, listing.photoUrls);
+    Navigator.push(
+      context,
+      FadePageRoute(
+        page: ShortLetListingScreen(
+          listing: listing,
+          isV2: widget.isV2,
+          requestedDates: controller.searchDates,
+        ),
+      ),
+    );
+  }
+
+  /// How many of dates, price and bedrooms are narrowing the list.
+  static int _activeFilterCount(ShortLetController controller) => [
+    controller.hasSearchDates,
+    controller.minPrice != null || controller.maxPrice != null,
+    controller.minBedrooms != null,
+  ].where((on) => on).length;
+
+  Future<void> _clearFilters() async {
+    final controller = context.read<ShortLetController>();
+    if (controller.hasSearchDates) await controller.setSearchDates(null);
+    if (controller.minPrice != null || controller.maxPrice != null) {
+      await controller.setPriceFilter();
+    }
+    if (controller.minBedrooms != null) {
+      await controller.setBedroomsFilter(null);
+    }
+  }
+
+  /// Dates, price and bedrooms live in one sheet behind the Filters button,
+  /// so browsing is not led by a row of controls.
+  void _openFilters() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _V2FilterSheet(
+      onPickDates: _pickDates,
+      onClearDates: _clearDates,
+      onPickPrice: _pickPriceRange,
+      onClearPrice: _clearPriceRange,
+      onSetBedrooms: _setBedrooms,
+      onClearAll: _clearFilters,
+    ),
+  );
+
+  void _openSearch() => Navigator.push(
+    context,
+    FadePageRoute(page: const ShortLetBrowseScreen(isV2: true, isSearch: true)),
+  );
+
+  Widget _buildV2(BuildContext context, ShortLetController controller) {
+    final filterCount = _activeFilterCount(controller);
+    final isTab = !widget.isSearch;
+    // Above the floating tab bar on the tab, above the home indicator when
+    // pushed.
+    final fabBottom = isTab
+        ? CustomBottomNavbar.reservedHeight + 4
+        : MediaQuery.paddingOf(context).bottom + 20;
+
+    return V2StatusBar(
+      child: Scaffold(
+        backgroundColor: AppTheme.pageBackground(context),
+        body: Stack(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: RefreshIndicator(
+                onRefresh: _reload,
+                child: widget.isSearch
+                    ? _buildV2Search(context, controller, filterCount)
+                    : _buildV2Discover(context, controller),
+              ),
+            ),
+            Positioned(
+              right: 20,
+              bottom: fabBottom,
+              child: _V2FilterButton(count: filterCount, onTap: _openFilters),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Loading, error and empty states shared by Discover and Search, or null
+  /// when there are results to show.
+  List<Widget>? _v2StateFor(
+    ShortLetController controller,
+    List<ShortLetListing> listings,
+  ) {
+    if (!controller.hasLoaded(ShortLetController.kBrowseKey) ||
+        (controller.isLoading && listings.isEmpty)) {
+      return const [
+        SizedBox(
+          height: 420,
+          child: OasisSkeletonList(
+            count: 3,
+            hasThumbnail: true,
+            padding: EdgeInsets.zero,
+          ),
+        ),
+      ];
+    }
+    if (controller.hasError && listings.isEmpty) {
+      return [
+        SizedBox(
+          height: 360,
+          child: OasisErrorState(
+            message: controller.errorMessage,
+            isConnectionError: controller.errorIsConnection,
+            onRetry: _reload,
+          ),
+        ),
+      ];
+    }
+    if (listings.isEmpty) {
+      final narrowed = controller.isBrowseNarrowed;
+      return [
+        V2IllustratedEmptyState(
+          artwork: V2EmptyArtwork.home,
+          title: narrowed
+              ? 'A little more room to explore.'
+              : 'New shortlets are on their way.',
+          message: narrowed
+              ? 'Nothing matches that search and those filters. Clear them '
+                    'to see every shortlet.'
+              : 'There are no shortlets to show just now. Check again soon.',
+          actionLabel: narrowed ? 'Clear search and filters' : null,
+          onAction: narrowed
+              ? () async {
+                  await _clearFilters();
+                  await _clearSearch();
+                }
+              : null,
+          scrollable: false,
+        ),
+      ];
+    }
+    return null;
+  }
+
+  /// The Discover tab: a photo grid, and what is trending.
+  Widget _buildV2Discover(BuildContext context, ShortLetController controller) {
+    final shown = controller.browseListings;
+    final trending = [...shown.where((listing) => listing.hasRating)]
+      ..sort((a, b) => b.averageRating!.compareTo(a.averageRating!));
+    final gridFirst = shown.take(6).toList();
+    final gridRest = shown.skip(6).toList();
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 140),
+      children: [
+        V2PageHeader(
+          title: 'Discover',
+          padding: EdgeInsets.zero,
+          trailing: V2CircleButton(
+            icon: Icons.search_rounded,
+            tooltip: 'Search shortlets',
+            onTap: _openSearch,
+          ),
+        ),
+        const SizedBox(height: 16),
+        // An approved booking expires if it is not paid for in time, so the
+        // reminder stays here while one is waiting.
+        if (controller.bookingsAwaitingPayment.isNotEmpty) ...[
+          _MyBookingsRow(
+            bookingCount: controller.liveBookings.length,
+            awaitingPayment: controller.bookingsAwaitingPayment.length,
+            onTap: _openBookings,
+          ),
+          const SizedBox(height: 16),
+        ],
+        ...?_v2StateFor(controller, shown),
+        if (shown.isNotEmpty) ...[
+          _V2InspireGrid(
+            listings: gridFirst,
+            onOpen: (listing) => _openListing(controller, listing),
+          ),
+          if (trending.length > 1) ...[
+            const SizedBox(height: 26),
+            const V2SectionHeader(title: 'Trending now'),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 168,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                itemCount: trending.length.clamp(0, 6),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, index) => _V2TrendingCard(
+                  listing: trending[index],
+                  onTap: () => _openListing(controller, trending[index]),
+                ),
+              ),
+            ),
+          ],
+          if (gridRest.isNotEmpty) ...[
+            const SizedBox(height: 26),
+            const V2SectionHeader(title: 'More shortlets'),
+            const SizedBox(height: 12),
+            _V2InspireGrid(
+              listings: gridRest,
+              onOpen: (listing) => _openListing(controller, listing),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  /// The pushed Search screen: where to, then the results as rows.
+  Widget _buildV2Search(
+    BuildContext context,
+    ShortLetController controller,
+    int filterCount,
+  ) {
+    final listings = controller.browseListings;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+      children: [
+        Row(
+          children: [
+            V2CircleButton(
+              icon: Icons.arrow_back_rounded,
+              tooltip: 'Back',
+              size: 40,
+              onTap: () => Navigator.maybePop(context),
+            ),
+            Expanded(
+              child: Text(
+                'Search',
+                textAlign: TextAlign.center,
+                style: AppTheme.sectionTitle(context),
+              ),
+            ),
+            const SizedBox(width: 40),
+          ],
+        ),
+        const SizedBox(height: 18),
+        OasisSearchField(
+          controller: _searchController,
+          hintText: 'Where to? Area or city',
+          onChanged: controller.searchBrowseListings,
+          trailing: NearMeButton(
+            isActive: controller.isSearchingNearby,
+            isLoading: isLocating,
+            onPressed: controller.isSearchingNearby ? _clearSearch : _useNearby,
+            activeHint: 'Show every shortlet',
+          ),
+        ),
+        if (controller.isSearchingNearby) ...[
+          const SizedBox(height: 10),
+          NearbyNotice(
+            message: 'Showing shortlets near you, closest first.',
+            onClear: _clearSearch,
+          ),
+        ],
+        // The filters are tucked away, so say when they are narrowing
+        // things: otherwise a short list looks like a short catalogue.
+        if (filterCount > 0) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                size: 15,
+                color: AppTheme.secondaryTextColor(context),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '$filterCount ${filterCount == 1 ? 'filter' : 'filters'} on',
+                  style: AppTheme.bodyText(context).copyWith(fontSize: 12),
+                ),
+              ),
+              TextButton(onPressed: _clearFilters, child: const Text('Clear')),
+            ],
+          ),
+        ],
+        const SizedBox(height: 16),
+        ...?_v2StateFor(controller, listings),
+        for (var index = 0; index < listings.length; index++)
+          OasisEntrance(
+            index: index,
+            child: _V2ResultRow(
+              listing: listings[index],
+              onTap: () => _openListing(controller, listings[index]),
+            ),
+          ),
+      ],
     );
   }
 
@@ -304,33 +620,52 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
         const SizedBox(height: 20),
 
         if (listings.isEmpty)
-          OasisEmptyState(
-            icon: controller.isBrowseNarrowed
-                ? Icons.search_off_rounded
-                : Icons.holiday_village_outlined,
-            // The narrowing is not always a place any more: a bedroom
-            // floor or a price range can empty the list on its own, so the
-            // copy stops blaming the area unless the area is what was set.
-            title: controller.isBrowseNarrowed
-                ? 'Nothing matches that'
-                : 'No short stays yet',
-            message: controller.isBrowseNarrowed
-                ? 'No place by the night fits what you have asked for right '
-                      'now. Loosen one of the filters, or see every stay.'
-                : 'Nobody is offering a place by the night right now. Pull '
-                      'down to check again.',
-            scrollable: false,
-            padding: const EdgeInsets.fromLTRB(8, 32, 8, 16),
-            actionLabel: controller.isBrowseNarrowed
-                ? 'See all stays'
-                : 'My bookings',
-            actionIcon: controller.isBrowseNarrowed
-                ? Icons.filter_alt_off_rounded
-                : Icons.luggage_outlined,
-            onAction: controller.isBrowseNarrowed
-                ? _clearSearch
-                : _openBookings,
-          )
+          widget.isV2
+              ? V2IllustratedEmptyState(
+                  artwork: V2EmptyArtwork.home,
+                  title: controller.isBrowseNarrowed
+                      ? 'A little more room to explore.'
+                      : 'New stays are on their way.',
+                  message: controller.isBrowseNarrowed
+                      ? 'We could not find a place for those filters. Clear '
+                            'them and see every stay.'
+                      : 'There are no short stays to show just now. Check '
+                            'again soon or visit your trips.',
+                  actionLabel: controller.isBrowseNarrowed
+                      ? 'Clear filters'
+                      : 'View your trips',
+                  onAction: controller.isBrowseNarrowed
+                      ? _clearSearch
+                      : _openBookings,
+                  scrollable: false,
+                )
+              : OasisEmptyState(
+                  icon: controller.isBrowseNarrowed
+                      ? Icons.search_off_rounded
+                      : Icons.holiday_village_outlined,
+                  // The narrowing is not always a place any more: a bedroom
+                  // floor or a price range can empty the list on its own, so the
+                  // copy stops blaming the area unless the area is what was set.
+                  title: controller.isBrowseNarrowed
+                      ? 'Nothing matches that'
+                      : 'No short stays yet',
+                  message: controller.isBrowseNarrowed
+                      ? 'No place by the night fits what you have asked for right '
+                            'now. Loosen one of the filters, or see every stay.'
+                      : 'Nobody is offering a place by the night right now. Pull '
+                            'down to check again.',
+                  scrollable: false,
+                  padding: const EdgeInsets.fromLTRB(8, 32, 8, 16),
+                  actionLabel: controller.isBrowseNarrowed
+                      ? 'See all stays'
+                      : 'My bookings',
+                  actionIcon: controller.isBrowseNarrowed
+                      ? Icons.filter_alt_off_rounded
+                      : Icons.luggage_outlined,
+                  onAction: controller.isBrowseNarrowed
+                      ? _clearSearch
+                      : _openBookings,
+                )
         else
           for (var index = 0; index < listings.length; index++)
             Padding(
@@ -353,6 +688,7 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
                       FadePageRoute(
                         page: ShortLetListingScreen(
                           listing: listings[index],
+                          isV2: widget.isV2,
                           requestedDates: controller.searchDates,
                         ),
                       ),
@@ -954,11 +1290,660 @@ class _MyBookingsRow extends StatelessWidget {
 
   static String _subtitle(int total, int awaitingPayment) {
     if (awaitingPayment > 0) {
-      return '$awaitingPayment ${awaitingPayment == 1 ? 'stay is' : 'stays are'} '
+      return '$awaitingPayment ${awaitingPayment == 1 ? 'booking is' : 'bookings are'} '
           'approved and waiting to be paid';
     }
     if (total == 0) return 'Nothing booked yet';
-    return '$total ${total == 1 ? 'stay' : 'stays'} in progress';
+    return '$total ${total == 1 ? 'booking' : 'bookings'} in progress';
+  }
+}
+
+/// Floating "Filters" button, with the number of filters that are on.
+class _V2FilterButton extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+
+  const _V2FilterButton({required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: count == 0 ? 'Filters' : 'Filters, $count on',
+    excludeSemantics: true,
+    child: OasisPressable(
+      onTap: onTap,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        decoration: BoxDecoration(
+          color: AppTheme.terracottaColor,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.terracottaColor.withValues(alpha: 0.35),
+              blurRadius: 16,
+              spreadRadius: -4,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.tune_rounded, size: 18, color: Colors.white),
+            const SizedBox(width: 8),
+            const Text(
+              'Filters',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: AppTheme.textMd,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (count > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                width: 20,
+                height: 20,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(
+                    color: AppTheme.terracottaColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Every filter in one place: dates, price and bedrooms. Each applies as it
+/// is set, so the list behind the sheet is already up to date when it closes.
+class _V2FilterSheet extends StatelessWidget {
+  final Future<void> Function() onPickDates;
+  final Future<void> Function() onClearDates;
+  final Future<void> Function() onPickPrice;
+  final Future<void> Function() onClearPrice;
+  final Future<void> Function(int?) onSetBedrooms;
+  final Future<void> Function() onClearAll;
+
+  const _V2FilterSheet({
+    required this.onPickDates,
+    required this.onClearDates,
+    required this.onPickPrice,
+    required this.onClearPrice,
+    required this.onSetBedrooms,
+    required this.onClearAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<ShortLetController>();
+    final dates = controller.searchDates;
+    final hasPrice = controller.minPrice != null || controller.maxPrice != null;
+    final format = DateFormat('d MMM');
+    final count = controller.browseListings.length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        10,
+        20,
+        MediaQuery.paddingOf(context).bottom + 16,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.mutedTextColor(context).withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text('Filters', style: AppTheme.sectionTitle(context)),
+              ),
+              TextButton(
+                onPressed: _hasAny(controller) ? onClearAll : null,
+                child: const Text('Clear all'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _V2FilterRow(
+            icon: Icons.calendar_today_outlined,
+            title: 'Dates',
+            value: dates == null
+                ? 'Any dates'
+                : '${format.format(dates.start)} – ${format.format(dates.end)}',
+            isSet: dates != null,
+            onTap: onPickDates,
+            onClear: onClearDates,
+          ),
+          _V2FilterRow(
+            icon: Icons.payments_outlined,
+            title: controller.hasSearchDates
+                ? 'Total price'
+                : 'Price per night',
+            value: hasPrice
+                ? _PriceFilterRow._label(
+                    controller.minPrice,
+                    controller.maxPrice,
+                  )
+                : 'Any price',
+            isSet: hasPrice,
+            onTap: onPickPrice,
+            onClear: onClearPrice,
+          ),
+          const SizedBox(height: 14),
+          Text('Bedrooms', style: AppTheme.cardTitle(context)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (final floor in const <int?>[null, 1, 2, 3, 4]) ...[
+                if (floor != null) const SizedBox(width: 8),
+                Expanded(
+                  child: _V2AreaChip(
+                    label: floor == null ? 'Any' : '$floor+',
+                    isSelected: controller.minBedrooms == floor,
+                    onTap: () => onSetBedrooms(floor),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 22),
+          OasisButton(
+            label: controller.isLoading
+                ? 'Updating…'
+                : 'Show $count ${count == 1 ? 'shortlet' : 'shortlets'}',
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static bool _hasAny(ShortLetController controller) =>
+      controller.hasSearchDates ||
+      controller.minPrice != null ||
+      controller.maxPrice != null ||
+      controller.minBedrooms != null;
+}
+
+class _V2FilterRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final bool isSet;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  const _V2FilterRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.isSet,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: AppTheme.cornerMd,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AppTheme.borderColor(context)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppTheme.primaryTextColor(context)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTheme.cardTitle(context)),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: AppTheme.bodyText(
+                    context,
+                    color: isSet ? AppTheme.actionColor : null,
+                  ).copyWith(fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          if (isSet)
+            IconButton(
+              tooltip: 'Clear $title',
+              onPressed: onClear,
+              icon: Icon(
+                Icons.close_rounded,
+                size: 18,
+                color: AppTheme.secondaryTextColor(context),
+              ),
+            )
+          else
+            Icon(
+              Icons.chevron_right_rounded,
+              color: AppTheme.mutedTextColor(context),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// A pill in a single-choice row: areas on Discover, bedrooms in filters.
+class _V2AreaChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _V2AreaChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: isSelected,
+    child: OasisPressable(
+      onTap: onTap,
+      pressedScale: 0.96,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.terracottaColor
+              : AppTheme.surfaceColor(context),
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.terracottaColor
+                : AppTheme.borderColor(context),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected
+                ? Colors.white
+                : AppTheme.primaryTextColor(context),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Two columns of tall photo cards, for browsing by eye.
+class _V2InspireGrid extends StatelessWidget {
+  final List<ShortLetListing> listings;
+  final ValueChanged<ShortLetListing> onOpen;
+
+  const _V2InspireGrid({required this.listings, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) => GridView.builder(
+    shrinkWrap: true,
+    padding: EdgeInsets.zero,
+    physics: const NeverScrollableScrollPhysics(),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 2,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 0.72,
+    ),
+    itemCount: listings.length,
+    itemBuilder: (context, index) => _V2InspireCard(
+      listing: listings[index],
+      onTap: () => onOpen(listings[index]),
+    ),
+  );
+}
+
+class _V2InspireCard extends StatelessWidget {
+  final ShortLetListing listing;
+  final VoidCallback onTap;
+
+  const _V2InspireCard({required this.listing, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: '${listing.title}, ${listing.location}',
+    excludeSemantics: true,
+    child: OasisPressable(
+      onTap: onTap,
+      pressedScale: 0.98,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            V2StayPhoto(url: listing.coverPhotoUrl),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0),
+                    Colors.black.withValues(alpha: 0.72),
+                  ],
+                  stops: const [0.4, 1],
+                ),
+              ),
+            ),
+            if (listing.isUnavailableForPeriod)
+              Positioned(
+                top: 10,
+                left: 10,
+                child: V2StatusPill(
+                  label: 'Not free then',
+                  tone: V2Tone.neutral,
+                ),
+              ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: V2SaveButton(listing: listing, size: 32),
+            ),
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          listing.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            height: 1.2,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${OasisCurrency.format(listing.nightlyPrice)} / night',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 17,
+                      color: AppTheme.terracottaColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// A wide photo card on the Trending row.
+class _V2TrendingCard extends StatelessWidget {
+  final ShortLetListing listing;
+  final VoidCallback onTap;
+
+  const _V2TrendingCard({required this.listing, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: listing.title,
+    excludeSemantics: true,
+    child: OasisPressable(
+      onTap: onTap,
+      pressedScale: 0.98,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: SizedBox(
+          width: 250,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              V2StayPhoto(url: listing.coverPhotoUrl),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0),
+                      Colors.black.withValues(alpha: 0.7),
+                    ],
+                    stops: const [0.35, 1],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 14,
+                right: 14,
+                bottom: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      listing.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            '${listing.ratingLabel} · ${listing.location}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.88),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// A search result: photo on the left, the facts beside it.
+class _V2ResultRow extends StatelessWidget {
+  final ShortLetListing listing;
+  final VoidCallback onTap;
+
+  const _V2ResultRow({required this.listing, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cover = listing.coverPhotoUrl;
+    final isUnavailable = listing.isUnavailableForPeriod;
+    final meta = AppTheme.bodyText(context).copyWith(fontSize: 12);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: OasisPressable(
+        onTap: onTap,
+        pressedScale: 0.99,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                width: 124,
+                height: 124,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Opacity(
+                      opacity: isUnavailable ? 0.55 : 1,
+                      child: cover == null
+                          ? const V2StayPhoto(url: null)
+                          : OasisNetworkImage(
+                              url: cover,
+                              placeholderIcon: Icons.holiday_village_outlined,
+                              heroTag: oasisMediaHeroTag(
+                                'shortlet',
+                                listing.id,
+                              ),
+                            ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: V2SaveButton(listing: listing, size: 30),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(
+                    listing.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.cardTitle(
+                      context,
+                    ).copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      if (listing.location.isNotEmpty) listing.location,
+                      if (listing.distanceLabel != null) listing.distanceLabel!,
+                    ].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.bodyText(context).copyWith(fontSize: 13),
+                  ),
+                  const SizedBox(height: 10),
+                  V2NightlyPrice(amount: listing.nightlyPrice, fontSize: 15),
+                  const SizedBox(height: 4),
+                  V2RatingLine(listing: listing, compact: true),
+                  // The deposit is a cost the guest cannot opt out of, so it
+                  // is on the row they compare on.
+                  if (listing.hasCautionFee) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '+ ${OasisCurrency.format(listing.cautionFee)} '
+                      'refundable deposit',
+                      style: meta,
+                    ),
+                  ],
+                  // The backend's own sentence: it knows about bookings this
+                  // app cannot see.
+                  if (isUnavailable) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      listing.unavailableLabel,
+                      style: meta.copyWith(
+                        color: AppTheme.isDarkMode(context)
+                            ? const Color(0xFFE59A8F)
+                            : AppTheme.brickRedColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

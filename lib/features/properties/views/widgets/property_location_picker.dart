@@ -667,10 +667,13 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
                       ],
                     ),
                   ),
+                  // Side by side rather than stacked: stacked, the clear
+                  // button rose into the zoom and full-screen column on the
+                  // 280px inline map as soon as a pin was dropped.
                   Positioned(
                     right: 10,
                     bottom: 78,
-                    child: Column(
+                    child: Row(
                       children: [
                         if (_pin != null) ...[
                           _MapButton(
@@ -678,7 +681,7 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
                             tooltip: 'Clear pin',
                             onTap: _clearPin,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(width: 8),
                         ],
                         _MapButton(
                           icon: Icons.my_location_rounded,

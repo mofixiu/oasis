@@ -61,12 +61,20 @@ class OasisMediaHero extends StatefulWidget {
   /// worse animation than none.
   final Object? heroTag;
 
+  /// Puts the "3 / 11" counter at the bottom right instead of the top, which
+  /// leaves the top corner free for a control of the screen's own. The inset
+  /// clears anything laid over the bottom of the photo.
+  final bool counterAtBottom;
+  final double counterBottomInset;
+
   const OasisMediaHero({
     super.key,
     required this.photoUrls,
     this.videoUrl,
     this.height = 340,
     this.overlay,
+    this.counterAtBottom = false,
+    this.counterBottomInset = 16,
     this.overlayBottomInset = 18,
     this.title,
     this.emptyIcon = Icons.home_work_outlined,
@@ -185,7 +193,16 @@ class _OasisMediaHeroState extends State<OasisMediaHero> {
           // Counter rather than dots. Eleven dots is a smear; "3 / 11" is a
           // number, and it also tells someone how much there is left to look
           // at before they have to decide whether to keep swiping.
-          if (_pageCount > 1)
+          if (_pageCount > 1 && widget.counterAtBottom)
+            Positioned(
+              right: 16,
+              bottom: widget.counterBottomInset,
+              child: _CounterPill(
+                label: '${_index + 1} / $_pageCount',
+                icon: _isOnVideoPage ? Icons.play_circle_outline_rounded : null,
+              ),
+            )
+          else if (_pageCount > 1)
             Positioned(
               top: 0,
               right: 16,

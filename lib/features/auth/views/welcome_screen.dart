@@ -10,6 +10,7 @@ import '../../../core/widgets/oasis_pressable.dart';
 import 'sign_in_screen.dart';
 import 'sign_up_screen.dart';
 import 'widgets/onboarding_art.dart';
+import '../../../core/app_variant.dart';
 
 /// One slide of the onboarding flow.
 class _Slide {
@@ -33,7 +34,40 @@ class _Slide {
   });
 }
 
-const List<_Slide> _slides = [
+/// v2 is the short-stay app, so its tour is about shortlets.
+const List<_Slide> _slides = isOasisV2 ? _v2Slides : _v1Slides;
+
+const List<_Slide> _v2Slides = [
+  _Slide(
+    eyebrow: 'SHORTLETS',
+    title: 'Shortlets for every plan',
+    body:
+        'Birthdays, baecations, staycations and weekends away. Real photos, '
+        'real prices and hosts who have been checked.',
+    accent: AppTheme.terracottaColor,
+    art: OnboardingListingArt(),
+  ),
+  _Slide(
+    eyebrow: 'BOOKING',
+    title: 'Ask first, pay when they say yes',
+    body:
+        'Requesting dates is free. You pay only after the host approves, and '
+        'Oasis holds your payment before it reaches the host.',
+    accent: AppTheme.sageGreenColor,
+    art: OnboardingEscrowArt(),
+  ),
+  _Slide(
+    eyebrow: 'VERIFIED',
+    title: 'Everyone here is verified',
+    body:
+        'Guests and hosts both pass identity checks before anyone books, so '
+        'you know who you are staying with.',
+    accent: AppTheme.terracottaColor,
+    art: OnboardingVerifiedArt(),
+  ),
+];
+
+const List<_Slide> _v1Slides = [
   _Slide(
     eyebrow: 'MARKETPLACE',
     title: 'Homes you can trust',

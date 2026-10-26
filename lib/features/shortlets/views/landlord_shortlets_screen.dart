@@ -14,12 +14,16 @@ import '../../../core/widgets/oasis_shimmer.dart';
 import '../../../core/widgets/oasis_state_views.dart';
 import '../../../core/widgets/oasis_toast.dart';
 import '../../messaging/views/widgets/message_action_button.dart';
+import '../../properties/models/property_model.dart';
+import '../../properties/views/widgets/unit_media_sheet.dart';
 import '../../reviews/views/widgets/rating_stars.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
 import 'create_shortlet_sheet.dart';
 import 'edit_nightly_price_sheet.dart';
+import 'widgets/caution_fee_widgets.dart';
 import 'widgets/shortlet_booking_card.dart';
+import 'v2/v2_empty_state.dart';
 import '../../../core/utils/oasis_input_formatters.dart';
 
 /// The host's side of short lets: requests to decide on, and the places on
@@ -28,7 +32,8 @@ import '../../../core/utils/oasis_input_formatters.dart';
 /// Requests lead because they are the only part with someone waiting: a guest
 /// cannot pay until the host answers, and an approval starts a 24-hour clock.
 class LandlordShortLetsScreen extends StatefulWidget {
-  const LandlordShortLetsScreen({super.key});
+  final bool isV2;
+  const LandlordShortLetsScreen({super.key, this.isV2 = false});
 
   @override
   State<LandlordShortLetsScreen> createState() =>
@@ -190,14 +195,34 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
     if (saved && mounted) await _reload();
   }
 
+  /// The listing's photos, which belong to its unit. A new place goes live
+  /// before it has any, so this is how a host who skipped them gets back.
+  Future<void> _openPhotos(ShortLetListing listing) async {
+    await openUnitMediaSheet(
+      context,
+      unit: UnitModel(
+        id: listing.unitId,
+        unitNumber: listing.unitNumber,
+        bedrooms: listing.bedrooms,
+        bathrooms: listing.bathrooms,
+        rentAmount: '0.00',
+        isOccupied: false,
+        createdAt: '',
+      ),
+    );
+    if (mounted) await _reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<ShortLetController>();
-    final pending = controller.pendingBookingCount;
+    final pending =
+        controller.pendingBookingCount +
+        controller.bookings.where((b) => b.isAwaitingCheckoutInspection).length;
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
-      appBar: const OasisAppBar(),
+      appBar: OasisAppBar(shortLetOnlyProfile: widget.isV2),
       body: Column(
         children: [
           Padding(
@@ -206,7 +231,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Short lets',
+                  widget.isV2 ? 'Shortlets' : 'Short lets',
                   style: AppTheme.screenTitle(
                     context,
                     color: AppTheme.primaryColor,
@@ -214,9 +239,9 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Let a unit by the night. You approve every stay; your '
-                  'payout releases around check-in, unless a guest reports '
-                  'a problem first.',
+                  'Let a place by the night. You approve every booking; your '
+                  'payout is released 24 hours after checkout, unless the '
+                  'guest reports a problem first.',
                   style: AppTheme.bodyText(context),
                 ),
               ],
@@ -249,24 +274,36 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
       ),
       // Lifted clear of the floating bottom bar, which is an overlay above
       // this Scaffold rather than part of it: left at its default position
-      // the button sits behind the bar and cannot be tapped.
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(
-          bottom: CustomBottomNavbar.reservedHeight,
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: () => _createListing(),
-          backgroundColor: AppTheme.actionColor,
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('List a place'),
-        ),
+      // the button sits behind the bar and cannot be tapped. In v2 it only
+      // shows on My places, so it never covers a checkout inspection's
+      // buttons on Requests.
+      floatingActionButton: ListenableBuilder(
+        listenable: _tabs,
+        builder: (context, _) => !widget.isV2 || _tabs.index == 1
+            ? Padding(
+                padding: const EdgeInsets.only(
+                  bottom: CustomBottomNavbar.reservedHeight,
+                ),
+                child: FloatingActionButton.extended(
+                  onPressed: () => _createListing(),
+                  backgroundColor: AppTheme.actionColor,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('List a place'),
+                ),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
 
   Widget _bookingsTab(BuildContext context, ShortLetController controller) {
-    final live = controller.liveBookings;
+    // Checkouts waiting on the host's inspection go first: they are the only
+    // bookings here on a clock the host controls.
+    final live = [
+      ...controller.liveBookings.where((b) => b.isAwaitingCheckoutInspection),
+      ...controller.liveBookings.where((b) => !b.isAwaitingCheckoutInspection),
+    ];
     final closed = controller.closedBookings;
 
     if (!controller.hasLoaded(ShortLetController.kBookingsKey) ||
@@ -281,16 +318,27 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
       );
     }
     if (controller.bookings.isEmpty) {
-      return OasisEmptyState(
-        icon: Icons.calendar_month_outlined,
-        title: 'No booking requests yet',
-        message:
-            'When a guest asks to stay, their dates land here for you to '
-            'approve or decline.',
-        actionLabel: 'List a place',
-        actionIcon: Icons.add_home_outlined,
-        onAction: _createListing,
-      );
+      return widget.isV2
+          ? V2IllustratedEmptyState(
+              artwork: V2EmptyArtwork.inbox,
+              title: 'Your next guest will find you here.',
+              message:
+                  'Booking requests arrive here with dates and guest details. '
+                  'You decide who to welcome.',
+              actionLabel: 'List a place',
+              onAction: _createListing,
+              scrollable: false,
+            )
+          : OasisEmptyState(
+              icon: Icons.calendar_month_outlined,
+              title: 'No booking requests yet',
+              message:
+                  'When a guest asks to stay, their dates land here for you to '
+                  'approve or decline.',
+              actionLabel: 'List a place',
+              actionIcon: Icons.add_home_outlined,
+              onAction: _createListing,
+            );
     }
 
     return ListView(
@@ -389,7 +437,22 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
       );
     }
 
-    if (booking.canClaimCautionFee) {
+    // The checkout inspection: refund the caution fee or report damage,
+    // against the 24-hour window. Once a claim exists, its status instead.
+    if (booking.isAwaitingCheckoutInspection) {
+      if (actions.isNotEmpty) actions.add(const SizedBox(height: 8));
+      actions.add(
+        CheckoutInspectionPanel(
+          booking: booking,
+          busy: busy,
+          onAllGood: () => _releaseCautionFee(booking),
+          onReportDamage: () => _openCautionClaim(booking),
+        ),
+      );
+    } else if (booking.cautionClaim case final claim?) {
+      if (actions.isNotEmpty) actions.add(const SizedBox(height: 8));
+      actions.add(HostCautionClaimStatus(booking: booking, claim: claim));
+    } else if (booking.canClaimCautionFee) {
       if (actions.isNotEmpty) actions.add(const SizedBox(height: 8));
       actions.add(
         OasisButton(
@@ -484,6 +547,56 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
     }
   }
 
+  /// The host has checked the place and all is well: the caution fee goes
+  /// back to the guest now rather than when the window closes.
+  Future<void> _releaseCautionFee(ShortLetBooking booking) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(dialogContext),
+        shape: RoundedRectangleBorder(borderRadius: AppTheme.cornerLg),
+        title: Text(
+          'Refund the caution fee now?',
+          style: AppTheme.sectionTitle(dialogContext),
+        ),
+        content: Text(
+          '${booking.guestLabel} gets '
+          '${OasisCurrency.format(booking.cautionFee)} back straight away. '
+          'You will not be able to claim against it after this.',
+          style: AppTheme.bodyText(dialogContext),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Not yet'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Refund now'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final controller = context.read<ShortLetController>();
+    final released = await controller.releaseCautionFee(booking);
+    if (!mounted) return;
+    if (released) {
+      OasisToast.success(
+        context,
+        'Refunded. ${booking.guestLabel} has their caution fee back.',
+      );
+      await refreshNow();
+    } else {
+      OasisToast.error(
+        context,
+        controller.errorMessage ??
+            'Could not refund that just now. Try again in a moment.',
+      );
+    }
+  }
+
   /// Claims some or all of a checked-out stay's caution fee.
   ///
   /// Deliberately no evidence upload here: the backend accepts image URLs
@@ -565,9 +678,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
       return;
     }
 
-    final rawAmount = OasisThousandsFormatter.digitsOf(
-      amountController.text,
-    );
+    final rawAmount = OasisThousandsFormatter.digitsOf(amountController.text);
     final controller = context.read<ShortLetController>();
     final ok = await controller.openCautionClaim(
       bookingId: booking.id,
@@ -607,16 +718,27 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
       );
     }
     if (listings.isEmpty) {
-      return OasisEmptyState(
-        icon: Icons.holiday_village_outlined,
-        title: 'Nothing listed yet',
-        message:
-            'Offer a unit by the night and guests can ask to stay. You decide '
-            'who comes, and you can stop taking bookings any time.',
-        actionLabel: 'List a place',
-        actionIcon: Icons.add_rounded,
-        onAction: () => _createListing(),
-      );
+      return widget.isV2
+          ? V2IllustratedEmptyState(
+              artwork: V2EmptyArtwork.hosting,
+              title: 'Make room for a great stay.',
+              message:
+                  'Offer a furnished place by the night. You choose the '
+                  'house rules and approve every guest.',
+              actionLabel: 'List a place',
+              onAction: () => _createListing(),
+              scrollable: false,
+            )
+          : OasisEmptyState(
+              icon: Icons.holiday_village_outlined,
+              title: 'Nothing listed yet',
+              message:
+                  'Offer a unit by the night and guests can ask to stay. You decide '
+                  'who comes, and you can stop taking bookings any time.',
+              actionLabel: 'List a place',
+              actionIcon: Icons.add_rounded,
+              onAction: () => _createListing(),
+            );
     }
 
     return ListView(
@@ -632,6 +754,10 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
                 listing: listings[index],
                 onTap: () => _createListing(existing: listings[index]),
                 onEditPrice: () => _editPrice(listings[index]),
+                // v1 hosts manage photos from the property screen instead.
+                onPhotos: widget.isV2 && listings[index].unitId.isNotEmpty
+                    ? () => _openPhotos(listings[index])
+                    : null,
               ),
             ),
           ),
@@ -666,6 +792,44 @@ class _PriceEditButton extends StatelessWidget {
   );
 }
 
+/// A listing's photos, from its row. Its own button for the same reason as
+/// [_PriceEditButton]: the row itself opens the full editor.
+///
+/// Louder with none: the place is already visible to guests without them.
+class _PhotosButton extends StatelessWidget {
+  final int count;
+  final VoidCallback onPressed;
+
+  const _PhotosButton({required this.count, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = count == 0
+        ? AppTheme.actionColor
+        : AppTheme.secondaryTextColor(context);
+    return TextButton.icon(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: color,
+        padding: EdgeInsets.zero,
+        minimumSize: const Size(0, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        alignment: Alignment.centerLeft,
+      ),
+      icon: Icon(
+        count == 0 ? Icons.add_a_photo_outlined : Icons.photo_library_outlined,
+        size: 16,
+      ),
+      label: Text(
+        count == 0
+            ? 'No photos yet. Add some so guests can see it.'
+            : '$count ${count == 1 ? 'photo' : 'photos'} · Manage',
+        style: AppTheme.labelText(context, color: color),
+      ),
+    );
+  }
+}
+
 class _ListingRow extends StatelessWidget {
   final ShortLetListing listing;
   final VoidCallback onTap;
@@ -674,10 +838,14 @@ class _ListingRow extends StatelessWidget {
   /// listing editor.
   final VoidCallback onEditPrice;
 
+  /// Opens the unit's photos. Null hides the action.
+  final VoidCallback? onPhotos;
+
   const _ListingRow({
     required this.listing,
     required this.onTap,
     required this.onEditPrice,
+    this.onPhotos,
   });
 
   @override
@@ -795,6 +963,13 @@ class _ListingRow extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+          if (onPhotos case final openPhotos?) ...[
+            const SizedBox(height: 4),
+            _PhotosButton(
+              count: listing.photoUrls.length,
+              onPressed: openPhotos,
             ),
           ],
           if (listing.hasRating) ...[

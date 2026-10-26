@@ -10,6 +10,7 @@ import 'widgets/auth_text_field.dart';
 import 'sign_in_screen.dart';
 import 'identity_verification_screen.dart';
 import '../../../core/widgets/oasis_busy.dart';
+import '../../../core/app_variant.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -30,11 +31,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _bioController = TextEditingController();
   final _experienceController = TextEditingController();
 
-  UserRole _selectedRole = UserRole.owner;
+  // v2 is a guest-first app, so it opens on Guest.
+  UserRole _selectedRole = isOasisV2 ? UserRole.tenant : UserRole.owner;
 
   /// The roles the selector offers. Artisans are reached from the line at the
   /// foot of the page rather than from a third tab: see the selector.
-  static const List<UserRole> _rentingRoles = [UserRole.owner, UserRole.tenant];
+  static const List<UserRole> _rentingRoles = isOasisV2
+      ? [UserRole.tenant, UserRole.owner]
+      : [UserRole.owner, UserRole.tenant];
 
   /// The trade, for an artisan. Seeded from [ArtisanCategory.defaults]: the
   /// live category list needs a verified token, and there is no token yet on
@@ -132,9 +136,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String get _roleBlurb {
     switch (_selectedRole) {
       case UserRole.owner:
-        return 'List properties, sign tenancies and collect rent.';
+        return isOasisV2
+            ? 'List your shortlets and welcome guests.'
+            : 'List properties, sign tenancies and collect rent.';
       case UserRole.tenant:
-        return 'Find a home, sign your tenancy and pay rent securely.';
+        return isOasisV2
+            ? 'Book shortlets for every plan and pay securely.'
+            : 'Find a home, sign your tenancy and pay rent securely.';
       case UserRole.artisan:
         return 'Take repair jobs from verified tenants and get paid through '
             'the app.';
@@ -181,7 +189,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Secure access to Oasis real estate platform.',
+                      isOasisV2
+                          ? 'Book and host shortlets with Oasis.'
+                          : 'Secure access to Oasis real estate platform.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
@@ -397,7 +407,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     // It switches the same form rather than pushing another
                     // screen: everything above it is still what an artisan
                     // fills in, plus their trade.
-                    if (!_isArtisan)
+                    // Artisans belong to v1's Fix, which is switched off.
+                    if (!isOasisV2 && !_isArtisan)
                       TextButton(
                         onPressed: _isSubmitting
                             ? null

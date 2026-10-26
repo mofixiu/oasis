@@ -14,6 +14,7 @@ import '../../models/shortlet_models.dart';
 class ShortLetBookingCard extends StatelessWidget {
   final ShortLetBooking booking;
   final bool isLandlord;
+  final VoidCallback? onTap;
 
   /// Whatever this viewer can do about this booking right now. Passed in
   /// rather than decided here so the card stays a presentation of state and
@@ -24,6 +25,7 @@ class ShortLetBookingCard extends StatelessWidget {
     super.key,
     required this.booking,
     this.isLandlord = false,
+    this.onTap,
     this.actions = const [],
   });
 
@@ -48,21 +50,39 @@ class ShortLetBookingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  booking.title,
-                  style: AppTheme.cardTitle(context),
-                  overflow: TextOverflow.ellipsis,
-                ),
+          InkWell(
+            onTap: onTap,
+            borderRadius: AppTheme.cornerMd,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      booking.title,
+                      style: AppTheme.cardTitle(context),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    OasisCurrency.format(booking.totalAmount),
+                    style: AppTheme.cardTitle(
+                      context,
+                      color: AppTheme.actionColor,
+                    ),
+                  ),
+                  if (onTap != null) ...[
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: AppTheme.mutedTextColor(context),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                OasisCurrency.format(booking.totalAmount),
-                style: AppTheme.cardTitle(context, color: AppTheme.actionColor),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 8),
 
@@ -421,21 +441,28 @@ class _HostPayoutBanner extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (booking.resolvedHostPayoutDescription.isNotEmpty) ...[
+                // The release time itself, when there is one, ahead of the
+                // backend's description: that copy was written when payouts
+                // released on the check-in date, and the timestamp is what
+                // moved to a day after checkout (API guide 20).
+                if (status == HostPayoutStatus.held && releaseAt != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    booking.resolvedHostPayoutDescription,
+                    'Releases '
+                    '${DateFormat('d MMM, h:mm a').format(releaseAt.toLocal())}, '
+                    'a day after checkout, unless the guest reports a problem '
+                    'first.',
                     style: AppTheme.labelText(
                       context,
                       color: AppTheme.secondaryTextColor(context),
                     ),
                   ),
-                ] else if (status == HostPayoutStatus.held &&
-                    releaseAt != null) ...[
+                ] else if (booking
+                    .resolvedHostPayoutDescription
+                    .isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
-                    'Releases ${DateFormat('d MMM, h:mm a').format(releaseAt)}, '
-                    'unless a problem is reported first.',
+                    booking.resolvedHostPayoutDescription,
                     style: AppTheme.labelText(
                       context,
                       color: AppTheme.secondaryTextColor(context),

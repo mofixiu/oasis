@@ -1,3 +1,4 @@
+import '../../../core/app_variant.dart';
 import '../../payouts/models/payout_models.dart';
 
 enum UserRole {
@@ -33,12 +34,13 @@ enum UserRole {
     }
   }
 
+  /// The short-stay app (v2) calls the two renting roles guest and host.
   String get displayName {
     switch (this) {
       case UserRole.owner:
-        return 'Landlord';
+        return isOasisV2 ? 'Host' : 'Landlord';
       case UserRole.tenant:
-        return 'Tenant';
+        return isOasisV2 ? 'Guest' : 'Tenant';
       case UserRole.artisan:
         return 'Artisan';
     }
@@ -108,6 +110,15 @@ class UserModel {
   /// What payout setup is currently gating, e.g. `"AGREEMENT_EXECUTION"`.
   final String? payoutAccountRequiredFor;
 
+  /// Profile details edited from the v2 Edit profile screen. Empty until the
+  /// backend returns them (spec v16 §2).
+  final String fullName;
+  final String avatarUrl;
+
+  /// `YYYY-MM-DD`, or empty.
+  final String dateOfBirth;
+  final String bio;
+
   UserModel({
     required this.id,
     required this.email,
@@ -118,7 +129,20 @@ class UserModel {
     this.canCreateProperties = false,
     this.canExecuteAgreements = false,
     this.payoutAccountRequiredFor,
+    this.fullName = '',
+    this.avatarUrl = '',
+    this.dateOfBirth = '',
+    this.bio = '',
   });
+
+  /// What to call this person: their name when they have given one, else the
+  /// part of their email before the @, capitalised.
+  String get preferredName {
+    if (fullName.trim().isNotEmpty) return fullName.trim();
+    final handle = email.contains('@') ? email.split('@').first : email;
+    if (handle.isEmpty) return 'Your account';
+    return handle[0].toUpperCase() + handle.substring(1);
+  }
 
   /// Whether to surface a payout-setup prompt to this user. Tenants never see
   /// one; landlords do once the backend says payout is outstanding.
@@ -142,6 +166,10 @@ class UserModel {
       canCreateProperties: json['can_create_properties'] ?? false,
       canExecuteAgreements: json['can_execute_agreements'] ?? false,
       payoutAccountRequiredFor: json['payout_account_required_for']?.toString(),
+      fullName: (json['full_name'] ?? json['name'] ?? '').toString(),
+      avatarUrl: (json['avatar_url'] ?? '').toString(),
+      dateOfBirth: (json['date_of_birth'] ?? '').toString(),
+      bio: (json['bio'] ?? '').toString(),
     );
   }
 
@@ -155,6 +183,10 @@ class UserModel {
     bool? canCreateProperties,
     bool? canExecuteAgreements,
     String? payoutAccountRequiredFor,
+    String? fullName,
+    String? avatarUrl,
+    String? dateOfBirth,
+    String? bio,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -167,6 +199,10 @@ class UserModel {
       canExecuteAgreements: canExecuteAgreements ?? this.canExecuteAgreements,
       payoutAccountRequiredFor:
           payoutAccountRequiredFor ?? this.payoutAccountRequiredFor,
+      fullName: fullName ?? this.fullName,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      bio: bio ?? this.bio,
     );
   }
 
@@ -182,6 +218,10 @@ class UserModel {
       'can_execute_agreements': canExecuteAgreements,
       if (payoutAccountRequiredFor != null)
         'payout_account_required_for': payoutAccountRequiredFor,
+      if (fullName.isNotEmpty) 'full_name': fullName,
+      if (avatarUrl.isNotEmpty) 'avatar_url': avatarUrl,
+      if (dateOfBirth.isNotEmpty) 'date_of_birth': dateOfBirth,
+      if (bio.isNotEmpty) 'bio': bio,
     };
   }
 }

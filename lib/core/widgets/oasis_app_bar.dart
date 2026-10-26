@@ -7,39 +7,36 @@ import '../../features/messaging/views/conversations_screen.dart';
 import '../../features/notifications/controllers/notification_controller.dart';
 import '../../features/notifications/views/notifications_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
+import '../../features/profile/views/v2_profile_screen.dart';
 import 'oasis_animated_value.dart';
 import 'oasis_pressable.dart';
 import '../utils/fade_page_route.dart';
 
 /// Standardized Oasis App Bar.
 ///
-/// The account avatar leads on the left: it is the one control that is about
-/// *you* rather than about the app, and it reads as an identity anchor there
-/// in a way it never did tucked in behind three other icons. The wordmark it
-/// replaced was decoration: every screen under it already says where you are.
-///
-/// The right-hand group is ordered by how often it is needed: notifications
-/// first, then messages. Discover is not here: it owns a bottom-nav slot of
-/// its own on a tenant's app.
+/// V2 uses the wordmark on the left and the account avatar on the right.
+/// Notifications and messages live together in the bottom Inbox destination.
+/// The original app keeps its existing avatar, notifications and message
+/// actions.
 class OasisAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showProfileIcon;
 
   /// Pushed routes need a way back; tab roots do not.
   final bool showBackButton;
 
-  /// Whether the Messages button belongs on this screen.
-  ///
-  /// Off for an artisan. A conversation in Oasis hangs off an application or
-  /// a tenancy, and an artisan has neither: the inbox would open on an empty
-  /// list that can never fill. The bell stays, because verification lands
-  /// there.
+  /// Whether the Messages action belongs on this original-app screen.
+  /// V2 places both messages and notifications in its Inbox tab.
   final bool showMessages;
+
+  /// The V2 profile hides tenancy-only records and rent reminders.
+  final bool shortLetOnlyProfile;
 
   const OasisAppBar({
     super.key,
     this.showProfileIcon = true,
     this.showBackButton = false,
     this.showMessages = true,
+    this.shortLetOnlyProfile = false,
   });
 
   @override
@@ -47,10 +44,8 @@ class OasisAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    // A pushed route still needs its back arrow, and the avatar still belongs
-    // on the left, so the two share the leading slot rather than the avatar
-    // being exiled to the far right on those screens.
-    final showAvatar = showProfileIcon;
+    final isV2 = shortLetOnlyProfile;
+    final showAvatar = showProfileIcon && !isV2;
 
     return AppBar(
       backgroundColor: AppTheme.pageBackground(context),
@@ -60,8 +55,10 @@ class OasisAppBar extends StatelessWidget implements PreferredSizeWidget {
       iconTheme: IconThemeData(color: AppTheme.primaryTextColor(context)),
       titleSpacing: 0,
       centerTitle: false,
-      leadingWidth: _leadingWidth,
-      leading: (showBackButton || showAvatar)
+      leadingWidth: isV2 ? (showBackButton ? 56 : 0) : _leadingWidth,
+      leading: isV2
+          ? (showBackButton ? const _BackButton() : null)
+          : (showBackButton || showAvatar)
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -69,18 +66,41 @@ class OasisAppBar extends StatelessWidget implements PreferredSizeWidget {
                 if (showAvatar)
                   Padding(
                     padding: EdgeInsets.only(left: showBackButton ? 0 : 20),
-                    child: const _ProfileAvatar(),
+                    child: _ProfileAvatar(shortLetOnly: shortLetOnlyProfile),
                   ),
               ],
             )
           : null,
-      actions: showProfileIcon
-          ? [
-              const _NotificationBell(),
-              if (showMessages) const _MessagesButton(),
-              const SizedBox(width: 8),
-            ]
+      title: isV2
+          ? Padding(
+              padding: EdgeInsets.only(left: showBackButton ? 0 : 20),
+              child: Image.asset(
+                AppTheme.isDarkMode(context)
+                    ? 'assets/images/oasis_wordmark_dark.png'
+                    : 'assets/images/oasis_wordmark.png',
+                width: 116,
+                height: 36,
+                fit: BoxFit.contain,
+                alignment: Alignment.centerLeft,
+              ),
+            )
           : null,
+      actions: isV2
+          ? (showProfileIcon
+                ? [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 20),
+                      child: _ProfileAvatar(shortLetOnly: shortLetOnlyProfile),
+                    ),
+                  ]
+                : null)
+          : (showProfileIcon
+                ? [
+                    const _NotificationBell(),
+                    if (showMessages) const _MessagesButton(),
+                    const SizedBox(width: 8),
+                  ]
+                : null),
     );
   }
 
@@ -115,7 +135,8 @@ class _BackButton extends StatelessWidget {
 /// generic person glyph: the same treatment the profile screen already uses,
 /// and it makes the bar feel like it belongs to someone.
 class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar();
+  final bool shortLetOnly;
+  const _ProfileAvatar({this.shortLetOnly = false});
 
   @override
   Widget build(BuildContext context) {
@@ -125,8 +146,14 @@ class _ProfileAvatar extends StatelessWidget {
     final initial = email.isEmpty ? null : email[0].toUpperCase();
 
     return OasisPressable(
-      onTap: () =>
-          Navigator.push(context, FadePageRoute(page: const ProfileScreen())),
+      onTap: () => Navigator.push(
+        context,
+        FadePageRoute(
+          page: shortLetOnly
+              ? const V2ProfileScreen()
+              : const ProfileScreen(),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Container(
