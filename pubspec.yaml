@@ -40,13 +40,14 @@ flutter:
   uses-material-design: true
 
   assets:
-    # Stacked logo (mark over name) for the splash; wordmark (side by side)
-    # for headers; the _dark variants have white lettering for dark mode.
+    # New Oasis wordmark and palm mark. The same colors work in both themes;
+    # dark-named aliases remain for existing theme-aware call sites.
     - assets/images/oasis_logo.png
     - assets/images/oasis_logo_dark.png
     - assets/images/oasis_wordmark.png
     - assets/images/oasis_wordmark_dark.png
     - assets/images/oasis_mark.png
+    - assets/images/oasis_app_icon.png
     - assets/images/profile_avatar.png
     - assets/images/artisan_bisi.png
     - assets/images/artisan_emeka.png
