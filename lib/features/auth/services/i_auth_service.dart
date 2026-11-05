@@ -18,6 +18,7 @@ abstract class IAuthService {
     String? location,
     String? bio,
     int? yearsOfExperience,
+    String? brandName,
   });
 
   /// Logs in a user and stores JWT tokens

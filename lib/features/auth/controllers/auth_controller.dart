@@ -137,6 +137,7 @@ class AuthController extends ChangeNotifier with LoadFailureState {
     String? location,
     String? bio,
     int? yearsOfExperience,
+    String? brandName,
   }) async {
     _setLoading(true);
     clearFailure();
@@ -155,6 +156,7 @@ class AuthController extends ChangeNotifier with LoadFailureState {
         location: location,
         bio: bio,
         yearsOfExperience: yearsOfExperience,
+        brandName: brandName,
       );
       _isAuthenticated = true;
       notifyListeners();

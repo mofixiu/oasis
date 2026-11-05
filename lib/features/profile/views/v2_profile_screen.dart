@@ -210,6 +210,16 @@ class _V2ProfileScreenState extends State<V2ProfileScreen> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
+                            if (isHost && (user?.brandName.isNotEmpty ?? false))
+                              Text(
+                                user!.brandName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTheme.labelText(
+                                  context,
+                                  color: AppTheme.actionColor,
+                                ),
+                              ),
                             const SizedBox(height: 2),
                             Text(
                               email,

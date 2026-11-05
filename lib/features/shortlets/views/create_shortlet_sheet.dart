@@ -26,6 +26,7 @@ import '../../properties/views/widgets/unit_media_sheet.dart';
 import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_details.dart';
 import '../models/shortlet_models.dart';
+import 'widgets/list_place_widgets.dart';
 
 /// Lists a unit for nightly stays, or edits the listing it already has.
 ///
@@ -985,6 +986,8 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
   List<Widget> _placeFields(BuildContext context) {
     final landlord = context.read<LandlordController>();
     return [
+      const ListPlaceSlideshow(),
+      const SizedBox(height: 22),
       // Only offered once there is something to pick: a new host goes
       // straight to the new-place fields.
       if (_canAddNewPlace && landlord.properties.isNotEmpty) ...[
@@ -1232,32 +1235,30 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
   ];
 
   List<Widget> _bestForFields(BuildContext context) => [
-    _ChoiceWrap(
-      children: [
-        for (final occasion in ShortLetOccasion.values)
-          _ChoiceChip(
-            label: occasion.label,
-            icon: occasion.icon,
-            selected: _details.bestFor.contains(occasion),
-            onTap: () => setState(() {
-              final next = {..._details.bestFor};
-              if (!next.remove(occasion)) next.add(occasion);
-              // Parties and allowing parties are the same promise. Picking
-              // one without the other would tell guests two different things.
-              _details = _details.copyWith(
-                bestFor: next,
-                partiesAllowed: occasion == ShortLetOccasion.party
-                    ? next.contains(occasion)
-                    : null,
-              );
-            }),
-          ),
-      ],
+    OccasionSummary(selected: _details.bestFor),
+    const SizedBox(height: 16),
+    OccasionGrid(
+      selected: _details.bestFor,
+      onToggle: (occasion) => setState(() {
+        final next = {..._details.bestFor};
+        if (!next.remove(occasion)) next.add(occasion);
+        // Parties and allowing parties are the same promise. Picking one
+        // without the other would tell guests two different things.
+        _details = _details.copyWith(
+          bestFor: next,
+          partiesAllowed: occasion == ShortLetOccasion.party
+              ? next.contains(occasion)
+              : null,
+        );
+      }),
     ),
     const SizedBox(height: 14),
-    _Hint(
-      'Choosing Parties also marks parties as allowed in your house rules. '
-      'You can change that on the rules step.',
+    _Notice(
+      icon: Icons.celebration_outlined,
+      color: AppTheme.secondaryTextColor(context),
+      text:
+          'Choosing Parties also marks parties as allowed in your house '
+          'rules. You can change that on the rules step.',
     ),
   ];
 
@@ -1454,27 +1455,12 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
     ),
     const SizedBox(height: 18),
     const OasisFieldLabel('Cancellation policy'),
-    DropdownButtonFormField<ShortLetCancellationPolicy>(
-      initialValue: _cancellationPolicy,
-      isExpanded: true,
-      borderRadius: AppTheme.cornerMd,
-      decoration: oasisInputDecoration(
-        context,
-        prefixIcon: Icons.policy_outlined,
-      ),
-      items: [
-        for (final policy in ShortLetCancellationPolicy.values)
-          DropdownMenuItem(value: policy, child: Text(policy.label)),
-      ],
-      onChanged: (policy) {
-        if (policy != null) setState(() => _cancellationPolicy = policy);
-      },
+    CancellationPolicyPicker(
+      value: _cancellationPolicy,
+      onChanged: (policy) => setState(() => _cancellationPolicy = policy),
     ),
-    const SizedBox(height: 6),
-    _Hint(
-      '${_cancellationPolicy.defaultSummary} Guests see the terms before they '
-      'request dates.',
-    ),
+    const SizedBox(height: 8),
+    _Hint('Guests see these terms on your listing before they request dates.'),
     const SizedBox(height: 18),
     OasisFieldLabel(
       'Available between',

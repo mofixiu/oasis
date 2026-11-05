@@ -71,6 +71,80 @@ enum ShortLetCancellationPolicy {
     ShortLetCancellationPolicy.nonRefundable =>
       'No accommodation refund after payment, except where Oasis or the host cancels.',
   };
+
+  /// One line for the host's policy picker: who the policy suits.
+  String get pitch => switch (this) {
+    ShortLetCancellationPolicy.flexible => 'Easiest for guests to say yes to',
+    ShortLetCancellationPolicy.moderate => 'A fair middle ground',
+    ShortLetCancellationPolicy.strict => 'Best for busy dates',
+    ShortLetCancellationPolicy.nonRefundable => 'Guests cannot get money back',
+  };
+
+  /// The same terms as [defaultSummary], broken into what a guest gets back
+  /// depending on when they cancel. Earliest window first.
+  List<CancellationRefundTier> get refundTiers => switch (this) {
+    ShortLetCancellationPolicy.flexible => const [
+      CancellationRefundTier(
+        'Up to 24 hours before check-in',
+        CancellationRefund.full,
+      ),
+      CancellationRefundTier(
+        'Within 24 hours of check-in',
+        CancellationRefund.none,
+      ),
+    ],
+    ShortLetCancellationPolicy.moderate => const [
+      CancellationRefundTier(
+        'Up to 5 days before check-in',
+        CancellationRefund.full,
+      ),
+      CancellationRefundTier(
+        '5 days to 24 hours before',
+        CancellationRefund.half,
+      ),
+      CancellationRefundTier(
+        'Within 24 hours of check-in',
+        CancellationRefund.none,
+      ),
+    ],
+    ShortLetCancellationPolicy.strict => const [
+      CancellationRefundTier(
+        'Up to 14 days before check-in',
+        CancellationRefund.full,
+      ),
+      CancellationRefundTier('14 to 7 days before', CancellationRefund.half),
+      CancellationRefundTier(
+        'Within 7 days of check-in',
+        CancellationRefund.none,
+      ),
+    ],
+    ShortLetCancellationPolicy.nonRefundable => const [
+      CancellationRefundTier('Any time after paying', CancellationRefund.none),
+      CancellationRefundTier(
+        'If the host or Oasis cancels',
+        CancellationRefund.full,
+      ),
+    ],
+  };
+}
+
+/// How much of the stay a guest gets back in one cancellation window.
+enum CancellationRefund {
+  full('Full refund'),
+  half('50% back'),
+  none('No refund');
+
+  final String label;
+
+  const CancellationRefund(this.label);
+}
+
+/// One window of a cancellation policy: when, and what comes back.
+class CancellationRefundTier {
+  final String when;
+  final CancellationRefund refund;
+
+  const CancellationRefundTier(this.when, this.refund);
 }
 
 /// Where the host's share of a paid stay currently stands.
@@ -555,20 +629,32 @@ class ShortLetListing {
       // Absent means active: a listing the backend returned without the flag
       // is one it is serving, and hiding it would lose the landlord bookings.
       isActive: json['is_active'] is bool ? json['is_active'] as bool : true,
-      photoUrls: _readMediaUrls(
-        json['photo_urls'] ??
-            unitMap['photo_urls'] ??
-            property['photo_urls'] ??
-            json['images'] ??
-            unitMap['images'],
-      ),
-      selectedCoverPhotoUrl: _readMediaUrl(
-        json['cover_photo_url'] ??
-            unitMap['cover_photo_url'] ??
-            property['cover_photo_url'] ??
-            json['image_url'] ??
-            unitMap['image_url'],
-      ),
+      // The first source that actually has photos, not the first that is
+      // present: a listing serializer that sends `photo_urls: []` while the
+      // unit underneath it has pictures used to win the `??` and leave the
+      // guest looking at a placeholder for a place the host had photographed.
+      photoUrls: _firstNonEmpty([
+        json['photo_urls'],
+        unitMap['photo_urls'],
+        json['images'],
+        unitMap['images'],
+        property['photo_urls'],
+      ]),
+      selectedCoverPhotoUrl: _firstMediaUrl([
+        json['cover_photo_url'],
+        unitMap['cover_photo_url'],
+        json['image_url'],
+        unitMap['image_url'],
+        // The building's cover only when the room itself has no photos;
+        // otherwise the card would show the building over a room gallery.
+        if (_firstNonEmpty([
+          json['photo_urls'],
+          unitMap['photo_urls'],
+          json['images'],
+          unitMap['images'],
+        ]).isEmpty)
+          property['cover_photo_url'],
+      ]),
       videoUrl: _readNonEmpty(json['video_url'] ?? unitMap['video_url']),
       details: ShortLetDetails.fromJson(json),
       createdAt: json['created_at']?.toString() ?? '',
@@ -1485,6 +1571,25 @@ List<String> _readStrings(Object? value) => value is List
 List<String> _readMediaUrls(Object? value) => value is List
     ? value.map(_readMediaUrl).whereType<String>().toList(growable: false)
     : const [];
+
+/// The first of [candidates] that parses to at least one photo. Unit photos
+/// are listed before property photos by the caller, because they show the
+/// room being booked rather than the building it is in.
+List<String> _firstNonEmpty(List<Object?> candidates) {
+  for (final candidate in candidates) {
+    final urls = _readMediaUrls(candidate);
+    if (urls.isNotEmpty) return urls;
+  }
+  return const [];
+}
+
+String? _firstMediaUrl(List<Object?> candidates) {
+  for (final candidate in candidates) {
+    final url = _readMediaUrl(candidate);
+    if (url != null) return url;
+  }
+  return null;
+}
 
 /// Converts a media value into an address `Image.network` can load.
 ///

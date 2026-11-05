@@ -119,6 +119,10 @@ class UserModel {
   final String dateOfBirth;
   final String bio;
 
+  /// A host's trading name, such as "Lekki Luxe Stays". Optional: asked for
+  /// at sign-up but never required, so empty for most people.
+  final String brandName;
+
   UserModel({
     required this.id,
     required this.email,
@@ -133,6 +137,7 @@ class UserModel {
     this.avatarUrl = '',
     this.dateOfBirth = '',
     this.bio = '',
+    this.brandName = '',
   });
 
   /// What to call this person: their name when they have given one, else the
@@ -170,6 +175,7 @@ class UserModel {
       avatarUrl: (json['avatar_url'] ?? '').toString(),
       dateOfBirth: (json['date_of_birth'] ?? '').toString(),
       bio: (json['bio'] ?? '').toString(),
+      brandName: (json['brand_name'] ?? '').toString().trim(),
     );
   }
 
@@ -187,6 +193,7 @@ class UserModel {
     String? avatarUrl,
     String? dateOfBirth,
     String? bio,
+    String? brandName,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -203,6 +210,7 @@ class UserModel {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       bio: bio ?? this.bio,
+      brandName: brandName ?? this.brandName,
     );
   }
 
@@ -222,6 +230,7 @@ class UserModel {
       if (avatarUrl.isNotEmpty) 'avatar_url': avatarUrl,
       if (dateOfBirth.isNotEmpty) 'date_of_birth': dateOfBirth,
       if (bio.isNotEmpty) 'bio': bio,
+      if (brandName.isNotEmpty) 'brand_name': brandName,
     };
   }
 }

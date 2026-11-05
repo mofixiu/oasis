@@ -16,6 +16,7 @@ import '../controllers/shortlet_controller.dart';
 import '../models/shortlet_models.dart';
 import 'my_shortlet_bookings_screen.dart';
 import 'request_booking_sheet.dart';
+import 'widgets/list_place_widgets.dart';
 import '../../../core/utils/fade_page_route.dart';
 
 /// One short let, and the button that starts its booking flow.
@@ -855,7 +856,12 @@ class _CancellationPolicyNotice extends StatelessWidget {
                   color: AppTheme.secondaryTextColor(context),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 14),
+              CancellationTimeline(
+                policy: listing.cancellationPolicy,
+                heading: 'If you cancel',
+              ),
+              const SizedBox(height: 12),
               Text(
                 'Your exact refund is confirmed by Oasis when you cancel.',
                 style: AppTheme.labelText(

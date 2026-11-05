@@ -33,23 +33,26 @@ mixin NearbySearchMixin<T extends StatefulWidget> on State<T> {
   ///
   /// Re-entrant calls are dropped: two fixes in flight would race to reorder
   /// the same list.
-  Future<void> useNearby({
+  ///
+  /// Returns what the device said, or null when a fix was already in flight,
+  /// so a screen can keep showing that location is off.
+  Future<DeviceLocation?> useNearby({
     required Future<void> Function(double latitude, double longitude) onLocated,
     bool explain = true,
   }) async {
-    if (_isLocating) return;
+    if (_isLocating) return null;
     setState(() => _isLocating = true);
     try {
       final location = await DeviceLocationService.current();
-      if (!mounted) return;
+      if (!mounted) return location;
 
       if (location.hasCoordinates) {
         await onLocated(location.latitude!, location.longitude!);
-        return;
+        return location;
       }
 
       final message = location.message;
-      if (!explain || message == null || !mounted) return;
+      if (!explain || message == null || !mounted) return location;
       // Settings is the only thing that can undo a block or switched-off
       // Location Services, so those two get a route there rather than a dead
       // end. Everything else is a toast: there is nothing to decide.
@@ -58,6 +61,7 @@ mixin NearbySearchMixin<T extends StatefulWidget> on State<T> {
       } else {
         await _offerSettings(message, location.outcome);
       }
+      return location;
     } finally {
       if (mounted) setState(() => _isLocating = false);
     }

@@ -360,6 +360,18 @@ Future<http.Response> _respond(http.Request request) async {
     body = {'id': 't-1', 'reference': 'OAS-1042'};
   } else if (path.endsWith('/block/')) {
     body = {'status': 'CLOSED'};
+  } else if (RegExp(r'/units/u-(.+)/photos/$').firstMatch(path)
+      case final match?) {
+    // The unit photos the listing cards already promise, so editing a
+    // listing with photos does not report it as having none.
+    final listing = _listings
+        .where((l) => l['id'] == match.group(1))
+        .firstOrNull;
+    final photos = (listing?['photo_urls'] as List?) ?? const [];
+    body = [
+      for (var i = 0; i < photos.length; i++)
+        {'id': 'p-${match.group(1)}-$i', 'image_url': photos[i]},
+    ];
   }
   return http.Response(
     jsonEncode(body),

@@ -23,6 +23,7 @@ class ApiAuthService implements IAuthService {
     String? location,
     String? bio,
     int? yearsOfExperience,
+    String? brandName,
   }) async {
     debugPrint(
       '[AUTH SERVICE] Registering user: $email | Role: ${role.toServerString()} | Phone: $phone',
@@ -55,6 +56,12 @@ class ApiAuthService implements IAuthService {
             'bio': bio.trim(),
           if (isArtisan && yearsOfExperience != null)
             'years_of_experience': yearsOfExperience,
+          // Optional, hosts only. Left out entirely when blank so a backend
+          // that does not know the field yet sees the same payload as before.
+          if (role == UserRole.owner &&
+              brandName != null &&
+              brandName.trim().isNotEmpty)
+            'brand_name': brandName.trim(),
         },
         requiresAuth: false,
       );
@@ -76,7 +83,14 @@ class ApiAuthService implements IAuthService {
       rethrow;
     }
 
-    return await login(email: email, password: password);
+    final user = await login(email: email, password: password);
+    // Kept on the session even if this server does not echo it back yet, so
+    // the host sees the name they just typed.
+    final brand = brandName?.trim() ?? '';
+    if (role == UserRole.owner && brand.isNotEmpty && user.brandName.isEmpty) {
+      return user.copyWith(brandName: brand);
+    }
+    return user;
   }
 
   @override

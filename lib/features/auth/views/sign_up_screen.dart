@@ -24,6 +24,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  /// Host-only and optional: the name a host trades under. Never required,
+  /// because plenty of hosts let one flat under their own name.
+  final _brandController = TextEditingController();
+
   // Artisan-only. An artisan account carries a trade, where it works and how
   // long it has been at it, that is the whole of what a tenant sees before
   // deciding whether to let someone into their home.
@@ -54,6 +58,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _brandController.dispose();
     _locationController.dispose();
     _bioController.dispose();
     _experienceController.dispose();
@@ -106,6 +111,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       location: _isArtisan ? location : null,
       bio: _isArtisan ? _bioController.text.trim() : null,
       yearsOfExperience: _isArtisan ? (experience ?? 0) : null,
+      brandName: _selectedRole == UserRole.owner
+          ? _brandController.text.trim()
+          : null,
     );
 
     if (!mounted) return;
@@ -300,6 +308,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             prefixIcon: Icons.lock_outline,
                             isPassword: true,
                           ),
+
+                          // Optional. A host can sign up with nothing here
+                          // and add a brand later; it is never checked.
+                          if (_selectedRole == UserRole.owner) ...[
+                            const SizedBox(height: 20),
+                            AuthTextField(
+                              controller: _brandController,
+                              label: 'BRAND NAME (OPTIONAL)',
+                              hintText: 'e.g. Lekki Luxe Stays',
+                              prefixIcon: Icons.storefront_outlined,
+                              keyboardType: TextInputType.name,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'If you host under a business name. Leave it '
+                              'blank to host as yourself.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: secondaryTextColor,
+                              ),
+                            ),
+                          ],
 
                           // Trade details. Only an artisan has them, and they
                           // are collected up front because a profile with no

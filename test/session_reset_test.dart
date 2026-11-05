@@ -261,6 +261,7 @@ class _FakeAuthService implements IAuthService {
     String? location,
     String? bio,
     int? yearsOfExperience,
+    String? brandName,
   }) => throw UnimplementedError();
 
   @override

@@ -122,6 +122,43 @@ void main() {
     ]);
   });
 
+  test('an empty listing photo list falls back to the unit photos', () {
+    // The host uploaded to the unit; the listing row itself says []. An
+    // empty list is not "no photos", it is "look underneath".
+    final listing = ShortLetListing.fromJson({
+      'id': 'listing-2',
+      'photo_urls': <String>[],
+      'cover_photo_url': null,
+      'unit': {
+        'id': 'unit-2',
+        'photo_urls': ['https://cdn.example.test/lounge.jpg'],
+      },
+      'property': {
+        'cover_photo_url': 'https://cdn.example.test/building.jpg',
+        'photo_urls': ['https://cdn.example.test/building.jpg'],
+      },
+    });
+
+    expect(listing.photoUrls, ['https://cdn.example.test/lounge.jpg']);
+    // The room's own photo, not the building's cover.
+    expect(listing.coverPhotoUrl, 'https://cdn.example.test/lounge.jpg');
+  });
+
+  test('a stay with no room photos shows the building photos', () {
+    final listing = ShortLetListing.fromJson({
+      'id': 'listing-3',
+      'photo_urls': <String>[],
+      'unit': {'id': 'unit-3', 'photo_urls': <String>[]},
+      'property': {
+        'cover_photo_url': 'https://cdn.example.test/building.jpg',
+        'photo_urls': ['https://cdn.example.test/building.jpg'],
+      },
+    });
+
+    expect(listing.photoUrls, ['https://cdn.example.test/building.jpg']);
+    expect(listing.coverPhotoUrl, 'https://cdn.example.test/building.jpg');
+  });
+
   test('a host taking bookings any time sends explicit null dates', () async {
     // The window is optional in the UI and has to be optional on the wire.
     // Omitting the keys would leave a previously-set window in place on an

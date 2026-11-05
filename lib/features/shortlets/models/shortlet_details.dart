@@ -80,6 +80,25 @@ enum ShortLetOccasion {
   final IconData icon;
 
   const ShortLetOccasion(this.wireValue, this.label, this.icon);
+
+  /// A few words under the label on the host's "best for" step, so each
+  /// card says what kind of stay it means rather than leaving a host to
+  /// guess what "Staycation" covers.
+  String get tagline => switch (this) {
+    staycation => 'A break without leaving town',
+    birthday => 'Cake, balloons, good photos',
+    baecation => 'Quiet and cosy, for two',
+    party => 'Room for music and guests',
+    weekend => 'Friday in, Sunday out',
+    workTrip => 'Wi-Fi, a desk, quiet nights',
+    family => 'Space for the kids too',
+    friends => 'Beds for the whole crew',
+    photoshoot => 'Good light, great corners',
+    wedding => 'Getting ready, hosting family',
+    holiday => 'Christmas, Easter, Sallah',
+    longStay => 'Weeks, not just nights',
+    stopover => 'Close to the airport',
+  };
 }
 
 /// The listing questions the backend does not store yet (backend change

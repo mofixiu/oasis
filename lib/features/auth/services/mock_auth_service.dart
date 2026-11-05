@@ -15,6 +15,7 @@ class MockAuthService implements IAuthService {
     String? location,
     String? bio,
     int? yearsOfExperience,
+    String? brandName,
   }) async {
     await Future.delayed(const Duration(seconds: 1));
     return UserModel(

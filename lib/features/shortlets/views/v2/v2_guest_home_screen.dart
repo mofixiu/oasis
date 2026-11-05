@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/utils/device_location.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/fade_page_route.dart';
 import '../../../../core/widgets/oasis_pressable.dart';
@@ -29,11 +30,23 @@ class V2GuestHomeScreen extends StatefulWidget {
 }
 
 class _V2GuestHomeScreenState extends State<V2GuestHomeScreen> {
+  /// Location is asked for as soon as a guest lands, once per app launch,
+  /// rather than waiting until they open Search. The answer then carries
+  /// over: Search sorts by distance straight away instead of opening on a
+  /// permission dialog.
+  static bool _hasAskedForLocation = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (!_hasAskedForLocation) {
+        _hasAskedForLocation = true;
+        // Only the permission matters here; the fix itself is read again
+        // when Search opens. Soft-failing, so nothing to handle.
+        DeviceLocationService.current();
+      }
       context.read<ShortLetController>().loadBrowseListings();
       final userId = context.read<AuthController>().currentUser?.id;
       if (userId != null) {

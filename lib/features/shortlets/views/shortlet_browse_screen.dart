@@ -7,6 +7,7 @@ import '../../../core/utils/oasis_haptics.dart';
 import '../../../core/widgets/oasis_network_image.dart';
 import '../../../core/utils/oasis_currency.dart';
 import '../../../core/utils/oasis_refresh.dart';
+import '../../../core/utils/device_location.dart';
 import '../../../core/utils/nearby_search.dart';
 import '../../../core/widgets/custom_bottom_navbar.dart';
 import '../../../core/widgets/oasis_app_bar.dart';
@@ -54,13 +55,16 @@ class ShortLetBrowseScreen extends StatefulWidget {
 
 class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
     with NearbySearchMixin, AutoRefreshMixin<ShortLetBrowseScreen> {
-  /// Whether Stays has already offered to use location this app session.
+  /// Whether this visit has already switched nearby sorting on.
   ///
-  /// Static, because the bottom bar builds this tab from scratch every time
-  /// the tenant switches back to it. As instance state it would re-prompt on
-  /// every visit, and would quietly switch distance sorting back on for
-  /// someone who had just tapped "See all" to turn it off.
-  static bool _hasOfferedLocation = false;
+  /// Per visit, not per app session: location is meant to be on whenever a
+  /// guest searches, so every fresh open of Search starts closest-first. A
+  /// guest who taps "Show every shortlet" keeps that choice until they leave.
+  bool _hasOfferedLocation = false;
+
+  /// Why nearby sorting could not be switched on, kept on screen as a card
+  /// until it is fixed. Null when location is working.
+  LocationOutcome? _locationProblem;
 
   /// Owned here rather than by the search field: switching to a nearby search
   /// clears the typed query, and the box has to empty with it or it would
@@ -75,7 +79,14 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
   bool get refreshOnMount => false;
 
   @override
-  Future<void> onAutoRefresh() => _reload();
+  Future<void> onAutoRefresh() async {
+    await _reload();
+    // Coming back from Settings with location now allowed: switch nearby on
+    // without making the guest tap again.
+    if (mounted && _locationProblem != null) {
+      await _useNearby(explain: false);
+    }
+  }
 
   @override
   void initState() {
@@ -198,19 +209,38 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
     await _useNearby(explain: false);
   }
 
-  Future<void> _useNearby({bool explain = true}) => useNearby(
-    explain: explain,
-    onLocated: (latitude, longitude) async {
-      // Coordinates replace the typed query rather than combining with it,
-      // so the box empties to match what is actually being searched.
-      _searchController.clear();
-      if (!mounted) return;
-      await context.read<ShortLetController>().searchNearby(
-        latitude: latitude,
-        longitude: longitude,
-      );
-    },
-  );
+  Future<void> _useNearby({bool explain = true}) async {
+    final result = await useNearby(
+      explain: explain,
+      onLocated: (latitude, longitude) async {
+        // Coordinates replace the typed query rather than combining with it,
+        // so the box empties to match what is actually being searched.
+        _searchController.clear();
+        if (!mounted) return;
+        await context.read<ShortLetController>().searchNearby(
+          latitude: latitude,
+          longitude: longitude,
+        );
+      },
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      _locationProblem = result.hasCoordinates ? null : result.outcome;
+    });
+  }
+
+  /// The "Turn on" button on the location card: ask again where asking can
+  /// work, otherwise send the guest to the one place that can fix it.
+  Future<void> _fixLocation() async {
+    final problem = _locationProblem;
+    if (problem == null) return;
+    if (problem == LocationOutcome.blocked ||
+        problem == LocationOutcome.servicesOff) {
+      await DeviceLocationService.openSettingsFor(problem);
+      return;
+    }
+    await _useNearby();
+  }
 
   void _openBookings() => Navigator.push(
     context,
@@ -492,6 +522,14 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
           NearbyNotice(
             message: 'Showing shortlets near you, closest first.',
             onClear: _clearSearch,
+          ),
+        ] else if (_locationProblem != null &&
+            controller.searchQuery.isEmpty) ...[
+          const SizedBox(height: 10),
+          _LocationOffCard(
+            problem: _locationProblem!,
+            isBusy: isLocating,
+            onFix: _fixLocation,
           ),
         ],
         // The filters are tucked away, so say when they are narrowing
@@ -2183,6 +2221,69 @@ class _ListingCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Shown on Search while location is off, so a guest knows why the list is
+/// not sorted by distance and has one tap to fix it.
+class _LocationOffCard extends StatelessWidget {
+  final LocationOutcome problem;
+  final bool isBusy;
+  final VoidCallback onFix;
+
+  const _LocationOffCard({
+    required this.problem,
+    required this.isBusy,
+    required this.onFix,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final body = switch (problem) {
+      LocationOutcome.servicesOff =>
+        'Location Services are off on this phone. Turn them on to see stays '
+            'closest to you first.',
+      LocationOutcome.blocked =>
+        'Oasis is not allowed to use your location. Allow it in Settings to '
+            'see stays closest to you first.',
+      LocationOutcome.unavailable =>
+        'We could not find you just now. Try again to see stays closest to '
+            'you first.',
+      _ => 'Turn on location to see stays closest to you first.',
+    };
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      decoration: BoxDecoration(
+        color: AppTheme.vacantSurface(context),
+        borderRadius: AppTheme.cornerMd,
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.location_off_outlined,
+            size: 20,
+            color: AppTheme.terracottaColor,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              body,
+              style: AppTheme.labelText(
+                context,
+                color: AppTheme.secondaryTextColor(context),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          TextButton(
+            onPressed: isBusy ? null : onFix,
+            child: Text(
+              problem == LocationOutcome.unavailable ? 'Retry' : 'Turn on',
+            ),
+          ),
+        ],
       ),
     );
   }
