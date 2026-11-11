@@ -101,10 +101,10 @@ enum ShortLetOccasion {
   };
 }
 
-/// The listing questions the backend does not store yet (backend change
-/// spec v18). Sent on every create and edit, and read back when present, so
-/// they start working the moment the backend keeps them; until then a
-/// server that ignores unknown keys loses them without failing the save.
+/// The richer listing questions (backend change spec v18, live since API
+/// guide 22): type of place, amenities, what it suits, check-in and
+/// checkout times and the smoking, pets and parties rules. Sent on every
+/// create and edit, and returned on host and guest listings.
 @immutable
 class ShortLetDetails {
   final ShortLetPlaceType? placeType;
@@ -183,6 +183,24 @@ class ShortLetDetails {
       petsAllowed: json['pets_allowed'] == true,
       partiesAllowed: json['parties_allowed'] == true,
     );
+  }
+
+  /// "No smoking · Pets welcome · No parties": the three rule switches as a
+  /// guest reads them.
+  List<String> get ruleLabels => [
+    smokingAllowed ? 'Smoking allowed' : 'No smoking',
+    petsAllowed ? 'Pets welcome' : 'No pets',
+    partiesAllowed ? 'Parties allowed' : 'No parties',
+  ];
+
+  /// "2:00 PM" for a stored "14:00".
+  static String timeLabel(String value) {
+    final parts = value.split(':');
+    final hour = int.tryParse(parts.first) ?? 0;
+    final minute = parts.length > 1 ? parts[1].padLeft(2, '0') : '00';
+    final suffix = hour < 12 ? 'AM' : 'PM';
+    final twelve = hour % 12 == 0 ? 12 : hour % 12;
+    return '$twelve:$minute $suffix';
   }
 
   ShortLetDetails copyWith({

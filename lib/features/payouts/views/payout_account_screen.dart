@@ -8,6 +8,7 @@ import '../../../core/widgets/oasis_entrance.dart';
 import '../../../core/widgets/oasis_pressable.dart';
 import '../../../core/widgets/oasis_toast.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../auth/models/user_model.dart';
 import '../controllers/payout_controller.dart';
 import 'bank_picker_sheet.dart';
 import '../../../core/widgets/oasis_busy.dart';
@@ -134,12 +135,17 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
     final verified = await controller.submitPayoutAccount();
     if (!mounted) return;
 
+    final isHostAccount =
+        context.read<AuthController>().currentUser?.role == UserRole.owner;
     if (verified) {
       // The capability flags live on the profile, so refresh it before
       // returning: the caller may immediately retry a gated action.
       await context.read<AuthController>().refreshProfile();
       if (!mounted) return;
-      OasisToast.success(context, 'Payout account verified.');
+      OasisToast.success(
+        context,
+        isHostAccount ? 'Payout account verified.' : 'Bank account saved.',
+      );
       Navigator.pop(context, true);
     } else {
       OasisToast.error(
@@ -155,6 +161,10 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
     final controller = context.watch<PayoutController>();
     final account = controller.account;
     final isUpdate = account != null && account.hasDetails;
+    // Guests have no rent coming in: for them this is only where vault
+    // withdrawals go, so it is a plain bank form with no escrow story on top.
+    final isHost =
+        context.watch<AuthController>().currentUser?.role == UserRole.owner;
 
     return Scaffold(
       backgroundColor: AppTheme.pageBackground(context),
@@ -164,10 +174,16 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
         scrolledUnderElevation: 0,
         centerTitle: true,
         iconTheme: IconThemeData(color: AppTheme.primaryTextColor(context)),
-        title: Text('Payout account', style: AppTheme.cardTitle(context)),
+        title: Text(
+          isHost ? 'Payout account' : 'Withdrawal account',
+          style: AppTheme.cardTitle(context),
+        ),
       ),
       body: SafeArea(
-        child: Center(
+        child: Align(
+          // With no heading to balance it, the guest form sits at the top
+          // rather than floating mid-screen.
+          alignment: isHost ? Alignment.center : Alignment.topCenter,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
             child: ConstrainedBox(
@@ -175,56 +191,57 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  OasisEntrance(
-                    index: 0,
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 72,
-                          width: 72,
-                          decoration: BoxDecoration(
-                            color:
-                                (controller.isVerified
-                                        ? AppTheme.successColor
-                                        : AppTheme.actionColor)
-                                    .withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
+                  if (isHost)
+                    OasisEntrance(
+                      index: 0,
+                      child: Column(
+                        children: [
+                          Container(
+                            height: 72,
+                            width: 72,
+                            decoration: BoxDecoration(
+                              color:
+                                  (controller.isVerified
+                                          ? AppTheme.successColor
+                                          : AppTheme.actionColor)
+                                      .withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              controller.isVerified
+                                  ? Icons.account_balance_rounded
+                                  : Icons.account_balance_outlined,
+                              size: 30,
+                              color: controller.isVerified
+                                  ? AppTheme.successColor
+                                  : AppTheme.actionColor,
+                            ),
                           ),
-                          child: Icon(
-                            controller.isVerified
-                                ? Icons.account_balance_rounded
-                                : Icons.account_balance_outlined,
-                            size: 30,
-                            color: controller.isVerified
-                                ? AppTheme.successColor
-                                : AppTheme.actionColor,
+                          const SizedBox(height: 16),
+                          Text(
+                            isUpdate
+                                ? 'Update payout account'
+                                : 'Where should rent be paid?',
+                            textAlign: TextAlign.center,
+                            style: AppTheme.screenTitle(context),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          isUpdate
-                              ? 'Update payout account'
-                              : 'Where should rent be paid?',
-                          textAlign: TextAlign.center,
-                          style: AppTheme.screenTitle(context),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          isUpdate
-                              ? 'We re-verify with your bank before replacing your saved details.'
-                              : 'Rent released from escrow is transferred here. We verify the account with your bank before saving.',
-                          textAlign: TextAlign.center,
-                          style: AppTheme.bodyText(
-                            context,
-                            color: AppTheme.secondaryTextColor(context),
+                          const SizedBox(height: 8),
+                          Text(
+                            isUpdate
+                                ? 'We re-verify with your bank before replacing your saved details.'
+                                : 'Rent released from escrow is transferred here. We verify the account with your bank before saving.',
+                            textAlign: TextAlign.center,
+                            style: AppTheme.bodyText(
+                              context,
+                              color: AppTheme.secondaryTextColor(context),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
                   if (widget.blockedReason != null) ...[
-                    const SizedBox(height: 20),
+                    SizedBox(height: isHost ? 20 : 8),
                     OasisEntrance(
                       index: 1,
                       child: _Banner(
@@ -237,20 +254,30 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
                   ],
 
                   if (controller.isVerified && account != null) ...[
-                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: isHost || widget.blockedReason != null ? 20 : 8,
+                    ),
                     OasisEntrance(
                       index: 1,
                       child: _Banner(
                         icon: Icons.verified_rounded,
                         color: AppTheme.successColor,
                         surface: AppTheme.successSurface(context),
-                        message:
-                            'Verified. Paying out to ${account.bankName} ${account.accountNumber}.',
+                        message: isHost
+                            ? 'Verified. Paying out to ${account.bankName} ${account.accountNumber}.'
+                            : 'Verified. Withdrawals go to ${account.bankName} ${account.accountNumber}.',
                       ),
                     ),
                   ],
 
-                  const SizedBox(height: 24),
+                  SizedBox(
+                    height:
+                        isHost ||
+                            widget.blockedReason != null ||
+                            controller.isVerified
+                        ? 24
+                        : 8,
+                  ),
                   OasisEntrance(
                     index: 2,
                     child: Container(

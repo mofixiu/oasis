@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +8,7 @@ import 'package:oasis_app/core/network/api_client.dart';
 import 'package:oasis_app/core/network/api_constants.dart';
 import 'package:oasis_app/core/network/auth_token_storage.dart';
 import 'package:oasis_app/features/shortlets/controllers/shortlet_controller.dart';
+import 'package:oasis_app/features/shortlets/models/shortlet_details.dart';
 import 'package:oasis_app/features/shortlets/models/shortlet_models.dart';
 import 'package:oasis_app/features/shortlets/services/shortlet_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1148,6 +1150,189 @@ void main() {
 
       expect(controller.minBedrooms, isNull);
       expect(controller.isBrowseNarrowed, isFalse);
+    });
+  });
+
+  group('filtering stays by listing details (API guide 22)', () {
+    ShortLetController buildController() => ShortLetController(
+      service: ShortLetService(
+        apiClient: ApiClient(
+          client: MockClient((request) async {
+            lastBrowseUrl = request.url;
+            return _json([
+              {'id': 'a'},
+            ]);
+          }),
+        ),
+      ),
+    );
+
+    test('each group is sent as its own comma-separated parameter', () async {
+      final controller = buildController();
+
+      await controller.setListingFilters(
+        occasions: {ShortLetOccasion.party, ShortLetOccasion.birthday},
+        placeTypes: {ShortLetPlaceType.studio},
+        amenities: {ShortLetAmenity.wifi, ShortLetAmenity.pool},
+        petsAllowed: true,
+      );
+
+      final query = lastBrowseUrl!.queryParameters;
+      expect(query['best_for'], 'BIRTHDAY,PARTY');
+      expect(query['property_type'], 'STUDIO');
+      expect(query['amenities'], 'POOL,WIFI');
+      expect(query['pets_allowed'], 'true');
+      // Off means "don't care", so it is left off rather than sent as false,
+      // which would ask for places that refuse parties.
+      expect(query.containsKey('parties_allowed'), isFalse);
+      expect(controller.hasListingFilters, isTrue);
+      expect(controller.isBrowseNarrowed, isTrue);
+    });
+
+    test('with nothing picked, no listing parameters are sent', () async {
+      final controller = buildController();
+
+      await controller.loadBrowseListings();
+
+      final query = lastBrowseUrl!.queryParameters;
+      for (final key in [
+        'best_for',
+        'property_type',
+        'amenities',
+        'pets_allowed',
+        'parties_allowed',
+      ]) {
+        expect(query.containsKey(key), isFalse, reason: key);
+      }
+    });
+
+    test('clearing the search drops the listing filters too', () async {
+      final controller = buildController();
+      await controller.setListingFilters(
+        amenities: {ShortLetAmenity.parking},
+        partiesAllowed: true,
+      );
+
+      await controller.clearBrowseSearch();
+
+      expect(controller.amenities, isEmpty);
+      expect(controller.partiesAllowed, isFalse);
+      expect(controller.isBrowseNarrowed, isFalse);
+      expect(lastBrowseUrl!.queryParameters.containsKey('amenities'), isFalse);
+    });
+
+    test('a preset occasion is sent on the next load', () async {
+      final controller = buildController();
+      controller.presetOccasion(ShortLetOccasion.baecation);
+
+      await controller.loadBrowseListings();
+
+      expect(lastBrowseUrl!.queryParameters['best_for'], 'BAECATION');
+    });
+
+    test(
+      'a slow answer to an older search does not replace a newer one',
+      () async {
+        final first = Completer<http.Response>();
+        var calls = 0;
+        final controller = ShortLetController(
+          service: ShortLetService(
+            apiClient: ApiClient(
+              client: MockClient((request) {
+                calls++;
+                if (calls == 1) return first.future;
+                return Future.value(
+                  _json([
+                    {'id': 'with-pool'},
+                  ]),
+                );
+              }),
+            ),
+          ),
+        );
+
+        final older = controller.loadBrowseListings();
+        await controller.setListingFilters(amenities: {ShortLetAmenity.pool});
+        first.complete(
+          _json([
+            {'id': 'everything'},
+          ]),
+        );
+        await older;
+
+        expect(controller.browseListings.map((l) => l.id), ['with-pool']);
+      },
+    );
+  });
+
+  group('host brand and media on a listing (API guide 22)', () {
+    test('the host brand name is read and trimmed', () {
+      final listing = ShortLetListing.fromJson({
+        'id': 'a',
+        'host_brand_name': '  Lekki Luxe Stays ',
+      });
+      expect(listing.hostBrandName, 'Lekki Luxe Stays');
+      expect(listing.hasHostBrand, isTrue);
+      expect(
+        ShortLetListing.fromJson({
+          'id': 'b',
+          'host_brand_name': '',
+        }).hasHostBrand,
+        isFalse,
+      );
+    });
+
+    test('three room photos and a tour video make a listing complete', () {
+      final listing = ShortLetListing.fromJson({
+        'id': 'a',
+        'unit': {
+          'id': 'u',
+          'photo_count': 3,
+          'video_url': 'https://cdn.example.test/tour.mp4',
+        },
+      });
+      expect(listing.isMediaComplete, isTrue);
+      expect(listing.photosStillNeeded, 0);
+    });
+
+    test('building photos do not count toward the room\'s photos', () {
+      // The listing shows the building's photos as a fallback, but the
+      // reminder is about photos of the room itself.
+      final listing = ShortLetListing.fromJson({
+        'id': 'a',
+        'unit': {
+          'id': 'u',
+          'photo_count': 1,
+          'photo_urls': ['r.jpg'],
+        },
+        'property': {
+          'photo_urls': ['b1.jpg', 'b2.jpg', 'b3.jpg'],
+        },
+        'video_url': 'https://cdn.example.test/tour.mp4',
+      });
+      expect(listing.mediaPhotoCount, 1);
+      expect(listing.photosStillNeeded, 2);
+      expect(listing.isMediaComplete, isFalse);
+    });
+
+    test('a listing without a tour video is not complete', () {
+      final listing = ShortLetListing.fromJson({
+        'id': 'a',
+        'unit': {'id': 'u', 'photo_count': 5},
+      });
+      expect(listing.photosStillNeeded, 0);
+      expect(listing.isMediaComplete, isFalse);
+    });
+
+    test('house rules read the way a guest says them', () {
+      final details = ShortLetDetails.fromJson({
+        'pets_allowed': true,
+        'check_in_time': '15:30:00',
+      });
+      expect(details.ruleLabels, ['No smoking', 'Pets welcome', 'No parties']);
+      expect(ShortLetDetails.timeLabel(details.checkInTime), '3:30 PM');
+      expect(ShortLetDetails.timeLabel('12:00'), '12:00 PM');
+      expect(ShortLetDetails.timeLabel('00:15'), '12:15 AM');
     });
   });
 

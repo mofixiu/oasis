@@ -259,6 +259,12 @@ class ShortLetService {
   /// will happily take four. See `backend_change_spec_v11.md` §3; the
   /// controller filters the response as well, so the control works against a
   /// deployment that has not shipped the parameter yet.
+  ///
+  /// [occasions] and [placeTypes] match a listing that has any of them;
+  /// [amenities] match only a listing that has all of them. [petsAllowed]
+  /// and [partiesAllowed] are sent only when true: a guest asks for a place
+  /// that welcomes pets, never for one that refuses them (API guide 22,
+  /// 2026-11-09 rich listing fields).
   Future<List<ShortLetListing>> browseListings({
     String? location,
     double? latitude,
@@ -269,6 +275,11 @@ class ShortLetService {
     String? minPrice,
     String? maxPrice,
     int? minBedrooms,
+    Set<ShortLetOccasion> occasions = const {},
+    Set<ShortLetPlaceType> placeTypes = const {},
+    Set<ShortLetAmenity> amenities = const {},
+    bool petsAllowed = false,
+    bool partiesAllowed = false,
   }) async {
     final hasCoordinates = latitude != null && longitude != null;
     final hasDates =
@@ -282,7 +293,8 @@ class ShortLetService {
       '(${hasCoordinates ? 'near $latitude,$longitude' : 'location=${query?.isNotEmpty == true ? query : '-'}'}'
       '${hasDates ? ', $checkIn → $checkOut' : ''}'
       '${minPrice != null || maxPrice != null ? ', ₦${minPrice ?? '0'}–₦${maxPrice ?? '∞'}' : ''}'
-      '${minBedrooms != null ? ', $minBedrooms+ bedrooms' : ''})',
+      '${minBedrooms != null ? ', $minBedrooms+ bedrooms' : ''}'
+      '${occasions.isNotEmpty || placeTypes.isNotEmpty || amenities.isNotEmpty || petsAllowed || partiesAllowed ? ', listing filters' : ''})',
     );
     final response = await _apiClient.get(
       ApiConstants.tenantShortLetsEndpoint,
@@ -297,6 +309,11 @@ class ShortLetService {
         'min_price': minPrice,
         'max_price': maxPrice,
         'min_bedrooms': minBedrooms?.toString(),
+        'best_for': _wireList([for (final o in occasions) o.wireValue]),
+        'property_type': _wireList([for (final t in placeTypes) t.wireValue]),
+        'amenities': _wireList([for (final a in amenities) a.wireValue]),
+        if (petsAllowed) 'pets_allowed': 'true',
+        if (partiesAllowed) 'parties_allowed': 'true',
       },
     );
     final listings = _listOf(response, ShortLetListing.fromJson);
@@ -306,6 +323,13 @@ class ShortLetService {
       'those dates',
     );
     return listings;
+  }
+
+  /// Comma-separated, sorted so the same choice always makes the same URL;
+  /// null when empty so the parameter is left off.
+  static String? _wireList(List<String> values) {
+    if (values.isEmpty) return null;
+    return ([...values]..sort()).join(',');
   }
 
   /// The tenant's own bookings, in every state.

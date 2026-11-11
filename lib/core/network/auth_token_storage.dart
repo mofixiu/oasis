@@ -1,8 +1,15 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/auth/models/user_model.dart';
 
+/// Keeps the session on the device.
+///
+/// Sign-in tokens, the role and the cached profile (which holds the user's
+/// email and phone) live in the platform's secure store: the iOS Keychain and
+/// Android's Keystore-backed encrypted preferences. Only the onboarding flag
+/// and the one-time migration marker stay in plain [SharedPreferences].
 class AuthTokenStorage {
   static const String _keyAccessToken = 'oasis_access_token';
   static const String _keyRefreshToken = 'oasis_refresh_token';
@@ -14,6 +21,101 @@ class AuthTokenStorage {
   /// longer exists. Retained only so `clear()` cleans it off older installs.
   static const String _keyVerifiedBannerDismissed =
       'oasis_verified_banner_dismissed';
+
+  /// Set in plain preferences once this install has moved to secure storage.
+  /// It also tells a fresh install apart from an upgrade: plain preferences
+  /// are wiped on uninstall but Keychain items are not, so a missing marker
+  /// with nothing to migrate means any Keychain session is a leftover from a
+  /// previous install and must not sign the new one in.
+  static const String _keySecureStorageReady = 'oasis_secure_storage_v1';
+
+  static const List<String> _secureKeys = [
+    _keyAccessToken,
+    _keyRefreshToken,
+    _keyUserRole,
+    _keyUserProfile,
+  ];
+
+  static const FlutterSecureStorage _secure = FlutterSecureStorage(
+    // Keystore-backed encrypted preferences. resetOnError clears the store
+    // instead of failing forever when its key is gone (for example after a
+    // backup is restored onto a new phone); the user just signs in again.
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      resetOnError: true,
+    ),
+    // Readable after the first unlock so background refreshes still work,
+    // and never copied to iCloud or onto another device.
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
+
+  static bool _migrated = false;
+  static Future<bool>? _migrating;
+
+  /// Runs the one-time move out of plain preferences before the first read or
+  /// write. Safe to call many times; concurrent callers share one run, and
+  /// once it has succeeded it is not run again this launch. Resolves to false
+  /// when the move could not finish.
+  ///
+  /// The finished state is a plain flag rather than a cached future: a future
+  /// remembers the zone it was created in, which in widget tests is a fake
+  /// clock that stops at the end of each test.
+  static Future<bool> _ensureReady() {
+    if (_migrated) return Future.value(true);
+    return _migrating ??= _migrate().whenComplete(() => _migrating = null);
+  }
+
+  static Future<bool> _migrate() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_keySecureStorageReady) ?? false) {
+        return _migrated = true;
+      }
+
+      final legacy = <String, String>{};
+      for (final key in _secureKeys) {
+        final value = prefs.getString(key);
+        if (value != null && value.isNotEmpty) legacy[key] = value;
+      }
+
+      if (legacy.isEmpty) {
+        // Fresh install (or one that was signed out): drop anything a
+        // previous install left in the Keychain.
+        for (final key in _secureKeys) {
+          await _secure.delete(key: key);
+        }
+      } else {
+        for (final entry in legacy.entries) {
+          await _secure.write(key: entry.key, value: entry.value);
+        }
+      }
+
+      // Only remove the plain copies once the secure writes succeeded.
+      for (final key in _secureKeys) {
+        await prefs.remove(key);
+      }
+      await prefs.setBool(_keySecureStorageReady, true);
+      return _migrated = true;
+    } catch (_) {
+      // Secure storage unavailable, or the wipe of a leftover session failed.
+      // Leave the marker unset so the move is tried again next time.
+      return false;
+    }
+  }
+
+  static Future<void> _write(String key, String value) async {
+    await _ensureReady();
+    await _secure.write(key: key, value: value);
+  }
+
+  static Future<String?> _read(String key) async {
+    // Until the move has finished, whatever is in the Keychain may belong to
+    // a previous install, so treat the device as signed out.
+    if (!await _ensureReady()) return null;
+    return _secure.read(key: key);
+  }
 
   // In-memory fallback cache
   static String? _memAccessToken;
@@ -30,13 +132,10 @@ class AuthTokenStorage {
     _memAccessToken = access;
     _memRefreshToken = refresh;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyAccessToken, access);
-      await prefs.setString(_keyRefreshToken, refresh);
-    } catch (e) {
-      debugPrint(
-        '[TOKEN STORAGE NOTICE] Could not write to SharedPreferences ($e), using in-memory cache.',
-      );
+      await _write(_keyAccessToken, access);
+      await _write(_keyRefreshToken, refresh);
+    } catch (_) {
+      _notice('Could not save the session; keeping it in memory.');
     }
   }
 
@@ -44,12 +143,9 @@ class AuthTokenStorage {
   static Future<void> saveAccessToken(String access) async {
     _memAccessToken = access;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyAccessToken, access);
-    } catch (e) {
-      debugPrint(
-        '[TOKEN STORAGE NOTICE] Could not write access token ($e), using in-memory cache.',
-      );
+      await _write(_keyAccessToken, access);
+    } catch (_) {
+      _notice('Could not save the refreshed session; keeping it in memory.');
     }
   }
 
@@ -57,13 +153,10 @@ class AuthTokenStorage {
   static Future<String?> getAccessToken() async {
     if (_memAccessToken != null) return _memAccessToken;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _memAccessToken = prefs.getString(_keyAccessToken);
+      _memAccessToken = await _read(_keyAccessToken);
       return _memAccessToken;
-    } catch (e) {
-      debugPrint(
-        '[TOKEN STORAGE NOTICE] Could not read SharedPreferences ($e).',
-      );
+    } catch (_) {
+      _notice('Could not read the saved session.');
       return _memAccessToken;
     }
   }
@@ -72,13 +165,10 @@ class AuthTokenStorage {
   static Future<String?> getRefreshToken() async {
     if (_memRefreshToken != null) return _memRefreshToken;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _memRefreshToken = prefs.getString(_keyRefreshToken);
+      _memRefreshToken = await _read(_keyRefreshToken);
       return _memRefreshToken;
-    } catch (e) {
-      debugPrint(
-        '[TOKEN STORAGE NOTICE] Could not read SharedPreferences ($e).',
-      );
+    } catch (_) {
+      _notice('Could not read the saved session.');
       return _memRefreshToken;
     }
   }
@@ -87,10 +177,9 @@ class AuthTokenStorage {
   static Future<void> saveUserRole(String role) async {
     _memUserRole = role;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyUserRole, role);
-    } catch (e) {
-      debugPrint('[TOKEN STORAGE NOTICE] Could not write user role ($e).');
+      await _write(_keyUserRole, role);
+    } catch (_) {
+      _notice('Could not save the account role.');
     }
   }
 
@@ -98,10 +187,9 @@ class AuthTokenStorage {
   static Future<String?> getUserRole() async {
     if (_memUserRole != null) return _memUserRole;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _memUserRole = prefs.getString(_keyUserRole);
+      _memUserRole = await _read(_keyUserRole);
       return _memUserRole;
-    } catch (e) {
+    } catch (_) {
       return _memUserRole;
     }
   }
@@ -112,11 +200,10 @@ class AuthTokenStorage {
     _memUserProfileJson = jsonStr;
     _memUserRole = user.role.toServerString();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyUserProfile, jsonStr);
-      await prefs.setString(_keyUserRole, user.role.toServerString());
-    } catch (e) {
-      debugPrint('[TOKEN STORAGE NOTICE] Could not write user profile ($e).');
+      await _write(_keyUserProfile, jsonStr);
+      await _write(_keyUserRole, user.role.toServerString());
+    } catch (_) {
+      _notice('Could not save the cached profile.');
     }
   }
 
@@ -125,18 +212,15 @@ class AuthTokenStorage {
     try {
       String? jsonStr = _memUserProfileJson;
       if (jsonStr == null) {
-        final prefs = await SharedPreferences.getInstance();
-        jsonStr = prefs.getString(_keyUserProfile);
+        jsonStr = await _read(_keyUserProfile);
         _memUserProfileJson = jsonStr;
       }
       if (jsonStr != null && jsonStr.isNotEmpty) {
         final map = jsonDecode(jsonStr);
         return UserModel.fromJson(map);
       }
-    } catch (e) {
-      debugPrint(
-        '[TOKEN STORAGE NOTICE] Could not read cached user profile ($e).',
-      );
+    } catch (_) {
+      _notice('Could not read the cached profile.');
     }
     return null;
   }
@@ -169,12 +253,37 @@ class AuthTokenStorage {
     _memUserRole = null;
     _memUserProfileJson = null;
     try {
+      await _ensureReady();
+      for (final key in _secureKeys) {
+        await _secure.delete(key: key);
+      }
+    } catch (_) {}
+    try {
+      // Plain copies too, in case the move to secure storage never ran.
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_keyAccessToken);
-      await prefs.remove(_keyRefreshToken);
-      await prefs.remove(_keyUserRole);
-      await prefs.remove(_keyUserProfile);
+      for (final key in _secureKeys) {
+        await prefs.remove(key);
+      }
       await prefs.remove(_keyVerifiedBannerDismissed);
     } catch (_) {}
+  }
+
+  /// Forgets the in-memory session and the migration state, as if the app
+  /// had just launched. Tests only.
+  @visibleForTesting
+  static void resetForTest() {
+    _migrated = false;
+    _migrating = null;
+    _memAccessToken = null;
+    _memRefreshToken = null;
+    _memUserRole = null;
+    _memUserProfileJson = null;
+    _memOnboardingDone = false;
+  }
+
+  /// Debug-only log line. Never includes token values or the error text,
+  /// which can echo what was being written.
+  static void _notice(String message) {
+    if (kDebugMode) debugPrint('[TOKEN STORAGE NOTICE] $message');
   }
 }

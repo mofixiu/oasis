@@ -21,6 +21,7 @@ import '../../../core/widgets/oasis_state_views.dart';
 import '../../../core/widgets/v2_ui.dart';
 import '../../reviews/views/widgets/rating_stars.dart';
 import '../controllers/shortlet_controller.dart';
+import '../models/shortlet_details.dart';
 import '../models/shortlet_models.dart';
 import 'my_shortlet_bookings_screen.dart';
 import 'shortlet_listing_screen.dart';
@@ -43,10 +44,15 @@ class ShortLetBrowseScreen extends StatefulWidget {
   /// Discover tab (photo grid).
   final bool isSearch;
 
+  /// Opens Search already narrowed to one occasion, from the occasion tiles
+  /// on guest Home. Replaces any occasions picked before.
+  final ShortLetOccasion? initialOccasion;
+
   const ShortLetBrowseScreen({
     super.key,
     this.isV2 = false,
     this.isSearch = false,
+    this.initialOccasion,
   });
 
   @override
@@ -94,6 +100,9 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
     _searchController = TextEditingController(
       text: context.read<ShortLetController>().searchQuery,
     );
+    if (widget.initialOccasion case final occasion?) {
+      context.read<ShortLetController>().presetOccasion(occasion);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await refreshNow();
       // The v2 Discover grid is for browsing; nearby sorting belongs to
@@ -281,6 +290,10 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
     controller.hasSearchDates,
     controller.minPrice != null || controller.maxPrice != null,
     controller.minBedrooms != null,
+    controller.occasions.isNotEmpty,
+    controller.placeTypes.isNotEmpty,
+    controller.amenities.isNotEmpty,
+    controller.hasHouseRulesFilter,
   ].where((on) => on).length;
 
   Future<void> _clearFilters() async {
@@ -292,10 +305,11 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
     if (controller.minBedrooms != null) {
       await controller.setBedroomsFilter(null);
     }
+    if (controller.hasListingFilters) await controller.clearListingFilters();
   }
 
-  /// Dates, price and bedrooms live in one sheet behind the Filters button,
-  /// so browsing is not led by a row of controls.
+  /// Dates, price, bedrooms and the listing details live in one sheet behind
+  /// the Filters button, so browsing is not led by a row of controls.
   void _openFilters() => showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -1405,8 +1419,9 @@ class _V2FilterButton extends StatelessWidget {
   );
 }
 
-/// Every filter in one place: dates, price and bedrooms. Each applies as it
-/// is set, so the list behind the sheet is already up to date when it closes.
+/// Every filter in one place: dates, price, bedrooms, what the stay is for,
+/// the kind of place, amenities and house rules. Each applies as it is set,
+/// so the list behind the sheet is already up to date when it closes.
 class _V2FilterSheet extends StatelessWidget {
   final Future<void> Function() onPickDates;
   final Future<void> Function() onClearDates;
@@ -1432,96 +1447,182 @@ class _V2FilterSheet extends StatelessWidget {
     final format = DateFormat('d MMM');
     final count = controller.browseListings.length;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor(context),
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppTheme.radiusLg),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor(context),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppTheme.radiusLg),
+          ),
         ),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        20,
-        10,
-        20,
-        MediaQuery.paddingOf(context).bottom + 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 38,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.mutedTextColor(context).withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          10,
+          20,
+          MediaQuery.paddingOf(context).bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.mutedTextColor(
+                    context,
+                  ).withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Text('Filters', style: AppTheme.sectionTitle(context)),
-              ),
-              TextButton(
-                onPressed: _hasAny(controller) ? onClearAll : null,
-                child: const Text('Clear all'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _V2FilterRow(
-            icon: Icons.calendar_today_outlined,
-            title: 'Dates',
-            value: dates == null
-                ? 'Any dates'
-                : '${format.format(dates.start)} – ${format.format(dates.end)}',
-            isSet: dates != null,
-            onTap: onPickDates,
-            onClear: onClearDates,
-          ),
-          _V2FilterRow(
-            icon: Icons.payments_outlined,
-            title: controller.hasSearchDates
-                ? 'Total price'
-                : 'Price per night',
-            value: hasPrice
-                ? _PriceFilterRow._label(
-                    controller.minPrice,
-                    controller.maxPrice,
-                  )
-                : 'Any price',
-            isSet: hasPrice,
-            onTap: onPickPrice,
-            onClear: onClearPrice,
-          ),
-          const SizedBox(height: 14),
-          Text('Bedrooms', style: AppTheme.cardTitle(context)),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              for (final floor in const <int?>[null, 1, 2, 3, 4]) ...[
-                if (floor != null) const SizedBox(width: 8),
+            const SizedBox(height: 16),
+            Row(
+              children: [
                 Expanded(
-                  child: _V2AreaChip(
-                    label: floor == null ? 'Any' : '$floor+',
-                    isSelected: controller.minBedrooms == floor,
-                    onTap: () => onSetBedrooms(floor),
-                  ),
+                  child: Text('Filters', style: AppTheme.sectionTitle(context)),
+                ),
+                TextButton(
+                  onPressed: _hasAny(controller) ? onClearAll : null,
+                  child: const Text('Clear all'),
                 ),
               ],
-            ],
-          ),
-          const SizedBox(height: 22),
-          OasisButton(
-            label: controller.isLoading
-                ? 'Updating…'
-                : 'Show $count ${count == 1 ? 'shortlet' : 'shortlets'}',
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _V2FilterRow(
+                      icon: Icons.calendar_today_outlined,
+                      title: 'Dates',
+                      value: dates == null
+                          ? 'Any dates'
+                          : '${format.format(dates.start)} – ${format.format(dates.end)}',
+                      isSet: dates != null,
+                      onTap: onPickDates,
+                      onClear: onClearDates,
+                    ),
+                    _V2FilterRow(
+                      icon: Icons.payments_outlined,
+                      title: controller.hasSearchDates
+                          ? 'Total price'
+                          : 'Price per night',
+                      value: hasPrice
+                          ? _PriceFilterRow._label(
+                              controller.minPrice,
+                              controller.maxPrice,
+                            )
+                          : 'Any price',
+                      isSet: hasPrice,
+                      onTap: onPickPrice,
+                      onClear: onClearPrice,
+                    ),
+                    const SizedBox(height: 14),
+                    Text('Bedrooms', style: AppTheme.cardTitle(context)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        for (final floor in const <int?>[null, 1, 2, 3, 4]) ...[
+                          if (floor != null) const SizedBox(width: 8),
+                          Expanded(
+                            child: _V2AreaChip(
+                              label: floor == null ? 'Any' : '$floor+',
+                              isSelected: controller.minBedrooms == floor,
+                              onTap: () => onSetBedrooms(floor),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    _V2ChipSection(
+                      title: 'Best for',
+                      helper: 'Places that suit any of these.',
+                      children: [
+                        for (final occasion in ShortLetOccasion.values)
+                          _V2ToggleChip(
+                            icon: occasion.icon,
+                            label: occasion.label,
+                            isSelected: controller.occasions.contains(occasion),
+                            onTap: () => controller.setListingFilters(
+                              occasions: _toggled(
+                                controller.occasions,
+                                occasion,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    _V2ChipSection(
+                      title: 'Type of place',
+                      children: [
+                        for (final type in ShortLetPlaceType.values)
+                          _V2ToggleChip(
+                            icon: type.icon,
+                            label: type.label,
+                            isSelected: controller.placeTypes.contains(type),
+                            onTap: () => controller.setListingFilters(
+                              placeTypes: _toggled(controller.placeTypes, type),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    _V2ChipSection(
+                      title: 'Amenities',
+                      helper: 'Places that have all of these.',
+                      children: [
+                        for (final amenity in ShortLetAmenity.values)
+                          _V2ToggleChip(
+                            icon: amenity.icon,
+                            label: amenity.label,
+                            isSelected: controller.amenities.contains(amenity),
+                            onTap: () => controller.setListingFilters(
+                              amenities: _toggled(
+                                controller.amenities,
+                                amenity,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    Text('House rules', style: AppTheme.cardTitle(context)),
+                    const SizedBox(height: 4),
+                    _V2SwitchRow(
+                      icon: Icons.pets_outlined,
+                      label: 'Pets welcome',
+                      value: controller.petsAllowed,
+                      onChanged: (on) =>
+                          controller.setListingFilters(petsAllowed: on),
+                    ),
+                    _V2SwitchRow(
+                      icon: Icons.celebration_outlined,
+                      label: 'Parties allowed',
+                      value: controller.partiesAllowed,
+                      onChanged: (on) =>
+                          controller.setListingFilters(partiesAllowed: on),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            OasisButton(
+              label: controller.isLoading
+                  ? 'Updating…'
+                  : 'Show $count ${count == 1 ? 'shortlet' : 'shortlets'}',
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1530,7 +1631,146 @@ class _V2FilterSheet extends StatelessWidget {
       controller.hasSearchDates ||
       controller.minPrice != null ||
       controller.maxPrice != null ||
-      controller.minBedrooms != null;
+      controller.minBedrooms != null ||
+      controller.hasListingFilters;
+
+  static Set<T> _toggled<T>(Set<T> current, T value) => current.contains(value)
+      ? ({...current}..remove(value))
+      : {...current, value};
+}
+
+/// A titled group of multi-select chips in the filter sheet.
+class _V2ChipSection extends StatelessWidget {
+  final String title;
+  final String? helper;
+  final List<Widget> children;
+
+  const _V2ChipSection({
+    required this.title,
+    required this.children,
+    this.helper,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: AppTheme.cardTitle(context)),
+      if (helper != null) ...[
+        const SizedBox(height: 2),
+        Text(helper!, style: AppTheme.bodyText(context).copyWith(fontSize: 12)),
+      ],
+      const SizedBox(height: 10),
+      Wrap(spacing: 8, runSpacing: 8, children: children),
+    ],
+  );
+}
+
+/// A chip that can be on alongside others: occasions, place types and
+/// amenities in the filter sheet.
+class _V2ToggleChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _V2ToggleChip({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = isSelected
+        ? Colors.white
+        : AppTheme.primaryTextColor(context);
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: label,
+      excludeSemantics: true,
+      child: OasisPressable(
+        onTap: () {
+          OasisHaptics.select();
+          onTap();
+        },
+        pressedScale: 0.96,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppTheme.terracottaColor
+                : AppTheme.surfaceColor(context),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isSelected
+                  ? AppTheme.terracottaColor
+                  : AppTheme.borderColor(context),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: foreground),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: foreground,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// An on/off house-rule filter. Off means "any", not "not allowed".
+class _V2SwitchRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _V2SwitchRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: AppTheme.primaryTextColor(context)),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTheme.bodyText(
+              context,
+              color: AppTheme.primaryTextColor(context),
+            ).copyWith(fontSize: 14),
+          ),
+        ),
+        Switch.adaptive(
+          value: value,
+          activeTrackColor: AppTheme.terracottaColor,
+          onChanged: onChanged,
+        ),
+      ],
+    ),
+  );
 }
 
 class _V2FilterRow extends StatelessWidget {

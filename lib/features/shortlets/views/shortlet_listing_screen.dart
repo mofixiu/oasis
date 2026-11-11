@@ -13,6 +13,7 @@ import 'v2/v2_stay_widgets.dart';
 import '../../reviews/models/review_models.dart';
 import '../../reviews/views/widgets/reviews_section.dart';
 import '../controllers/shortlet_controller.dart';
+import '../models/shortlet_details.dart';
 import '../models/shortlet_models.dart';
 import 'my_shortlet_bookings_screen.dart';
 import 'request_booking_sheet.dart';
@@ -276,12 +277,13 @@ class ShortLetListingScreen extends StatelessWidget {
         ],
       ],
     ),
-    if (listing.location.isNotEmpty) ...[
+    if (_placeLine(listing) case final line?) ...[
       const SizedBox(height: 4),
-      Text(
-        listing.location,
-        style: AppTheme.bodyText(context).copyWith(fontSize: 14),
-      ),
+      Text(line, style: AppTheme.bodyText(context).copyWith(fontSize: 14)),
+    ],
+    if (listing.hasHostBrand) ...[
+      const SizedBox(height: 10),
+      _HostBrandLine(brand: listing.hostBrandName),
     ],
     const SizedBox(height: 20),
     Row(
@@ -332,6 +334,26 @@ class ShortLetListingScreen extends StatelessWidget {
       _V2ReadMore(text: listing.description),
       const SizedBox(height: 20),
     ],
+    if (listing.details.amenities.isNotEmpty) ...[
+      Text('What this place offers', style: AppTheme.sectionTitle(context)),
+      const SizedBox(height: 12),
+      _AmenityList(amenities: listing.details.amenities),
+      const SizedBox(height: 20),
+    ],
+    if (listing.details.bestFor.isNotEmpty) ...[
+      Text('Great for', style: AppTheme.sectionTitle(context)),
+      const SizedBox(height: 12),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final occasion in ShortLetOccasion.values)
+            if (listing.details.bestFor.contains(occasion))
+              _OccasionBadge(occasion: occasion),
+        ],
+      ),
+      const SizedBox(height: 22),
+    ],
     if (listing.hasCautionFee) ...[
       _CautionFeeNotice(amount: listing.cautionFee),
       const SizedBox(height: 14),
@@ -346,14 +368,25 @@ class ShortLetListingScreen extends StatelessWidget {
       ),
       const SizedBox(height: 14),
     ],
-    if (listing.houseRules.isNotEmpty) ...[
-      _Detail(
-        icon: Icons.rule_outlined,
-        title: 'House rules',
-        body: listing.houseRules,
-      ),
-      const SizedBox(height: 14),
-    ],
+    _Detail(
+      icon: Icons.schedule_rounded,
+      title: 'Check-in and checkout',
+      body:
+          'Check in from '
+          '${ShortLetDetails.timeLabel(listing.details.checkInTime)}, '
+          'check out by '
+          '${ShortLetDetails.timeLabel(listing.details.checkOutTime)}.',
+    ),
+    const SizedBox(height: 14),
+    _Detail(
+      icon: Icons.rule_outlined,
+      title: 'House rules',
+      body: [
+        listing.details.ruleLabels.join(' · '),
+        if (listing.houseRules.trim().isNotEmpty) listing.houseRules.trim(),
+      ].join('\n\n'),
+    ),
+    const SizedBox(height: 14),
     _Detail(
       icon: Icons.vpn_key_outlined,
       title: 'Getting in',
@@ -512,6 +545,16 @@ class ShortLetListingScreen extends StatelessWidget {
         title: 'What guests said',
       ),
     ];
+  }
+
+  /// "Serviced apartment · Lekki, Lagos": the kind of place and where it
+  /// is, or null when neither is known.
+  static String? _placeLine(ShortLetListing listing) {
+    final parts = [
+      ?listing.details.placeType?.label,
+      if (listing.location.isNotEmpty) listing.location,
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 
   /// "1 Sep – 31 Dec 2026", or null when the host set no window.
@@ -980,6 +1023,158 @@ class _Detail extends StatelessWidget {
         ),
       ),
     ],
+  );
+}
+
+/// "Hosted by Lekki Luxe Stays", for a host who hosts under a business name.
+class _HostBrandLine extends StatelessWidget {
+  final String brand;
+
+  const _HostBrandLine({required this.brand});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: AppTheme.actionColor.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.storefront_outlined,
+          size: 16,
+          color: AppTheme.actionColor,
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text.rich(
+          TextSpan(
+            text: 'Hosted by ',
+            children: [
+              TextSpan(
+                text: brand,
+                style: TextStyle(
+                  color: AppTheme.primaryTextColor(context),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTheme.bodyText(context).copyWith(fontSize: 14),
+        ),
+      ),
+    ],
+  );
+}
+
+/// The amenities in two columns, six at first with a way to see the rest.
+class _AmenityList extends StatefulWidget {
+  final Set<ShortLetAmenity> amenities;
+
+  const _AmenityList({required this.amenities});
+
+  @override
+  State<_AmenityList> createState() => _AmenityListState();
+}
+
+class _AmenityListState extends State<_AmenityList> {
+  static const int _collapsedCount = 6;
+  bool _showAll = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // In the enum's order, not the order the server sent them, so every
+    // listing reads the same way and Wi-Fi and power come first.
+    final all = [
+      for (final amenity in ShortLetAmenity.values)
+        if (widget.amenities.contains(amenity)) amenity,
+    ];
+    final shown = _showAll ? all : all.take(_collapsedCount).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = (constraints.maxWidth - 12) / 2;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final amenity in shown)
+                  SizedBox(
+                    width: width,
+                    child: Row(
+                      children: [
+                        Icon(
+                          amenity.icon,
+                          size: 20,
+                          color: AppTheme.primaryTextColor(context),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            amenity.label,
+                            style: AppTheme.bodyText(
+                              context,
+                              color: AppTheme.primaryTextColor(context),
+                            ).copyWith(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        if (all.length > _collapsedCount) ...[
+          const SizedBox(height: 4),
+          TextButton(
+            onPressed: () => setState(() => _showAll = !_showAll),
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            child: Text(
+              _showAll ? 'Show fewer' : 'Show all ${all.length} amenities',
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// One occasion a place suits, as a quiet badge (not a button).
+class _OccasionBadge extends StatelessWidget {
+  final ShortLetOccasion occasion;
+
+  const _OccasionBadge({required this.occasion});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 34,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: BoxDecoration(
+      color: AppTheme.subtleSurfaceColor(context),
+      borderRadius: BorderRadius.circular(17),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(occasion.icon, size: 16, color: AppTheme.actionColor),
+        const SizedBox(width: 6),
+        Text(
+          occasion.label,
+          style: AppTheme.bodyText(
+            context,
+            color: AppTheme.primaryTextColor(context),
+          ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
   );
 }
 

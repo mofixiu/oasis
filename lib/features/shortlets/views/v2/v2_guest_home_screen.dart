@@ -62,9 +62,16 @@ class _V2GuestHomeScreenState extends State<V2GuestHomeScreen> {
     );
   }
 
-  void _openSearch() => Navigator.push(
+  /// Opens Search; from an occasion tile, already narrowed to it.
+  void _openSearch({ShortLetOccasion? occasion}) => Navigator.push(
     context,
-    FadePageRoute(page: const ShortLetBrowseScreen(isV2: true, isSearch: true)),
+    FadePageRoute(
+      page: ShortLetBrowseScreen(
+        isV2: true,
+        isSearch: true,
+        initialOccasion: occasion,
+      ),
+    ),
   );
 
   /// Every distinct photo across the loaded shortlets, covers first, so the
@@ -210,7 +217,8 @@ class _V2GuestHomeScreenState extends State<V2GuestHomeScreen> {
                     width: 76,
                     child: _OccasionTile(
                       occasion: ShortLetOccasion.values[index],
-                      onTap: _openSearch,
+                      onTap: () =>
+                          _openSearch(occasion: ShortLetOccasion.values[index]),
                     ),
                   ),
                 ),

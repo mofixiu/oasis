@@ -512,6 +512,17 @@ class ShortLetListing {
   /// Type, amenities, occasions, times and rule switches (spec v18).
   final ShortLetDetails details;
 
+  /// The business name the host hosts under, or empty when they host as
+  /// themselves (`host_brand_name`, API guide 22).
+  final String hostBrandName;
+
+  /// How many photos the unit itself has, as the backend counts them
+  /// (`unit.photo_count`). Null on payloads without it. Kept apart from
+  /// [photoUrls], which can fall back to the building's photos when the
+  /// room has none: those make a card look finished without the room being
+  /// photographed.
+  final int? unitPhotoCount;
+
   final String createdAt;
 
   /// How far this listing is from the coordinates the search was made with.
@@ -565,6 +576,8 @@ class ShortLetListing {
     this.selectedCoverPhotoUrl,
     this.videoUrl,
     this.details = const ShortLetDetails(),
+    this.hostBrandName = '',
+    this.unitPhotoCount,
     this.createdAt = '',
     this.distanceKm,
     this.isAvailableForPeriod,
@@ -657,6 +670,12 @@ class ShortLetListing {
       ]),
       videoUrl: _readNonEmpty(json['video_url'] ?? unitMap['video_url']),
       details: ShortLetDetails.fromJson(json),
+      hostBrandName: (json['host_brand_name'] ?? '').toString().trim(),
+      unitPhotoCount:
+          _readInt(unitMap['photo_count']) ??
+          (unitMap['photo_urls'] is List
+              ? (unitMap['photo_urls'] as List).length
+              : null),
       createdAt: json['created_at']?.toString() ?? '',
       distanceKm: _readDouble(json['distance_km']),
       // Strictly a bool: a missing key and a non-bool value both mean "not
@@ -696,6 +715,26 @@ class ShortLetListing {
   bool get hasVideo => videoUrl != null && videoUrl!.isNotEmpty;
 
   bool get hasDescription => description.trim().isNotEmpty;
+
+  bool get hasHostBrand => hostBrandName.isNotEmpty;
+
+  /// Photos a listing needs before it counts as finished. Matches the host
+  /// listing flow's own minimum.
+  static const int minimumPhotos = 3;
+
+  /// The room's own photos when the backend says how many, otherwise the
+  /// photos this listing shows.
+  int get mediaPhotoCount => unitPhotoCount ?? photoUrls.length;
+
+  /// How many more photos the host still has to add, 0 once there are
+  /// enough.
+  int get photosStillNeeded =>
+      (minimumPhotos - mediaPhotoCount).clamp(0, minimumPhotos);
+
+  /// At least [minimumPhotos] photos of the room and a tour video. The
+  /// backend does not block a listing without them (API guide 22), so the
+  /// host's reminder is worked out here.
+  bool get isMediaComplete => photosStillNeeded == 0 && hasVideo;
 
   /// Whether the host asks for a refundable deposit at all.
   ///

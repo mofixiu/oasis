@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_client.dart';
@@ -124,6 +125,40 @@ class ShortLetController extends ChangeNotifier
   int? get minBedrooms => _minBedrooms;
   bool get hasBedroomsFilter => _minBedrooms != null;
 
+  Set<ShortLetOccasion> _occasions = const {};
+  Set<ShortLetPlaceType> _placeTypes = const {};
+  Set<ShortLetAmenity> _amenities = const {};
+  bool _petsAllowed = false;
+  bool _partiesAllowed = false;
+
+  /// Occasions the guest is browsing for. A listing suited to any of them
+  /// matches.
+  Set<ShortLetOccasion> get occasions => _occasions;
+
+  /// Kinds of place the guest wants. Any of them matches.
+  Set<ShortLetPlaceType> get placeTypes => _placeTypes;
+
+  /// Amenities the place must have. Unlike occasions and place types, a
+  /// listing has to have every one: someone who asks for Wi-Fi and a pool
+  /// wants both.
+  Set<ShortLetAmenity> get amenities => _amenities;
+
+  /// Only places that welcome pets. False means "don't care", not "no pets".
+  bool get petsAllowed => _petsAllowed;
+
+  /// Only places that allow parties. False means "don't care".
+  bool get partiesAllowed => _partiesAllowed;
+
+  bool get hasHouseRulesFilter => _petsAllowed || _partiesAllowed;
+
+  /// Whether any of the listing-detail filters (occasion, type, amenities,
+  /// house rules) is narrowing the list.
+  bool get hasListingFilters =>
+      _occasions.isNotEmpty ||
+      _placeTypes.isNotEmpty ||
+      _amenities.isNotEmpty ||
+      hasHouseRulesFilter;
+
   /// Whether anything is narrowing the browse list: what the empty state
   /// checks before suggesting the tenant widen it.
   ///
@@ -134,7 +169,8 @@ class ShortLetController extends ChangeNotifier
       isSearchingNearby ||
       _searchQuery.isNotEmpty ||
       hasPriceFilter ||
-      hasBedroomsFilter;
+      hasBedroomsFilter ||
+      hasListingFilters;
 
   /// Stays that cannot take the searched dates. Shown, never hidden: the
   /// tenant is owed the reason rather than a shorter list.
@@ -214,6 +250,13 @@ class ShortLetController extends ChangeNotifier
     _minPrice = null;
     _maxPrice = null;
     _minBedrooms = null;
+    _occasions = const {};
+    _placeTypes = const {};
+    _amenities = const {};
+    _petsAllowed = false;
+    _partiesAllowed = false;
+    // A search still in flight from the last account must not land here.
+    _browseRequest++;
     _bookings = [];
     _pendingPayment = null;
     _paymentKeys.clear();
@@ -604,7 +647,14 @@ class ShortLetController extends ChangeNotifier
 
   // ------------------------------------------------------------------ tenant
 
+  /// Counts browse requests so a slow answer to an older search cannot
+  /// overwrite a newer one. Filter chips apply on every tap, so two
+  /// requests in flight at once is normal, and the network does not promise
+  /// to answer them in order.
+  int _browseRequest = 0;
+
   Future<void> loadBrowseListings() async {
+    final request = ++_browseRequest;
     _isLoading = true;
     clearFailure();
     notifyListeners();
@@ -620,14 +670,23 @@ class ShortLetController extends ChangeNotifier
         minPrice: _minPrice,
         maxPrice: _maxPrice,
         minBedrooms: _minBedrooms,
+        occasions: _occasions,
+        placeTypes: _placeTypes,
+        amenities: _amenities,
+        petsAllowed: _petsAllowed,
+        partiesAllowed: _partiesAllowed,
       );
+      if (request != _browseRequest) return;
       _browseListings = _applyBedroomsFilter(results);
     } catch (e) {
+      if (request != _browseRequest) return;
       captureFailure(e);
     } finally {
-      _isLoading = false;
-      markLoaded(kBrowseKey);
-      notifyListeners();
+      if (request == _browseRequest) {
+        _isLoading = false;
+        markLoaded(kBrowseKey);
+        notifyListeners();
+      }
     }
   }
 
@@ -715,8 +774,54 @@ class ShortLetController extends ChangeNotifier
     await loadBrowseListings();
   }
 
+  /// Changes the listing-detail filters and reloads. Each argument left
+  /// null keeps its current value, so the filter sheet can change one group
+  /// at a time.
+  Future<void> setListingFilters({
+    Set<ShortLetOccasion>? occasions,
+    Set<ShortLetPlaceType>? placeTypes,
+    Set<ShortLetAmenity>? amenities,
+    bool? petsAllowed,
+    bool? partiesAllowed,
+  }) async {
+    final nextOccasions = occasions ?? _occasions;
+    final nextTypes = placeTypes ?? _placeTypes;
+    final nextAmenities = amenities ?? _amenities;
+    final nextPets = petsAllowed ?? _petsAllowed;
+    final nextParties = partiesAllowed ?? _partiesAllowed;
+    if (setEquals(nextOccasions, _occasions) &&
+        setEquals(nextTypes, _placeTypes) &&
+        setEquals(nextAmenities, _amenities) &&
+        nextPets == _petsAllowed &&
+        nextParties == _partiesAllowed) {
+      return;
+    }
+    _occasions = Set.unmodifiable(nextOccasions);
+    _placeTypes = Set.unmodifiable(nextTypes);
+    _amenities = Set.unmodifiable(nextAmenities);
+    _petsAllowed = nextPets;
+    _partiesAllowed = nextParties;
+    await loadBrowseListings();
+  }
+
+  /// Picks one occasion before Search opens, without fetching: the screen's
+  /// own first load picks it up. Used by the occasion tiles on guest Home,
+  /// where tapping "Birthdays" should mean birthdays only.
+  void presetOccasion(ShortLetOccasion occasion) {
+    _occasions = Set.unmodifiable({occasion});
+  }
+
+  /// Clears only the listing-detail filters.
+  Future<void> clearListingFilters() => setListingFilters(
+    occasions: const {},
+    placeTypes: const {},
+    amenities: const {},
+    petsAllowed: false,
+    partiesAllowed: false,
+  );
+
   /// Back to every listing: no coordinates, no typed area, no price range,
-  /// no bedroom floor.
+  /// no bedroom floor, no listing-detail filters.
   ///
   /// Leaves the dates alone. They are not what emptied the list: the backend
   /// returns unavailable stays rather than withholding them, so clearing
@@ -729,6 +834,11 @@ class ShortLetController extends ChangeNotifier
     _minPrice = null;
     _maxPrice = null;
     _minBedrooms = null;
+    _occasions = const {};
+    _placeTypes = const {};
+    _amenities = const {};
+    _petsAllowed = false;
+    _partiesAllowed = false;
     await loadBrowseListings();
   }
 

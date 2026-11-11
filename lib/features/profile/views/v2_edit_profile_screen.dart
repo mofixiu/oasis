@@ -29,10 +29,14 @@ class V2EditProfileScreen extends StatefulWidget {
 class _V2EditProfileScreenState extends State<V2EditProfileScreen> {
   static const _bioLimit = 150;
 
+  /// The backend's limit on a host's brand name (API guide 22).
+  static const _brandLimit = 80;
+
   late final ProfileService _service;
   late final TextEditingController _name;
   late final TextEditingController _phone;
   late final TextEditingController _bio;
+  late final TextEditingController _brand;
   DateTime? _birthday;
   File? _pickedPhoto;
   bool _isSaving = false;
@@ -46,6 +50,7 @@ class _V2EditProfileScreenState extends State<V2EditProfileScreen> {
     _name = TextEditingController(text: user?.fullName ?? '');
     _phone = TextEditingController(text: user?.phone ?? '');
     _bio = TextEditingController(text: user?.bio ?? '');
+    _brand = TextEditingController(text: user?.brandName ?? '');
     _birthday = DateTime.tryParse(user?.dateOfBirth ?? '');
   }
 
@@ -54,6 +59,7 @@ class _V2EditProfileScreenState extends State<V2EditProfileScreen> {
     _name.dispose();
     _phone.dispose();
     _bio.dispose();
+    _brand.dispose();
     super.dispose();
   }
 
@@ -115,6 +121,8 @@ class _V2EditProfileScreenState extends State<V2EditProfileScreen> {
     final name = _name.text.trim();
     final phone = _phone.text.trim();
     final bio = _bio.text.trim();
+    final brand = _brand.text.trim();
+    final isHost = user?.role == UserRole.owner;
     final birthday = _birthday == null
         ? ''
         : DateFormat('yyyy-MM-dd').format(_birthday!);
@@ -134,6 +142,7 @@ class _V2EditProfileScreenState extends State<V2EditProfileScreen> {
         phone: phone == user?.phone ? null : phone,
         dateOfBirth: birthday == user?.dateOfBirth ? null : birthday,
         bio: bio == user?.bio ? null : bio,
+        brandName: !isHost || brand == user?.brandName ? null : brand,
       );
       if (!mounted) return;
       await context.read<AuthController>().refreshProfile();
@@ -367,6 +376,19 @@ class _V2EditProfileScreenState extends State<V2EditProfileScreen> {
                   ),
                 ),
               ),
+              if (role == UserRole.owner)
+                _FieldBox(
+                  label: 'Brand name (optional)',
+                  helper:
+                      'Guests see “Hosted by” this name on your places. '
+                      'Leave it blank to host as yourself.',
+                  child: _input(
+                    _brand,
+                    hint: 'e.g. Lekki Luxe Stays',
+                    maxLength: _brandLimit,
+                    capitalization: TextCapitalization.words,
+                  ),
+                ),
               // Read-only, like email: the role is fixed at sign-up. A
               // disabled Guest/Host toggle read as an invitation to switch.
               _FieldBox(
@@ -398,15 +420,18 @@ class _V2EditProfileScreenState extends State<V2EditProfileScreen> {
     TextInputType? keyboard,
     int maxLines = 1,
     int? maxLength,
+    TextCapitalization? capitalization,
   }) => TextField(
     controller: controller,
     keyboardType: keyboard,
     maxLines: maxLines,
     minLines: 1,
     maxLength: maxLength,
-    textCapitalization: keyboard == null
-        ? TextCapitalization.sentences
-        : TextCapitalization.none,
+    textCapitalization:
+        capitalization ??
+        (keyboard == null
+            ? TextCapitalization.sentences
+            : TextCapitalization.none),
     style: AppTheme.bodyText(
       context,
       color: AppTheme.primaryTextColor(context),

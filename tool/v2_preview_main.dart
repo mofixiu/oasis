@@ -276,8 +276,9 @@ Future<http.Response> _respond(http.Request request) async {
           path.endsWith('/landlord/short-let-bookings/'))) {
     // A host who has not listed anything yet.
     body = const [];
-  } else if (path.endsWith('/tenant/short-lets/') ||
-      path.endsWith('/landlord/short-lets/')) {
+  } else if (path.endsWith('/tenant/short-lets/')) {
+    body = _filteredListings(request.url.queryParameters);
+  } else if (path.endsWith('/landlord/short-lets/')) {
     body = _listings;
   } else if (path.endsWith('/tenant/short-let-bookings/')) {
     body = _bookings();
@@ -380,6 +381,31 @@ Future<http.Response> _respond(http.Request request) async {
   );
 }
 
+/// The guest search filters from API guide 22, applied the way the backend
+/// describes: occasions and place types match any, amenities match all, and
+/// the rule switches match exactly.
+List<Map<String, Object?>> _filteredListings(Map<String, String> query) {
+  Set<String> list(String key) => {
+    for (final part in (query[key] ?? '').split(','))
+      if (part.trim().isNotEmpty) part.trim().toUpperCase(),
+  };
+  final occasions = list('best_for');
+  final types = list('property_type');
+  final amenities = list('amenities');
+  return [
+    for (final listing in _listings)
+      if ((occasions.isEmpty ||
+              (listing['best_for'] as List).any(occasions.contains)) &&
+          (types.isEmpty || types.contains(listing['property_type'])) &&
+          amenities.every((listing['amenities'] as List).contains) &&
+          (query['pets_allowed'] == null ||
+              '${listing['pets_allowed']}' == query['pets_allowed']) &&
+          (query['parties_allowed'] == null ||
+              '${listing['parties_allowed']}' == query['parties_allowed']))
+        listing,
+  ];
+}
+
 Map<String, Object?> _listing({
   required String id,
   required String name,
@@ -390,9 +416,38 @@ Map<String, Object?> _listing({
   int reviews = 0,
   int bedrooms = 2,
   int guests = 4,
+  String type = 'APARTMENT',
+  List<String> amenities = const [
+    'WIFI',
+    'POWER_24H',
+    'AIR_CONDITIONING',
+    'KITCHEN',
+    'SECURITY',
+    'SMART_TV',
+  ],
+  List<String> bestFor = const ['STAYCATION', 'BIRTHDAY', 'WEEKEND_GETAWAY'],
+  bool pets = false,
+  bool parties = false,
+  String brand = '',
+  bool hasVideo = true,
 }) => {
   'id': id,
-  'unit': 'u-$id',
+  'unit': {
+    'id': 'u-$id',
+    'photo_count': photos.length,
+    'video_url': hasVideo && photos.isNotEmpty
+        ? 'https://cdn.example.test/tours/$id.mp4'
+        : null,
+  },
+  'property_type': type,
+  'amenities': amenities,
+  'best_for': bestFor,
+  'check_in_time': '14:00:00',
+  'check_out_time': '12:00:00',
+  'smoking_allowed': false,
+  'pets_allowed': pets,
+  'parties_allowed': parties || bestFor.contains('PARTY'),
+  'host_brand_name': brand,
   'property_name': name,
   'unit_number': '',
   'city': city,
@@ -428,6 +483,9 @@ final _listings = [
     photos: const [],
     bedrooms: 1,
     guests: 2,
+    type: 'STUDIO',
+    amenities: const ['WIFI', 'POWER_24H', 'WORKSPACE'],
+    bestFor: const ['WORK_TRIP', 'STOPOVER'],
   ),
   _listing(
     id: 'l-1',
@@ -439,6 +497,22 @@ final _listings = [
     reviews: 32,
     bedrooms: 3,
     guests: 6,
+    type: 'PENTHOUSE',
+    amenities: const [
+      'WIFI',
+      'POWER_24H',
+      'AIR_CONDITIONING',
+      'KITCHEN',
+      'PARKING',
+      'SECURITY',
+      'HOT_WATER',
+      'SMART_TV',
+      'POOL',
+      'BALCONY',
+      'SOUND_SYSTEM',
+    ],
+    bestFor: const ['BIRTHDAY', 'PARTY', 'PHOTOSHOOT', 'FRIENDS_TRIP'],
+    brand: 'Lekki Luxe Stays',
   ),
   _listing(
     id: 'l-2',
@@ -448,6 +522,10 @@ final _listings = [
     photos: ['pool', 'hero'],
     rating: 4.9,
     reviews: 28,
+    type: 'SERVICED_APARTMENT',
+    amenities: const ['WIFI', 'POWER_24H', 'POOL', 'GYM', 'SECURITY'],
+    bestFor: const ['BAECATION', 'STAYCATION', 'HOLIDAY'],
+    hasVideo: false,
   ),
   _listing(
     id: 'l-3',
@@ -457,6 +535,8 @@ final _listings = [
     photos: ['solace', 'maison'],
     rating: 4.7,
     reviews: 120,
+    bestFor: const ['FAMILY', 'LONG_STAY', 'WEEKEND_GETAWAY'],
+    pets: true,
   ),
   _listing(
     id: 'l-4',
@@ -464,6 +544,9 @@ final _listings = [
     city: 'Ikoyi',
     price: '250000.00',
     photos: ['elysian', 'birthday'],
+    type: 'DUPLEX',
+    bestFor: const ['BIRTHDAY', 'BAECATION', 'WEDDING'],
+    brand: 'Elysian Homes',
   ),
 ];
 

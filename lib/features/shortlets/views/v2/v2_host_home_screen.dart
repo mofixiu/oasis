@@ -280,13 +280,28 @@ class _ListingSummary extends StatelessWidget {
     required this.onPhotos,
   });
 
+  /// What the place still needs before guests see it properly, or null once
+  /// it has [ShortLetListing.minimumPhotos] photos of the room and a tour
+  /// video. The backend does not hold a listing back without them, so this
+  /// is the only nudge a host gets.
+  static String? _mediaReminder(ShortLetListing listing) {
+    if (listing.isMediaComplete) return null;
+    final needed = listing.photosStillNeeded;
+    final hasAny = listing.mediaPhotoCount > 0;
+    final photos = needed == 0
+        ? null
+        : '$needed ${hasAny ? 'more ' : ''}${needed == 1 ? 'photo' : 'photos'}';
+    if (photos != null && !listing.hasVideo) {
+      return 'Add $photos and a tour video';
+    }
+    if (photos != null) return 'Add $photos';
+    return 'Add a tour video';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hasPhotos =
-        listing.photoUrls.isNotEmpty || listing.coverPhotoUrl != null;
-    final photoCount = listing.photoUrls.isNotEmpty
-        ? listing.photoUrls.length
-        : (listing.coverPhotoUrl == null ? 0 : 1);
+    final photoCount = listing.mediaPhotoCount;
+    final reminder = _mediaReminder(listing);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -345,29 +360,40 @@ class _ListingSummary extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.photo_library_outlined,
+                reminder == null
+                    ? Icons.photo_library_outlined
+                    : Icons.add_a_photo_outlined,
                 size: 16,
-                color: AppTheme.mutedTextColor(context),
+                color: reminder == null
+                    ? AppTheme.mutedTextColor(context)
+                    : AppTheme.actionColor,
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  !hasPhotos
-                      ? 'Help guests picture the stay'
-                      : '$photoCount ${photoCount == 1 ? 'photo' : 'photos'}',
-                  style: AppTheme.bodyText(context).copyWith(fontSize: 11),
+                  reminder ??
+                      '$photoCount ${photoCount == 1 ? 'photo' : 'photos'}'
+                          ' · tour video',
+                  style:
+                      AppTheme.bodyText(
+                        context,
+                        color: reminder == null ? null : AppTheme.actionColor,
+                      ).copyWith(
+                        fontSize: 11,
+                        fontWeight: reminder == null ? null : FontWeight.w600,
+                      ),
                 ),
               ),
               if (listing.unitId.isNotEmpty)
                 TextButton.icon(
                   onPressed: onPhotos,
                   icon: Icon(
-                    !hasPhotos
+                    reminder != null
                         ? Icons.add_photo_alternate_outlined
                         : Icons.edit_outlined,
                     size: 16,
                   ),
-                  label: Text(!hasPhotos ? 'Add photos' : 'Manage'),
+                  label: Text(reminder != null ? 'Finish' : 'Manage'),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     visualDensity: VisualDensity.compact,

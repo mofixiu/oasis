@@ -11,12 +11,14 @@ class ProfileService {
     : _apiClient = apiClient ?? ApiClient();
 
   /// Sends only the fields given. [dateOfBirth] is `YYYY-MM-DD`; an empty
-  /// string clears an optional field.
+  /// string clears an optional field. [brandName] is hosts only: the
+  /// backend refuses it from guests, and an empty string clears it.
   Future<void> updateProfile({
     String? fullName,
     String? phone,
     String? dateOfBirth,
     String? bio,
+    String? brandName,
   }) => _apiClient.patch(
     ApiConstants.profileEndpoint,
     body: {
@@ -24,6 +26,7 @@ class ProfileService {
       'phone': ?phone,
       'date_of_birth': ?dateOfBirth,
       'bio': ?bio,
+      'brand_name': ?brandName,
     },
   );
 
