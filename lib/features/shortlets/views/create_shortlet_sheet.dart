@@ -145,6 +145,16 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
   String _state = '';
   String _city = '';
   LatLng? _pin;
+
+  /// The state the pin actually landed in, from the picker's reverse lookup,
+  /// canonicalised. Null until that lookup answers, and whenever there is no
+  /// pin. Compared with [_state], because nothing else stops a host typing an
+  /// Abuja address over a pin they dropped in Lagos.
+  String? _pinState;
+
+  /// Bumped to give the location picker a fresh start, which is the only way
+  /// to take a pin off it from outside.
+  int _pickerGeneration = 0;
   int _bedrooms = 1;
   int _bathrooms = 1;
 
@@ -326,6 +336,10 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
           if (_pin == null) {
             return 'Drop a pin on the map so guests can find it.';
           }
+          if (_pinStateMismatch case final pinState?) {
+            return 'Your pin is in $pinState, but the address is in $_state. '
+                'Move the pin, or change the state.';
+          }
           return null;
         }
         if (_unitId == null || _unitId!.isEmpty) {
@@ -494,9 +508,20 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
     final cityStillValid =
         _city.isEmpty ||
         NigeriaLocations.canonicalCity(state: picked, city: _city) != null;
+    // A pin known to be in another state is taken off rather than left
+    // somewhere the map is no longer looking: the host is starting over in
+    // the new state, and a stale pin would only be found at the last step.
+    final clearPin =
+        _pinState != null &&
+        NigeriaLocations.canonicalState(picked) != _pinState;
     setState(() {
       _state = picked;
       _stateFromPin = false;
+      if (clearPin) {
+        _pin = null;
+        _pinState = null;
+        _pickerGeneration++;
+      }
       if (!cityStillValid) {
         _city = '';
         _cityFromPin = false;
@@ -538,7 +563,19 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
         _state = state;
         _stateFromPin = true;
       }
+      _pinState = NigeriaLocations.canonicalState(state);
     });
+  }
+
+  /// The pin's state when it is known to differ from the address's, else
+  /// null. Unknown counts as agreeing: a throttled lookup must not block a
+  /// host whose pin is fine.
+  String? get _pinStateMismatch {
+    final pinState = _pinState;
+    if (_pin == null || pinState == null) return null;
+    final chosen = NigeriaLocations.canonicalState(_state);
+    if (chosen == null || chosen == pinState) return null;
+    return pinState;
   }
 
   Future<void> _addPhotos() async {
@@ -1058,12 +1095,27 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
     ),
     const SizedBox(height: 18),
     PropertyLocationPicker(
+      key: ValueKey(_pickerGeneration),
       city: _city,
       state: _state,
-      onChanged: (pin) => setState(() => _pin = pin),
+      onChanged: (pin) => setState(() {
+        _pin = pin;
+        // Unknown until the picker names the new spot.
+        _pinState = null;
+      }),
       addressResolver: () => _addressController.text.trim(),
       onAddressResolved: _applyResolvedAddress,
     ),
+    if (_pinStateMismatch case final pinState?) ...[
+      const SizedBox(height: 8),
+      _Notice(
+        icon: Icons.wrong_location_outlined,
+        color: AppTheme.warningColor,
+        text:
+            'Your pin is in $pinState, but the address is in $_state. Move '
+            'the pin to the property, or change the state.',
+      ),
+    ],
     const SizedBox(height: 18),
     OasisFieldLabel(
       'Flat or unit',

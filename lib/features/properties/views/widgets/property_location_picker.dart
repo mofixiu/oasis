@@ -269,7 +269,12 @@ class _PropertyLocationPickerState extends State<PropertyLocationPicker> {
   /// complaint. If location permission is already granted we can quietly move
   /// the viewport to the last known fix: no prompt, and no pin is placed, so
   /// the landlord still has to confirm the exact spot.
+  ///
+  /// Skipped once the form names a state: the landlord has said where the
+  /// property is, and a phone in Lagos must not pull the map away from the
+  /// Abuja flat they are listing, where a tap would then drop the pin.
   Future<void> _centreOnDeviceIfAlreadyAllowed() async {
+    if (widget.state.trim().isNotEmpty) return;
     try {
       final permission = await Geolocator.checkPermission();
       final granted =
