@@ -282,6 +282,14 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
 
   String? get _unitId => _isEditing ? widget.existing!.unitId : _unit?.id;
 
+  /// Whether any of the host's units is not let by the night yet.
+  bool _hasUnlistedUnit(LandlordController landlord) {
+    final shortLets = context.read<ShortLetController>();
+    return landlord.propertyUnits.values.any(
+      (units) => units.any((unit) => shortLets.listingForUnit(unit.id) == null),
+    );
+  }
+
   /// The listing this unit already has, when the host has picked one that is
   /// let by the night. Null while editing: editing *is* that listing.
   ShortLetListing? get _duplicateListing {
@@ -1027,7 +1035,11 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
       const SizedBox(height: 22),
       // Only offered once there is something to pick: a new host goes
       // straight to the new-place fields.
-      if (_canAddNewPlace && landlord.properties.isNotEmpty) ...[
+      // Only when there is a unit to pick. In v2 every place is listed the
+      // moment it is added, so an existing unit without a listing only comes
+      // from the rentals app; offering the choice otherwise leads to a list
+      // of units that are all greyed out.
+      if (_canAddNewPlace && _hasUnlistedUnit(landlord)) ...[
         V2SegmentChips(
           labels: const ['A new place', 'One of my units'],
           selected: _newPlace ? 0 : 1,

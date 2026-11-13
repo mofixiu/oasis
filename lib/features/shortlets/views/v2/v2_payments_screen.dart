@@ -19,6 +19,7 @@ import '../../../../core/utils/fade_page_route.dart';
 import '../../../../core/widgets/oasis_animated_value.dart';
 import '../../controllers/shortlet_controller.dart';
 import '../../models/shortlet_models.dart';
+import 'v2_payout_setup_intro.dart';
 import 'v2_stay_widgets.dart';
 
 /// Money, in one place: the vault (saved money a guest pays from, or where a
@@ -47,6 +48,18 @@ class V2PaymentsScreen extends StatefulWidget {
 class _V2PaymentsScreenState extends State<V2PaymentsScreen> {
   /// Kept for the session, so hiding the balance survives switching tabs.
   static bool _hideBalance = false;
+
+  /// "Not now" on the payout setup intro, for the session: asked again on
+  /// the next launch, not on every tab switch.
+  static bool _skippedPayoutSetup = false;
+
+  Future<void> _setUpPayouts() async {
+    await Navigator.push(
+      context,
+      FadePageRoute(page: const PayoutAccountScreen()),
+    );
+    if (mounted) await context.read<PayoutController>().loadPayoutAccount();
+  }
 
   bool get _isHost =>
       context.read<AuthController>().currentRole == UserRole.owner;
@@ -81,6 +94,28 @@ class _V2PaymentsScreenState extends State<V2PaymentsScreen> {
     );
     final shortlets = context.watch<ShortLetController>();
     final vault = context.watch<VaultController>();
+    final payout = context.watch<PayoutController>();
+
+    // A host with nowhere to be paid sees how payouts work first. Only once
+    // the account status has loaded, so a verified host never sees it flash.
+    if (isHost &&
+        payout.hasLoaded &&
+        !payout.isVerified &&
+        !_skippedPayoutSetup) {
+      return V2StatusBar(
+        child: Scaffold(
+          backgroundColor: AppTheme.pageBackground(context),
+          body: SafeArea(
+            bottom: false,
+            child: V2PayoutSetupIntro(
+              showBack: widget.isPushed,
+              onSetUp: _setUpPayouts,
+              onLater: () => setState(() => _skippedPayoutSetup = true),
+            ),
+          ),
+        ),
+      );
+    }
 
     final records = shortlets.bookings.where((booking) {
       if (isHost) {
@@ -137,9 +172,9 @@ class _V2PaymentsScreenState extends State<V2PaymentsScreen> {
                 _QuickActions(
                   isHost: isHost,
                   onHistory: _openLedger,
-                  onShortcut: isHost
-                      ? widget.onManageStays
-                      : widget.onOpenTrips,
+                  // Hosts reach their shortlets from the tab bar; a second
+                  // way in from Payments only crowded the money actions.
+                  onShortcut: isHost ? null : widget.onOpenTrips,
                 ),
                 if (due.isNotEmpty) ...[
                   const SizedBox(height: 22),

@@ -432,6 +432,10 @@ class ShortLetListing {
   /// The unit being let. Kept as an id because the listing endpoints are
   /// indexed by it; [unitNumber] and [propertyName] are the display copy.
   final String unitId;
+
+  /// The property the unit belongs to, for removing the place. Empty when
+  /// the payload did not say.
+  final String propertyId;
   final String unitNumber;
   final String propertyName;
   final String address;
@@ -550,6 +554,7 @@ class ShortLetListing {
   const ShortLetListing({
     required this.id,
     this.unitId = '',
+    this.propertyId = '',
     this.unitNumber = '',
     this.propertyName = '',
     this.address = '',
@@ -598,6 +603,13 @@ class ShortLetListing {
     return ShortLetListing(
       id: json['id']?.toString() ?? '',
       unitId: (unit is Map ? unitMap['id'] : unit)?.toString() ?? '',
+      propertyId:
+          (json['property_id'] ??
+                  property['id'] ??
+                  (unitMap['property'] is Map ? null : unitMap['property']) ??
+                  (json['property'] is Map ? null : json['property']) ??
+                  '')
+              .toString(),
       unitNumber: (json['unit_number'] ?? unitMap['unit_number'] ?? '')
           .toString(),
       // The same snippet gives a listing a top-level `name`. Taken as the

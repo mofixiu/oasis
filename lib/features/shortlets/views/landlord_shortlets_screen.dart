@@ -14,7 +14,9 @@ import '../../../core/widgets/oasis_shimmer.dart';
 import '../../../core/widgets/oasis_state_views.dart';
 import '../../../core/widgets/oasis_toast.dart';
 import '../../messaging/views/widgets/message_action_button.dart';
+import '../../properties/controllers/landlord_controller.dart';
 import '../../properties/models/property_model.dart';
+import '../../properties/views/widgets/remove_property_sheet.dart';
 import '../../properties/views/widgets/unit_media_sheet.dart';
 import '../../reviews/views/widgets/rating_stars.dart';
 import '../controllers/shortlet_controller.dart';
@@ -193,6 +195,55 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
   Future<void> _editPrice(ShortLetListing listing) async {
     final saved = await openEditNightlyPriceSheet(context, listing: listing);
     if (saved && mounted) await _reload();
+  }
+
+  /// Pauses a listing or puts it back on the marketplace. Reversible, and
+  /// the first thing to offer a host who wants a place out of sight.
+  Future<void> _setActive(ShortLetListing listing, bool active) async {
+    final controller = context.read<ShortLetController>();
+    final ok = await controller.setListingActive(listing, active);
+    if (!mounted) return;
+    if (ok) {
+      OasisToast.success(
+        context,
+        active
+            ? '${listing.title} is back on Oasis.'
+            : '${listing.title} is paused. Guests cannot find or book it.',
+      );
+    } else {
+      OasisToast.error(
+        context,
+        controller.errorMessage ?? 'Could not change that. Try again.',
+      );
+    }
+  }
+
+  /// Takes the whole place off Oasis, through the same request, password
+  /// and seven-day grace period as removing a property anywhere else.
+  Future<void> _removePlace(ShortLetListing listing) async {
+    final landlord = context.read<LandlordController>();
+    if (landlord.properties.isEmpty) await landlord.loadLandlordProperties();
+    if (!mounted) return;
+    final property =
+        landlord.properties
+            .where((p) => p.id == listing.propertyId)
+            .firstOrNull ??
+        // Older payloads do not name the property; its name is the listing's.
+        landlord.properties
+            .where((p) => p.name == listing.propertyName)
+            .firstOrNull;
+    if (property == null) {
+      OasisToast.error(
+        context,
+        'Could not find this place to remove. Pull to refresh and try again.',
+      );
+      return;
+    }
+    final removed = await openRemovePropertySheet(context, property: property);
+    if (removed && mounted) {
+      await _reload();
+      await landlord.loadLandlordProperties();
+    }
   }
 
   /// The listing's photos, which belong to its unit. A new place goes live
@@ -754,6 +805,10 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
                 listing: listings[index],
                 onTap: () => _createListing(existing: listings[index]),
                 onEditPrice: () => _editPrice(listings[index]),
+                onSetActive: (active) => _setActive(listings[index], active),
+                onRemove: widget.isV2
+                    ? () => _removePlace(listings[index])
+                    : null,
                 // v1 hosts manage photos from the property screen instead.
                 onPhotos: widget.isV2 && listings[index].unitId.isNotEmpty
                     ? () => _openPhotos(listings[index])
@@ -766,21 +821,20 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
   }
 }
 
-/// The pencil beside a listing's nightly rate.
+/// The pencil on a listing, which opens the full editor.
 ///
-/// Its own widget so the tap does not fall through to the row's own
-/// [OasisPressable], which opens the nine-field editor: two different
-/// destinations a millimetre apart, and getting the wrong one is a host
-/// scrolling a form they did not ask for.
-class _PriceEditButton extends StatelessWidget {
+/// It used to open a price-only sheet, and hosts read that as the only thing
+/// they could change: the full editor hid behind a tap on the row itself. The
+/// price shortcut now lives in the row's menu.
+class _EditButton extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const _PriceEditButton({required this.onPressed});
+  const _EditButton({required this.onPressed});
 
   @override
   Widget build(BuildContext context) => IconButton(
     onPressed: onPressed,
-    tooltip: 'Change the price',
+    tooltip: 'Edit listing',
     visualDensity: VisualDensity.compact,
     padding: EdgeInsets.zero,
     constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -792,8 +846,86 @@ class _PriceEditButton extends StatelessWidget {
   );
 }
 
+enum _ListingAction { edit, price, pause, resume, remove }
+
+/// Everything else a host can do to a listing, behind one "more" button.
+class _ListingMenu extends StatelessWidget {
+  final bool isActive;
+  final bool canRemove;
+  final ValueChanged<_ListingAction> onSelected;
+
+  const _ListingMenu({
+    required this.isActive,
+    required this.canRemove,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    PopupMenuItem<_ListingAction> item(
+      _ListingAction value,
+      IconData icon,
+      String label, {
+      Color? color,
+    }) => PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 19,
+            color: color ?? AppTheme.primaryTextColor(context),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: AppTheme.bodyText(
+              context,
+              color: color ?? AppTheme.primaryTextColor(context),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return PopupMenuButton<_ListingAction>(
+      tooltip: 'More',
+      onSelected: onSelected,
+      color: AppTheme.elevatedSurfaceColor(context),
+      shape: RoundedRectangleBorder(borderRadius: AppTheme.cornerMd),
+      icon: Icon(
+        Icons.more_horiz_rounded,
+        color: AppTheme.secondaryTextColor(context),
+      ),
+      itemBuilder: (_) => [
+        item(_ListingAction.edit, Icons.edit_outlined, 'Edit listing'),
+        item(_ListingAction.price, Icons.sell_outlined, 'Change price only'),
+        if (isActive)
+          item(
+            _ListingAction.pause,
+            Icons.pause_circle_outline_rounded,
+            'Pause bookings',
+          )
+        else
+          item(
+            _ListingAction.resume,
+            Icons.play_circle_outline_rounded,
+            'Resume bookings',
+          ),
+        if (canRemove)
+          item(
+            _ListingAction.remove,
+            Icons.delete_outline_rounded,
+            'Remove place',
+            color: AppTheme.disputeColor,
+          ),
+      ],
+    );
+  }
+}
+
 /// A listing's photos, from its row. Its own button for the same reason as
-/// [_PriceEditButton]: the row itself opens the full editor.
+/// [_EditButton]: the row itself opens the full editor.
 ///
 /// Louder with none: the place is already visible to guests without them.
 class _PhotosButton extends StatelessWidget {
@@ -834,9 +966,14 @@ class _ListingRow extends StatelessWidget {
   final ShortLetListing listing;
   final VoidCallback onTap;
 
-  /// Opens the price-only sheet. Separate from [onTap], which opens the full
-  /// listing editor.
+  /// Opens the price-only sheet, from the row's menu.
   final VoidCallback onEditPrice;
+
+  /// Pauses (false) or resumes (true) bookings.
+  final ValueChanged<bool> onSetActive;
+
+  /// Starts removing the place. Null hides the action.
+  final VoidCallback? onRemove;
 
   /// Opens the unit's photos. Null hides the action.
   final VoidCallback? onPhotos;
@@ -845,6 +982,8 @@ class _ListingRow extends StatelessWidget {
     required this.listing,
     required this.onTap,
     required this.onEditPrice,
+    required this.onSetActive,
+    this.onRemove,
     this.onPhotos,
   });
 
@@ -914,10 +1053,18 @@ class _ListingRow extends StatelessWidget {
                   ),
                 ),
               ),
-              // On the price rather than in a menu. Repricing is the most
-              // frequent thing a host does to a live listing and the row is
-              // where they are already looking at the number.
-              _PriceEditButton(onPressed: onEditPrice),
+              _EditButton(onPressed: onTap),
+              _ListingMenu(
+                isActive: listing.isActive,
+                canRemove: onRemove != null,
+                onSelected: (action) => switch (action) {
+                  _ListingAction.edit => onTap(),
+                  _ListingAction.price => onEditPrice(),
+                  _ListingAction.pause => onSetActive(false),
+                  _ListingAction.resume => onSetActive(true),
+                  _ListingAction.remove => onRemove?.call(),
+                },
+              ),
             ],
           ),
           if (listing.hasCautionFee) ...[

@@ -391,6 +391,31 @@ class ShortLetController extends ChangeNotifier
     return listing;
   }
 
+  /// Takes a listing off the marketplace, or puts it back, and nothing else.
+  ///
+  /// Everything else is re-sent as it stands, because the save replaces the
+  /// listing: a field left out is a rule deleted or a calendar wiped.
+  Future<bool> setListingActive(ShortLetListing listing, bool active) async {
+    final saved = await saveListing(
+      unitId: listing.unitId,
+      listingId: listing.id,
+      nightlyPrice: listing.nightlyPrice,
+      minimumNights: listing.minimumNights,
+      maximumGuests: listing.maximumGuests,
+      description: listing.description,
+      cautionFee: listing.cautionFee,
+      cancellationPolicy: listing.cancellationPolicy,
+      availableFrom: listing.availableFrom,
+      availableTo: listing.availableTo,
+      blockedDates: listing.blockedDates,
+      houseRules: listing.houseRules,
+      checkInNotes: listing.checkInNotes,
+      isActive: active,
+      details: listing.details,
+    );
+    return saved != null;
+  }
+
   /// Creates a new place and its listing in one go, for a host with nothing
   /// to pick from yet. Null on failure, with the reason in [errorMessage].
   Future<HostListingResult?> createHostListing({

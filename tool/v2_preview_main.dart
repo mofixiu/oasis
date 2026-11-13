@@ -235,8 +235,51 @@ Future<http.Response> _respond(http.Request request) async {
       );
     }
   }
+  // Removing a place: request, password confirm, cancel. Any password works.
+  if (path.contains('/removal-request/')) {
+    final json = {'content-type': 'application/json'};
+    if (request.method == 'DELETE') return http.Response('', 204);
+    if (path.endsWith('/confirm/')) {
+      return http.Response(
+        jsonEncode({
+          'id': 'rr-1',
+          'status': 'CONFIRMED',
+          'archive_at': DateTime.now()
+              .add(const Duration(days: 7))
+              .toUtc()
+              .toIso8601String(),
+        }),
+        200,
+        headers: json,
+      );
+    }
+    return http.Response(
+      jsonEncode({
+        'id': 'rr-1',
+        'status': 'PENDING_CONFIRMATION',
+        'confirmation_required': true,
+      }),
+      201,
+      headers: json,
+    );
+  }
   Object body = const [];
-  if (path.endsWith('/tenant/saved-short-lets/')) {
+  if (path.endsWith('/properties/')) {
+    // The host's places, one per listing, so removal can find them.
+    body = [
+      for (final listing in _listings)
+        {
+          'id': listing['property_id'],
+          'name': listing['property_name'],
+          'address': listing['address'],
+          'city': listing['city'],
+          'state': listing['state'],
+          'verification_status': 'VERIFIED',
+          'unit_count': 1,
+          'created_at': '2026-09-01T10:00:00Z',
+        },
+    ];
+  } else if (path.endsWith('/tenant/saved-short-lets/')) {
     body = [
       for (final listing in _listings.take(2))
         {...listing, 'is_saved': true, 'saved_at': _at(60 * 24)},
@@ -432,6 +475,7 @@ Map<String, Object?> _listing({
   bool hasVideo = true,
 }) => {
   'id': id,
+  'property_id': 'p-$id',
   'unit': {
     'id': 'u-$id',
     'photo_count': photos.length,

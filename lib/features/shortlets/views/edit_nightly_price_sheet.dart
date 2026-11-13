@@ -127,6 +127,7 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
       houseRules: listing.houseRules,
       checkInNotes: listing.checkInNotes,
       isActive: listing.isActive,
+      details: listing.details,
     );
     if (!mounted) return;
 

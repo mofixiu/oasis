@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/app_variant.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/oasis_sheet.dart';
 import '../../../../core/widgets/oasis_toast.dart';
@@ -50,6 +51,9 @@ Future<bool> openRemovePropertySheet(
   );
   return removed ?? false;
 }
+
+/// Who stops seeing the place: guests in the short-stay app.
+String get _audience => isOasisV2 ? 'guests' : 'tenants';
 
 enum _Stage { reason, confirm }
 
@@ -131,15 +135,14 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
     if (confirmed == null) {
       OasisToast.error(
         navigator.context,
-        controller.errorMessage ??
-            'That password was not accepted. Try again.',
+        controller.errorMessage ?? 'That password was not accepted. Try again.',
       );
       return;
     }
     navigator.pop(true);
     OasisToast.success(
       navigator.context,
-      '${widget.property.name} is hidden from tenants. You can undo this '
+      '${widget.property.name} is hidden from $_audience. You can undo this '
       'until it is archived.',
     );
   }
@@ -161,8 +164,8 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
       icon: Icons.domain_disabled_outlined,
       title: 'Remove ${widget.property.name}?',
       subtitle:
-          'It stops being visible to tenants straight away. Nothing is '
-          'deleted — your past agreements and payments keep working, and you '
+          'It stops being visible to $_audience straight away. Nothing is '
+          'deleted — your past ${isOasisV2 ? 'bookings' : 'agreements'} and payments keep working, and you '
           'have seven days to undo it.',
       accent: AppTheme.logoutColor,
       footer: OasisSheetButton(
@@ -204,7 +207,7 @@ class _RemovePropertySheetState extends State<_RemovePropertySheet> {
       title: 'Confirm it is you',
       subtitle:
           'Re-enter your account password. This is the last step — after it, '
-          '${widget.property.name} is hidden from tenants and archives in '
+          '${widget.property.name} is hidden from $_audience and archives in '
           'seven days unless you undo it.',
       accent: AppTheme.logoutColor,
       footer: OasisSheetButton(
@@ -253,9 +256,7 @@ class _BlockedNotice extends StatelessWidget {
     decoration: BoxDecoration(
       color: AppTheme.disputeSurface(context),
       borderRadius: AppTheme.cornerMd,
-      border: Border.all(
-        color: AppTheme.disputeColor.withValues(alpha: 0.35),
-      ),
+      border: Border.all(color: AppTheme.disputeColor.withValues(alpha: 0.35)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,16 +310,13 @@ class _RuleList extends StatelessWidget {
   static const _rules = <(IconData, String)>[
     (
       Icons.visibility_off_outlined,
-      'Tenants stop seeing it immediately. You keep full access.',
+      '${isOasisV2 ? 'Guests' : 'Tenants'} stop seeing it immediately. You keep full access.',
     ),
     (
       Icons.history_rounded,
-      'Past agreements, payments and receipts are untouched.',
+      'Past ${isOasisV2 ? 'bookings' : 'agreements'}, payments and receipts are untouched.',
     ),
-    (
-      Icons.undo_rounded,
-      'You can undo it any time in the next seven days.',
-    ),
+    (Icons.undo_rounded, 'You can undo it any time in the next seven days.'),
   ];
 
   @override
@@ -333,9 +331,7 @@ class _RuleList extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: AppTheme.mutedTextColor(context)),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(text, style: AppTheme.bodyText(context)),
-              ),
+              Expanded(child: Text(text, style: AppTheme.bodyText(context))),
             ],
           ),
         ),
