@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import {
-  Landlords,
-  ProductPromises,
-  MoneyAndStays,
-  CraftAndTrust,
+  HowItWorks,
+  ForHosts,
+  Safety,
+  Occasions,
   FAQ,
 } from "./MarketingSections";
 import { track } from "./analytics";
@@ -14,73 +14,83 @@ import {
   ShieldCheck,
   MapPin,
   BedDouble,
-  Bath,
+  Users,
   Search,
   SlidersHorizontal,
   Heart,
-  Sun,
-  Moon,
-  FileCheck2,
-  LockKeyhole,
   ChevronRight,
   Bell,
   Wifi,
   BatteryFull,
   Signal,
+  Wallet,
   KeyRound,
+  CalendarCheck,
+  Smartphone,
 } from "lucide-react";
 
-// Exact MaterialIcons codepoints from Flutter's CustomBottomNavbar.
+// Exact MaterialIcons codepoints from the guest bottom bar in
+// lib/core/widgets/v2_main_scaffold.dart.
 const appNavigationIcons = {
-  dashboard: "\uf0d7", // Icons.grid_view_outlined
-  discover: "\uf037", // Icons.explore_outlined
-  stays: "\uf104", // Icons.holiday_village_outlined
-  payments: "\uf266", // Icons.payments_outlined
+  home: "", // Icons.home_outlined
+  discover: "", // Icons.explore_outlined
+  trips: "", // Icons.luggage_outlined
+  inbox: "", // Icons.chat_bubble_outline_rounded
+  payments: "", // Icons.payments_outlined
 };
-
-function AppNavigationIcon({
-  name,
-}: {
-  name: keyof typeof appNavigationIcons;
-}) {
-  return (
-    <i className="app-nav-icon" aria-hidden="true">
-      {appNavigationIcons[name]}
-    </i>
-  );
-}
+const appNavigation: [keyof typeof appNavigationIcons, string][] = [
+  ["home", "Home"],
+  ["discover", "Discover"],
+  ["trips", "Trips"],
+  ["inbox", "Inbox"],
+  ["payments", "Payments"],
+];
 
 function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <span className={`logo ${className}`} role="img" aria-label="Oasis">
+    <span className={`logo ${className}`}>
       <img
-        className="logo-light"
         src="/images/oasis-wordmark.webp"
         width={382}
         height={118}
-        alt=""
-      />
-      <img
-        className="logo-dark"
-        src="/images/oasis-wordmark-dark.webp"
-        width={382}
-        height={118}
-        alt=""
+        alt="Oasis"
       />
     </span>
   );
 }
 function Logo() {
   return (
-    <a href="#" aria-label="Oasis home">
+    <a className="logo-link" href="/" aria-label="Oasis home">
       <Wordmark />
     </a>
   );
 }
+export function StoreBadges() {
+  return (
+    <ul className="store-badges" aria-label="App availability">
+      <li>
+        <Smartphone size={18} aria-hidden="true" />
+        <span>
+          <small>Coming soon to the</small>App Store
+        </span>
+      </li>
+      <li>
+        <Smartphone size={18} aria-hidden="true" />
+        <span>
+          <small>Coming soon to</small>Google Play
+        </span>
+      </li>
+    </ul>
+  );
+}
 function AppPreview() {
   return (
-    <figure className="app-figure" aria-label="Oasis Discover preview">
-      <div className="phone">
+    <figure
+      className="app-figure"
+      role="img"
+      aria-label="Example Oasis app screen: a two-bedroom shortlet in Lekki Phase 1, Lagos, from a verified host at ₦85,000 a night."
+    >
+      <div className="phone" aria-hidden="true">
         <div className="phone-status">
           <span>9:41</span>
           <span className="phone-island" />
@@ -92,22 +102,30 @@ function AppPreview() {
         </div>
         <div className="phone-content">
           <div className="app-top">
-            <Wordmark className="preview-logo" />
+            <span className="logo preview-logo">
+              <img
+                src="/images/oasis-wordmark.webp"
+                width={382}
+                height={118}
+                alt=""
+              />
+            </span>
             <Bell size={19} />
           </div>
-          <div className="app-greeting">A place to call yours.</div>
-          <div className="app-screen-title">Find your next home</div>
+          <div className="app-greeting">Good evening</div>
+          <div className="app-screen-title">Where to next?</div>
           <div className="app-search">
             <Search size={16} />
-            <span>Lekki, Lagos</span>
+            <span>Lekki, Lagos · 2 guests</span>
             <SlidersHorizontal size={17} />
           </div>
           <div className="app-chips">
-            <span className="selected">For rent</span>
-            <span>Short stays</span>
+            <span className="selected">Staycation</span>
+            <span>Baecation</span>
+            <span>Work trip</span>
           </div>
           <div className="app-section-label">
-            <b>Homes for you</b>
+            <b>Shortlets near you</b>
             <span>View all</span>
           </div>
           <div className="listing">
@@ -117,33 +135,31 @@ function AppPreview() {
                 width={560}
                 height={560}
                 fetchPriority="high"
-                alt="Bright living room with large windows and a blue sofa"
+                alt=""
               />
               <span className="verified-label">
-                <ShieldCheck size={12} /> Verified landlord
+                <ShieldCheck size={12} /> Verified host
               </span>
               <span className="listing-heart">
                 <Heart size={15} />
               </span>
             </div>
             <div className="listing-info">
-              <div className="app-listing-title">
-                A little more room to live.
-              </div>
+              <div className="app-listing-title">Bright two-bed apartment</div>
               <span className="location">
                 <MapPin size={12} /> Lekki Phase 1, Lagos
               </span>
               <div className="amenities">
                 <span>
-                  <BedDouble size={14} /> 2 beds
+                  <BedDouble size={14} /> 2 bedrooms
                 </span>
                 <span>
-                  <Bath size={14} /> 2 baths
+                  <Users size={14} /> 4 guests
                 </span>
               </div>
               <div className="listing-bottom">
                 <strong>
-                  ₦2,500,000<span> / year</span>
+                  ₦85,000<span> / night</span>
                 </strong>
                 <ArrowUpRight size={18} />
               </div>
@@ -159,29 +175,19 @@ function AppPreview() {
               decoding="async"
             />
             <div>
-              <b>Your next chapter, here.</b>
-              <span>Explore verified homes</span>
+              <b>Weekend getaway</b>
+              <span>Request sent · waiting for host</span>
             </div>
             <ChevronRight size={15} />
           </div>
         </div>
         <div className="app-bottom-nav">
-          <span>
-            <AppNavigationIcon name="dashboard" />
-            Dashboard
-          </span>
-          <span className="active">
-            <AppNavigationIcon name="discover" />
-            Discover
-          </span>
-          <span>
-            <AppNavigationIcon name="stays" />
-            Stays
-          </span>
-          <span>
-            <AppNavigationIcon name="payments" />
-            Payments
-          </span>
+          {appNavigation.map(([icon, label]) => (
+            <span key={icon} className={icon === "discover" ? "active" : ""}>
+              <i className="app-nav-icon">{appNavigationIcons[icon]}</i>
+              {label}
+            </span>
+          ))}
         </div>
         <div className="phone-home" />
       </div>
@@ -193,86 +199,60 @@ function Hero() {
     <>
       <section className="hero container">
         <div className="hero-copy">
-          <span className="eyebrow hero-eyebrow">
-            <span className="live-dot" /> A better way to rent in Nigeria
-          </span>
+          <span className="label-lime">Shortlets across Nigeria</span>
           <h1>
             Feel at home.
             <br />
-            <span>
-              Before you
-              <br className="desktop-break" /> move in.
-            </span>
+            <span>Wherever you stay.</span>
           </h1>
           <p>
-            Verified homes. Agreements signed in the app. Rent held in escrow
-            until the keys change hands.
+            Book verified shortlets by the night. Every host and guest checks
+            their ID, and your payment is held by Oasis until after your stay.
           </p>
           <div className="hero-ctas">
             <a
               className="button"
-              href="#landlords"
-              onClick={() => track("Landlord interest", { source: "hero" })}
+              href="#waitlist"
+              onClick={() => track("Guest interest", { source: "hero" })}
             >
-              Bring your property to Oasis <ArrowUpRight size={19} />
+              Be first to book <ArrowUpRight size={19} aria-hidden="true" />
             </a>
             <a
-              className="text-link"
-              href="#product"
-              onClick={() => track("Tenant interest", { source: "hero" })}
+              className="button button-secondary"
+              href="#hosts"
+              onClick={() => track("Host interest", { source: "hero" })}
             >
-              Looking for a home? <ArrowRight size={16} />
+              List your place <ArrowRight size={18} aria-hidden="true" />
             </a>
           </div>
-          <div className="hero-note">
-            <ShieldCheck size={17} />
-            <span>Real people. Verified from day one.</span>
-          </div>
+          <StoreBadges />
         </div>
         <div className="hero-visual">
-          <div className="visual-heading">
-            <span>YOUR NEXT CHAPTER</span>
-            <span>01 / DISCOVER</span>
-          </div>
           <AppPreview />
         </div>
       </section>
-      <div className="promise-strip container">
-        <span>
-          <ShieldCheck />
-          Verified people
-        </span>
-        <span>
-          <FileCheck2 />
-          Agreements in-app
-        </span>
-        <span>
-          <LockKeyhole />
-          Rent in escrow
-        </span>
-        <span>
-          <KeyRound />
-          Peace of mind
-        </span>
-      </div>
+      <ul className="promise-strip container" aria-label="The Oasis promise">
+        <li>
+          <ShieldCheck aria-hidden="true" />
+          ID-verified hosts &amp; guests
+        </li>
+        <li>
+          <Wallet aria-hidden="true" />
+          Paid after your stay
+        </li>
+        <li>
+          <KeyRound aria-hidden="true" />
+          Refundable caution fee
+        </li>
+        <li>
+          <CalendarCheck aria-hidden="true" />
+          Clear cancellation terms
+        </li>
+      </ul>
     </>
   );
 }
 function App() {
-  const [theme, setTheme] = useState("light");
-  useEffect(() => {
-    setTheme(
-      document.documentElement.dataset.theme === "dark" ? "dark" : "light",
-    );
-  }, []);
-  function toggleTheme() {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem("oasis-theme", next);
-    } catch {}
-  }
   return (
     <>
       <a className="skip-link" href="#main">
@@ -281,30 +261,27 @@ function App() {
       <header className="header">
         <div className="container nav">
           <Logo />
-          <div className="nav-actions">
-            <button
-              className="icon-button theme-toggle"
-              onClick={toggleTheme}
-              aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-            >
-              {theme === "light" ? <Moon size={19} /> : <Sun size={19} />}
-            </button>
-            <a
-              className="button button-small"
-              href="#waitlist"
-              onClick={() => track("Waitlist interest", { source: "header" })}
-            >
-              Join the waitlist <ArrowUpRight size={16} />
-            </a>
-          </div>
+          <nav className="nav-links" aria-label="Main">
+            <a href="#how-it-works">How it works</a>
+            <a href="#hosts">For hosts</a>
+            <a href="#safety">Safety</a>
+            <a href="#faq">FAQ</a>
+          </nav>
+          <a
+            className="button button-small"
+            href="#waitlist"
+            onClick={() => track("Waitlist interest", { source: "header" })}
+          >
+            Join the waitlist <ArrowUpRight size={16} aria-hidden="true" />
+          </a>
         </div>
       </header>
       <main id="main">
         <Hero />
-        <Landlords />
-        <ProductPromises />
-        <MoneyAndStays />
-        <CraftAndTrust />
+        <HowItWorks />
+        <ForHosts />
+        <Safety />
+        <Occasions />
         <FAQ />
         <Waitlist />
       </main>
@@ -314,24 +291,25 @@ function App() {
 }
 function Waitlist() {
   return (
-    <section className="waitlist section container" id="waitlist">
-      <span className="eyebrow">Make yourself at home</span>
-      <h2>
-        A better way to rent
-        <br />
-        is on its way.
-      </h2>
-      <p>Be first to hear when Oasis is ready for you.</p>
-      <WaitlistForm />
-      <noscript>
+    <section
+      className="waitlist section"
+      id="waitlist"
+      aria-labelledby="waitlist-title"
+    >
+      <div className="container">
+        <span className="label-lime">Coming soon</span>
+        <h2 id="waitlist-title">
+          Better short stays
+          <br />
+          are on their way.
+        </h2>
         <p>
-          JavaScript is needed to submit the waitlist form when registration
-          opens.
+          Oasis isn’t in the App Store or Google Play yet. Be first to hear when
+          it opens for guests and hosts.
         </p>
-      </noscript>
-      <span className="waitlist-note">
-        Built for Nigeria. Made for your peace of mind.
-      </span>
+        <WaitlistForm />
+        <StoreBadges />
+      </div>
     </section>
   );
 }
@@ -341,8 +319,15 @@ function WaitlistForm() {
     "idle" | "loading" | "success" | "error"
   >("idle");
   const endpoint = import.meta.env.VITE_WAITLIST_ENDPOINT;
+  const privacyUrl = import.meta.env.VITE_PRIVACY_URL;
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
+  if (!endpoint)
+    return (
+      <p className="waitlist-closed" role="status">
+        Sign-ups open soon. Check back here shortly.
+      </p>
+    );
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!endpoint || status === "loading") return;
@@ -364,6 +349,7 @@ function WaitlistForm() {
       track("Waitlist error");
     }
   }
+  const locked = !ready || status === "loading" || status === "success";
   return (
     <div className="waitlist-form-wrapper">
       <form
@@ -383,38 +369,43 @@ function WaitlistForm() {
           maxLength={254}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          disabled={
-            !ready || !endpoint || status === "loading" || status === "success"
-          }
+          disabled={locked}
         />
-        <button
-          className="button"
-          type="submit"
-          disabled={
-            !ready || !endpoint || status === "loading" || status === "success"
-          }
-        >
+        <button className="button" type="submit" disabled={locked}>
           {status === "loading"
             ? "Joining…"
             : status === "success"
               ? "You’re on the list"
               : "Join the waitlist"}
           {status === "success" ? (
-            <Check size={18} />
+            <Check size={18} aria-hidden="true" />
           ) : (
-            <ArrowUpRight size={18} />
+            <ArrowUpRight size={18} aria-hidden="true" />
           )}
         </button>
       </form>
       <p className={`form-status ${status}`} aria-live="polite">
-        {!endpoint
-          ? "Waitlist registration is opening soon."
-          : status === "success"
-            ? "You’re on the list. We’ll email you when Oasis is ready."
-            : status === "error"
-              ? "We couldn’t save your email. Please try again."
-              : "By joining, you agree to receive Oasis launch updates."}
+        {status === "success" ? (
+          "You’re on the list. We’ll email you when Oasis is ready."
+        ) : status === "error" ? (
+          "We couldn’t save your email. Please try again."
+        ) : (
+          <>
+            By joining, you agree to receive Oasis launch updates.
+            {privacyUrl ? (
+              <>
+                {" "}
+                Read our <a href={privacyUrl}>Privacy policy</a>.
+              </>
+            ) : null}
+          </>
+        )}
       </p>
+      <noscript>
+        <p className="form-status">
+          JavaScript is needed to join the waitlist.
+        </p>
+      </noscript>
     </div>
   );
 }
@@ -425,42 +416,36 @@ function Footer() {
     ["Contact", import.meta.env.VITE_CONTACT_URL],
   ];
   return (
-    <footer className="footer container">
-      <div>
-        <Logo />
-        <span>Home starts with trust.</span>
-      </div>
-      <nav className="footer-sections" aria-label="Explore Oasis">
-        <a href="#landlords">For landlords</a>
-        <a href="#product">For tenants</a>
-        <a href="#money-and-stays">Stays & money</a>
-        <a href="#how-we-build">How we build</a>
-        <a href="#trust">Trust</a>
-        <a href="#faq">FAQs & fees</a>
-      </nav>
-      <div className="footer-bottom">
-        <span>© {new Date().getFullYear()} Oasis</span>
-        <nav aria-label="Footer">
-          {links.map(([label, url]) =>
-            url ? (
-              <a key={label} href={url}>
-                {label}
-              </a>
-            ) : (
-              <span
-                key={label}
-                title={`${label} information will be available before launch`}
-              >
-                {label}{" "}
-                <span className="sr-only">(available before launch)</span>
-              </span>
-            ),
-          )}
+    <footer className="footer">
+      <div className="container">
+        <div className="footer-top">
+          <Logo />
+          <span>Feel at home. Wherever you stay.</span>
+        </div>
+        <nav className="footer-sections" aria-label="Explore Oasis">
+          <a href="#guests">For guests</a>
+          <a href="#hosts">For hosts</a>
+          <a href="#safety">Safety</a>
+          <a href="#faq">FAQ</a>
         </nav>
-        <span>
-          Made for life in Nigeria{" "}
-          <span className="nigeria-mark" aria-hidden="true" />
-        </span>
+        <div className="footer-bottom">
+          <span>© {new Date().getFullYear()} Oasis</span>
+          <nav aria-label="Legal and contact">
+            {links.map(([label, url]) =>
+              url ? (
+                <a key={label} href={url}>
+                  {label}
+                </a>
+              ) : (
+                <span key={label}>
+                  {label}{" "}
+                  <span className="sr-only">(available before launch)</span>
+                </span>
+              ),
+            )}
+          </nav>
+          <span>Made for life in Nigeria</span>
+        </div>
       </div>
     </footer>
   );

@@ -8,148 +8,105 @@ big screenshots, short sentences.
 
 ## 1. What Oasis is
 
-Oasis is a Nigerian prop-tech app for **rentals without fraud**. Three roles share
-one app:
+Oasis is a Nigerian **shortlet** app. Guests book verified short stays by the night;
+hosts list their places. (The old yearly-rentals product with landlords, tenants,
+agreements and rent is switched off. Do not mention it.)
 
 | Role | What they do in Oasis |
 |---|---|
-| **Landlord (owner)** | Lists verified properties and units, reviews applications, signs tenancies, collects rent, runs short lets, gets paid out to a bank account |
-| **Tenant** | Browses the marketplace, applies for a unit, signs the agreement in-app, pays rent into escrow, books short stays, finds artisans |
-| **Artisan** | One screen: a verified trade listing with a phone number, so landlords and tenants can find and call them |
+| **Guest** | Searches shortlets, requests dates, pays Oasis once the host approves, checks in and out, reviews the stay |
+| **Host** | Lists a place step by step, approves every request, hosts the stay, gets paid into their Oasis vault, withdraws to a bank |
 
-Nobody transacts before their identity is verified. That is the product's whole premise,
+Nobody books or hosts before their identity is verified. That is the product's premise,
 and the site should say it early.
 
-**One-line positioning:** *Verified homes, agreements signed in the app, rent held in
-escrow until the keys change hands.*
+**Wording:** "shortlets" for the product (not "stays" as a noun), "guest" and "host"
+(never tenant or landlord). Never write "escrow" — it is a regulated term. Say the money
+is "held by Oasis until…".
+
+**One-line positioning:** *Feel at home. Wherever you stay.* Verified shortlets across
+Nigeria, paid for through Oasis and released to the host after the stay.
 
 ---
 
-## 2. The four promises (use these as the site's spine)
+## 2. The four promises (the site's promise strip)
 
-These are lifted verbatim from the app's own onboarding, so the site and the product say
-the same thing:
-
-| Eyebrow | Headline | Body |
-|---|---|---|
-| MARKETPLACE | **Homes you can trust** | Browse listings with real photos, real prices and a landlord who has been checked. Apply in a few taps. |
-| AGREEMENTS | **Sign the lease right here** | Tenancy agreements are drafted, reviewed and signed inside Oasis. No printing, no courier, no lost copies. |
-| ESCROW | **Rent that stays protected** | Your payment sits in escrow and is only released when the keys change hands. Payouts reach the landlord automatically. |
-| VERIFIED | **Everyone here is verified** | Landlords and tenants both pass identity checks, and every document you sign is filed away in your vault. |
+| Promise | What it means |
+|---|---|
+| **ID-verified hosts & guests** | Everyone verifies with their NIN and a selfie before booking or hosting. Oasis never stores the raw NIN. |
+| **Paid after your stay** | The guest pays Oasis, not the host. The host's payout lands in their Oasis vault 24 hours after checkout, unless the guest reports a problem first. |
+| **Refundable caution fee** | Optional, set by the host. Returned after checkout unless the host reports damage within a short inspection window. |
+| **Clear cancellation terms** | Each host picks one of four policies — Flexible, Moderate, Strict, Non-refundable — shown to guests before they request. |
 
 ---
 
 ## 3. Product surface (what the site may truthfully claim)
 
 **Identity & trust**
-- NIN + selfie verification through an identity provider. The raw NIN is never stored —
-  only a tokenised fingerprint. Say this on the site; it is a real differentiator.
-- Product APIs stay locked until verification reaches VERIFIED.
-- Two-sided reviews, each tied to a real booking, tenancy or job, so they cannot be bought.
+- NIN + selfie verification for every guest and host before booking or hosting. The raw
+  NIN is never stored.
+- A listing's map pin is checked against the address the host gives.
+- Reviews only come from real, completed stays.
 
-**Renting (yearly)**
-- Marketplace of properties with available units; search by area, filter, or "near me"
-  distance sorting.
-- Apply to a unit in the app; the landlord approves or declines from an applications inbox.
-- Tenancy agreement drafted, read and signed by both parties in-app.
-- A signed tenancy sits at *awaiting first rent* until the money lands, with a
-  backend-set deadline shown to the tenant.
+**Guests**
+- Search by location, dates and number of guests; filter by price, bedrooms, type of
+  place and amenities.
+- Request dates → host approves → guest pays → check in → check out.
+- The cancellation policy is shown before the guest requests.
+
+**Hosts**
+- A step-by-step listing flow: the place and its map pin, type of place, amenities, what
+  it is best for, at least 3 photos and a required tour video, nightly price, house
+  rules, check-in and check-out times.
+- "Best for" options: staycation, birthdays, baecation, parties, weekend getaway, work
+  trip, family time, friends' trip, photoshoots, weddings & owambe, holidays, long stays,
+  airport stopover.
+- Hosts approve every request, and can pause or remove a place.
 
 **Money**
-- Rent paid into **escrow**, released on a schedule with a visible countdown.
-- **Vault**: an in-app wallet with a running-balance ledger, PIN, top-ups and withdrawals.
-- **Payouts**: landlords resolve and save a Nigerian bank account; money reaches it
-  automatically.
-- Receipts for every payment.
+- Guests pay Oasis. Host payouts land in the host's Oasis **vault** 24 hours after
+  checkout unless the guest reports a problem first; hosts withdraw to their bank with a
+  vault PIN.
+- Optional refundable caution fee, returned after checkout unless the host reports damage
+  within a short inspection window.
+- **Fees are not final.** Do not state any fee amounts; say fees will be shown before you
+  pay.
 
-**Short lets (nightly)**
-- A second business on the same units: nightly listings, booking requests, a 24-hour
-  payment window after approval, check-in / check-out, caution-fee claims and disputes,
-  host payout held until check-in.
-
-**Fix (artisan directory)**
-- Find a verified electrician, plumber, carpenter and so on, and call them. Landlords can
-  vouch for artisans, whose recommendations surface per unit for their tenants.
-- Oasis does **not** broker or take payment for repairs. Do not imply it does.
-
-**Communication**
-- Threaded messaging hung off a real relationship (an application or a tenancy) — no cold DMs.
-- In-app notifications and landlord broadcasts, delivered live over a WebSocket.
-
-**Property lifecycle**
-- Batch unit creation, occupancy states (available / reserved / occupied), and a
-  seven-day cooling-off **removal request** rather than a delete — nothing is ever hard
-  deleted, so old agreements and receipts keep resolving.
+**Status**
+- The app is not in the App Store or Google Play yet. There are no user numbers,
+  testimonials, ratings or press. Do not invent any.
 
 ---
 
 ## 4. Colour scheme
 
-The app's palette is **warm and earthy**, deliberately not the blue-and-white default
-every fintech ships with. Use it for the website too.
-
-### Core palette
+Light only. The earlier terracotta palette and warm-brown dark mode are retired.
 
 | Token | Hex | Role |
 |---|---|---|
-| Terracotta | `#B65F3C` | Primary. Headings, primary buttons, every CTA |
-| Sage green | `#6F8F72` | Success, paid, completed |
-| Sand | `#D6B98C` | Vacant units, warnings, pending |
-| Slate grey | `#64748B` | Profile surfaces, secondary chrome |
-| Brick red | `#A44A3F` | Disputes, sign-out, destructive |
-| Black | `#101010` | High-contrast reading copy |
-| White | `#FFFFFF` | Light surfaces |
+| Cream | `#F8F1E5` | Page background |
+| Deep cream | `#F1E8D8` | Alternate section bands |
+| Black | `#171717` | Type, nav, phone frame, strong contrast bands |
+| Orange | `#EE6309` | The logo orange. Primary buttons, CTAs, highlights |
+| Orange ink | `#B34700` | Orange text and links on cream (4.9:1) |
+| Orange hover | `#DD5B06` | Button hover, still with black text (4.8:1) |
+| Lime | `#C9F52A` | Small accents, selected states, special labels |
+| White | `#FFFFFF` | Cards, forms, content surfaces |
+| Muted text | `#5F5A52` | Secondary copy (6.1:1 on cream) |
+| Line | `#E8DFD0` | Borders and dividers |
 
-### Light mode
-
-| Token | Hex |
-|---|---|
-| Page background | `#F1F4F8` |
-| Card / surface | `#FFFFFF` |
-| Border | `#E5E7EB` |
-| Secondary text | `#6B7280` |
-| Muted text | `#9CA3AF` |
-| Success surface | `#E8F3EA` |
-| Vacant surface | `#F4E8D9` |
-| Slate surface | `#F1F4F8` |
-| Dispute / logout surface | `#F7E9E6` |
-
-### Dark mode (warm, stepped — never pure black)
-
-| Token | Hex |
-|---|---|
-| Page background | `#121110` |
-| Card | `#1C1A19` |
-| Raised (sheets, headers) | `#262322` |
-| Recessed (inputs, quotes) | `#171514` |
-| Input fill | `#262626` |
-| Success surface | `#17281A` |
-| Vacant surface | `#2A2117` |
-| Dispute surface | `#21100E` |
-| Alert dot | `#E5484D` |
-
-**Why it looks like this:** every dark surface carries a few points of red and green over
-blue, so terracotta reads as printed on the surface rather than stuck to it. Pure black
-gives a card no edge to be seen against, which makes every plane sit at the same depth.
-Status fills are opaque tints, never alpha overlays, so a pill reads identically on a
-card and on the page.
+**Contrast rules**
+- Orange buttons use **black** text (`#171717` on `#EE6309` = 5.5:1). White on orange is
+  only 3.3:1 — never use it.
+- Orange small text on cream fails (2.9:1). Use orange ink `#B34700` or plain black.
+- Lime is only a fill behind black text. Never lime text, never a thin lime line on cream.
+- Black `#171717` bands with white text are on-brand; the app's splash is black with the
+  orange-and-lime logo.
 
 ### The logo
 
-Two arrow strokes meeting as a roof — terracotta on the left, forest green on the
-right — over the name set in capitals: **OASIS**. In sentences the name is written
-"Oasis"; the capitals belong to the logo.
-
-| Element | Light backgrounds | Dark backgrounds |
-|---|---|---|
-| Left stroke | Terracotta `#AC5B2C` | Terracotta `#AC5B2C` |
-| Right stroke | Forest green `#2A5138` | Lifted green `#45875E` |
-| OASIS lettering | Deep green `#28362B` | White |
-
-The logo is drawn on paper white `#FDFCF8`, which is also the app-icon background. The
-white lines inside each stroke are cut-outs, not paint — they show whatever is behind the
-logo. Use the stacked logo (mark over name) where there is room, and the side-by-side
-wordmark in headers, where the stacked version would shrink the name past reading.
+The orange **Oasis** wordmark with a lime palm. Use `oasis-wordmark.webp` on cream, white
+and black. The palm alone on black is the app icon.
 
 ---
 
@@ -197,8 +154,8 @@ count: one entrance per section, no parallax.
 
 ## 7. Design choices worth putting on the site
 
-These are the opinions behind the interface. A short "How we build" section, or captions
-under screenshots, is a good home for them.
+These are the opinions behind the interface. They are for the team and for screenshot
+captions; the public site leads with guests and hosts, not engineering detail.
 
 - **No spinners.** A circular progress indicator reports on the software, not on the work.
   Buttons get a two-pixel sweep along their own foot; rows get three dots beside them;
@@ -219,9 +176,6 @@ under screenshots, is a good home for them.
   you are waiting on another person poll.
 - **Live, but never load-bearing.** One WebSocket delivers messages and notifications
   instantly; every screen behind it still works over plain HTTP if the socket is down.
-- **Removing a property is a request, not a delete.** Seven days of cooling off and nothing
-  is ever hard-deleted, so agreements and receipts pointing at it keep working.
-- **Dark mode is a first-class design, not an inversion** — see the warm stepped ramp above.
 
 ---
 
@@ -249,8 +203,7 @@ to take them.
 
 ### Capture settings
 - One device size for the whole set: **iPhone 16 Pro (1206×2622)** or an Android equivalent.
-- **Light mode** for the main set. Optionally re-shoot 3–4 hero screens in dark mode for a
-  light/dark toggle on the site — the dark theme is good enough to be a selling point.
+- **Light mode** only; the site has no dark theme.
 - Use a seeded demo account with realistic Nigerian data: real place names, real-looking
   naira amounts, at least one photo per listing. Empty screens sell nothing.
 - Capture at full resolution, PNG, then export web versions at 2× the displayed size.
@@ -265,54 +218,51 @@ xcrun simctl io booted screenshot marketing/screenshots/01-marketplace.png
 
 | # | File | Screen | State to capture |
 |---|---|---|---|
-| 01 | `01-marketplace.png` | Tenant Discover | Grid of listings with photos, a search term filled in |
-| 02 | `02-listing.png` | Listing detail | Scrolled to top so the full-bleed photo hero leads |
-| 03 | `03-apply.png` | Apply for unit sheet | Sheet open over a listing, fields filled |
-| 04 | `04-agreement.png` | Tenancy agreement | Terms visible with the signature action at the foot |
-| 05 | `05-escrow.png` | Payment / receipt | Rent in escrow with the release countdown showing |
-| 06 | `06-vault.png` | Vault ledger | Balance card plus several ledger rows with running balance |
-| 07 | `07-landlord-dashboard.png` | Landlord dashboard | Portfolio box with occupancy leading, units below |
-| 08 | `08-applications.png` | Applications inbox | Two or three pending applications awaiting a decision |
-| 09 | `09-stays.png` | Stays browse | Nightly listings with prices |
-| 10 | `10-fix.png` | Fix directory | Artisan cards with trade, rating and phone number |
-| 11 | `11-messages.png` | Conversation | A thread between landlord and tenant |
-| 12 | `12-verification.png` | Identity verification | The NIN + selfie step, verified badge state |
-| 13 | `13-dark.png` | Any hero screen | Same as 01 or 07, dark mode |
+| 01 | `01-discover.png` | Guest Discover | Shortlet cards with photos, a location and dates filled in |
+| 02 | `02-filters.png` | Search filters | Price, bedrooms, type of place and amenities |
+| 03 | `03-listing.png` | Shortlet detail | Photo hero, verified host, nightly price, cancellation policy |
+| 04 | `04-request.png` | Request dates | Dates and guests chosen, policy shown before sending |
+| 05 | `05-trip.png` | Trips | A trip waiting for host approval, and one confirmed |
+| 06 | `06-payment.png` | Payment | Amount held by Oasis until after the stay |
+| 07 | `07-host-listing.png` | Host listing flow | The "best for" step or the map-pin step |
+| 08 | `08-host-requests.png` | Host requests | Two or three requests awaiting approval |
+| 09 | `09-vault.png` | Host vault | A payout landed after checkout, withdraw button |
+| 10 | `10-verification.png` | Identity verification | The NIN + selfie step, verified badge state |
 
 ### How screenshots should appear on the site
 - Big. One screen per section, not a collage of nine.
 - In a plain device frame or no frame at all — no perspective tilt, no floating shadows
   stacked three deep, no gradient blobs behind them.
-- Paired with one short line of copy each, taken from §2 or §7.
+- Paired with one short line of copy each, taken from §2 or §3.
 - Two or three per page maximum. The rest belong on a `/product` page or a lightbox.
 
 ---
 
 ## 10. Website design direction
 
-**Look:** the app's palette on a lot of white. Terracotta is the only strong colour on
-the page; sage and sand appear once or twice as accents. No gradients, no glassmorphism,
-no illustration style that is not already in the app.
+**Look:** cream page, black type, orange for the actions, lime for small labels and
+selected states, white cards. No gradients, no glassmorphism, no illustration style that is
+not already in the app.
 
-**Suggested page order**
-1. **Hero** — wordmark, the positioning line, one primary CTA, one screenshot.
-2. **The four promises** — §2, one row each with its screenshot, alternating side.
-3. **For landlords / for tenants** — a two-column split, or a toggle. Keep to five bullets each.
-4. **How we build** — three or four items from §7. This is what separates the site from
-   every other prop-tech landing page; do not cut it.
-5. **Trust** — verification, escrow, reviews tied to real transactions, nothing hard-deleted.
-6. **Download / waitlist** — one form field.
-7. **Footer** — legal, privacy, contact.
+**Page order (guest-first, as built)**
+1. **Hero** — wordmark, "Feel at home. Wherever you stay.", a guest CTA and "List your
+   place" for hosts, "Coming soon" store badges (not links), the app preview.
+2. **Promise strip** — the four promises in §2.
+3. **How it works** — two numbered tracks: guests and hosts.
+4. **For hosts** — the listing flow, approval, payouts and the vault.
+5. **Safety** — ID checks, map pin checked against the address, money held until after
+   the stay, caution fee, cancellation terms, reviews from real stays.
+6. **Occasions** — the "best for" list as chips.
+7. **FAQ**, then the **waitlist**, then the **footer** (For guests / For hosts / Safety /
+   FAQ, plus legal and contact).
 
 **Rules**
 - Three radii: 8 / 16 / 24. Same as the app.
 - Two-layer shadow, or no shadow. Never a single 40px blur.
 - Montserrat, negative tracking on every heading above 24px.
 - One entrance animation per section, ~200ms, fade and rise. Nothing on scroll-jack.
-- Sentence case for headings. The app writes in plain English — "Rent that stays
-  protected", not "Revolutionising Nigerian Real Estate".
-- Ship a dark mode. The app has a good one; a site that ignores the visitor's preference
-  next to an app that respects it is an odd first impression.
+- Sentence case for headings, plain English.
+- Light only. Minimum 12px text outside the phone preview; orange focus outlines.
 
 **Stack:** anything static — Next.js, Astro, or plain HTML with Tailwind. There is no
 dynamic content beyond a waitlist form.
@@ -326,23 +276,21 @@ dynamic content beyond a waitlist form.
 | File | Size | Use |
 |---|---|---|
 | `oasis_wordmark.png` | 574×177 | Orange OASIS wordmark with lime palm — headers and splash |
-| `oasis_wordmark_dark.png` | 574×177 | Same transparent wordmark, legible on dark surfaces |
 | `oasis_mark.png` | 522×523 | Lime palm alone, transparent |
 | `oasis_app_icon.png` | 1024×1024 | Lime palm on black — app icon |
 | `room_interior.png`, `quality_hero.png` | 1024² | Interior imagery |
-| `artisan_*.png` | 1024² | Artisan portraits (demo likenesses — check rights before public use) |
 
 ---
 
 ## 12. Claims to avoid
 
-Accuracy matters more than reach, and the app is an MVP:
+Accuracy matters more than reach, and the app is not launched:
 
-- **No push notifications yet.** Notifications are in-app and live while the app is open.
-  Do not promise alerts to a closed phone.
-- **Fix is a directory, not a repairs marketplace.** No job booking, no quotes, no escrow
-  for repairs. "Find and call a verified artisan" is the whole claim.
-- **The backend runs on staging.** Do not publish a launch date or user numbers that
-  have not happened.
-- Do not describe escrow release, payout timing or refund policy in more detail than the
-  product actually enforces — those windows are set by the backend and change.
+- **Not in the stores yet.** "Coming soon" badges only; never link to a store listing that
+  does not exist.
+- **No numbers, testimonials, ratings or press.** None exist. Do not invent any.
+- **No fee amounts.** Fees are not final; say fees will be shown before you pay.
+- **No "escrow".** Say the payment is held by Oasis until after the stay.
+- **No push notifications yet.** Do not promise alerts to a closed phone.
+- Do not describe payouts, the caution fee or cancellations in more detail than §2 and
+  §3 — no refund guarantees, no dispute outcomes.

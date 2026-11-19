@@ -2,343 +2,378 @@ import {
   ArrowRight,
   ArrowUpRight,
   ShieldCheck,
-  House,
-  FileCheck2,
-  LockKeyhole,
-  Fingerprint,
+  MapPin,
   Wallet,
-  Landmark,
-  CalendarDays,
+  KeyRound,
+  CalendarCheck,
+  Star,
   Check,
   ChevronDown,
+  Camera,
+  Landmark,
 } from "lucide-react";
 import { track } from "./analytics";
 
-export function Landlords() {
+const guestSteps = [
+  {
+    title: "Verify your ID",
+    body: "Your NIN and a selfie, once, before your first booking.",
+  },
+  {
+    title: "Search",
+    body: "Pick a location, dates and guests. Filter by price, bedrooms, type of place and amenities.",
+  },
+  {
+    title: "Request your dates",
+    body: "See the cancellation policy first, then send a request. The host approves it.",
+  },
+  {
+    title: "Pay Oasis",
+    body: "Once approved, you pay Oasis, not the host. We hold the money until after your stay.",
+  },
+  {
+    title: "Check in, check out",
+    body: "Enjoy the stay. If something’s wrong, report it before the host is paid.",
+  },
+];
+const hostSteps = [
+  {
+    title: "Verify your ID",
+    body: "Your NIN and a selfie, once, before you list.",
+  },
+  {
+    title: "List your place",
+    body: "A step-by-step flow: map pin, photos, a tour video, your price and house rules.",
+  },
+  {
+    title: "Approve requests",
+    body: "Every booking starts as a request. You decide who stays.",
+  },
+  {
+    title: "Host the stay",
+    body: "Guests check in and out at the times you set.",
+  },
+  {
+    title: "Get paid",
+    body: "Your payout lands in your Oasis vault 24 hours after checkout.",
+  },
+];
+function Steps({
+  id,
+  label,
+  steps,
+}: {
+  id?: string;
+  label: string;
+  steps: { title: string; body: string }[];
+}) {
   return (
-    <section className="landlords-section section container" id="landlords">
-      <div className="landlord-copy">
-        <span className="eyebrow">For landlords</span>
-        <h2>
-          Your property.
+    <article className="track" id={id} aria-labelledby={`${label}-title`}>
+      <h3 id={`${label}-title`}>
+        <span className="label-lime">For {label}</span>
+      </h3>
+      <ol className="steps">
+        {steps.map(({ title, body }, i) => (
+          <li key={title}>
+            <span className="step-number" aria-hidden="true">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span>
+              <b>{title}</b>
+              <span>{body}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </article>
+  );
+}
+export function HowItWorks() {
+  return (
+    <section
+      className="section container"
+      id="how-it-works"
+      aria-labelledby="how-title"
+    >
+      <div className="compact-heading">
+        <span className="eyebrow">How it works</span>
+        <h2 id="how-title">
+          From first search
           <br />
-          One clear view.
+          to checkout.
         </h2>
-        <p>
-          List units, choose verified tenants and sign in-app. Track rent
-          through to your bank.
-        </p>
-        <ol className="owner-steps">
-          <li>
-            <span>01</span>Verify your identity
-          </li>
-          <li>
-            <span>02</span>Add your property and units
-          </li>
-          <li>
-            <span>03</span>Choose a tenant and sign
-          </li>
-        </ol>
-        <a
-          className="button"
-          href="#waitlist"
-          onClick={() => track("Landlord interest", { source: "landlords" })}
-        >
-          Join as a landlord <ArrowUpRight size={18} />
-        </a>
       </div>
-      <figure className="portfolio-preview">
-        <div className="portfolio-top">
-          <span>
-            <House size={20} /> Your portfolio
-          </span>
-          <span className="badge">Preview</span>
-        </div>
-        <div className="portfolio-summary">
-          <strong>
-            Every unit.
-            <br />
-            Accounted for.
-          </strong>
-          <span>Yearly rent + short stays</span>
-        </div>
-        <div className="unit-row">
-          <span className="unit-mark">A1</span>
-          <span>
-            <b>Two-bedroom apartment</b>
-            <small>Annual tenancy</small>
-          </span>
-          <span className="badge">Occupied</span>
-        </div>
-        <div className="unit-row">
-          <span className="unit-mark">A2</span>
-          <span>
-            <b>One-bedroom apartment</b>
-            <small>Open for applications</small>
-          </span>
-          <span className="badge vacant">Available</span>
-        </div>
-        <div className="unit-row">
-          <span className="unit-mark">B1</span>
-          <span>
-            <b>Furnished studio</b>
-            <small>Nightly stays</small>
-          </span>
-          <span className="badge reserved">Reserved</span>
-        </div>
-        <div className="portfolio-bottom">
-          <FileCheck2 size={17} />
-          <span>Applications → agreements → rent → payouts</span>
-        </div>
-      </figure>
+      <div className="tracks">
+        <Steps id="guests" label="guests" steps={guestSteps} />
+        <Steps label="hosts" steps={hostSteps} />
+      </div>
+      <a
+        className="text-link"
+        href="#waitlist"
+        onClick={() => track("Guest interest", { source: "how-it-works" })}
+      >
+        Be first to book a shortlet <ArrowRight size={17} aria-hidden="true" />
+      </a>
     </section>
   );
 }
-const promises = [
+const hostPoints = [
   {
-    icon: House,
-    title: "Homes you can trust",
-    body: "Real photos, clear prices and a checked landlord. Find your area and apply in-app.",
+    title: "Pin it on the map",
+    body: "Drop a pin for your place. We check it against the address you give.",
   },
   {
-    icon: FileCheck2,
-    title: "Sign the lease right here",
-    body: "Both parties review and sign one agreement. Your copy stays in your vault.",
+    title: "Show it properly",
+    body: "At least three photos and a tour video, so guests know what they’re booking.",
   },
   {
-    icon: LockKeyhole,
-    title: "Rent that stays protected",
-    body: "Pay into escrow and follow the release status in-app. Read the money FAQs below.",
+    title: "Set your terms",
+    body: "Your nightly price, house rules, check-in and check-out times, and one of four cancellation policies.",
   },
   {
-    icon: Fingerprint,
-    title: "Everyone here is verified",
-    body: "Landlords and tenants complete identity checks before they can transact.",
+    title: "Add a caution fee",
+    body: "Optional and refundable. Report damage in the short inspection window after checkout.",
+  },
+  {
+    title: "Stay in control",
+    body: "Approve every request yourself. Pause your place or remove it when you need to.",
+  },
+  {
+    title: "Withdraw to your bank",
+    body: "Payouts land in your Oasis vault. Withdraw to your bank with your vault PIN.",
   },
 ];
-export function ProductPromises() {
+export function ForHosts() {
   return (
-    <section className="product-section section" id="product">
+    <section className="hosts-section section" id="hosts" aria-labelledby="hosts-title">
+      <div className="container hosts-grid">
+        <div className="hosts-copy">
+          <span className="label-lime">For hosts</span>
+          <h2 id="hosts-title">
+            Your place. Your rules.
+            <br />
+            Paid after every stay.
+          </h2>
+          <p>
+            List your place in a few clear steps and approve every guest
+            yourself. Guests pay Oasis, and your payout lands 24 hours after
+            checkout.
+          </p>
+          <ul className="host-points">
+            {hostPoints.map(({ title, body }) => (
+              <li key={title}>
+                <Check size={18} aria-hidden="true" />
+                <span>
+                  <b>{title}</b>
+                  {body}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <a
+            className="button"
+            href="#waitlist"
+            onClick={() => track("Host interest", { source: "hosts" })}
+          >
+            List your place <ArrowUpRight size={18} aria-hidden="true" />
+          </a>
+        </div>
+        <figure className="listing-preview">
+          <figcaption>
+            <span>Example listing</span>
+            <span className="badge">Ready to publish</span>
+          </figcaption>
+          <dl>
+            <div>
+              <dt>
+                <MapPin size={17} aria-hidden="true" /> Place
+              </dt>
+              <dd>Two-bed apartment · Lekki Phase 1, Lagos</dd>
+            </div>
+            <div>
+              <dt>
+                <Camera size={17} aria-hidden="true" /> Media
+              </dt>
+              <dd>8 photos · tour video</dd>
+            </div>
+            <div>
+              <dt>
+                <Star size={17} aria-hidden="true" /> Best for
+              </dt>
+              <dd className="chip-row">
+                <span>Staycation</span>
+                <span>Baecation</span>
+                <span>Work trip</span>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <CalendarCheck size={17} aria-hidden="true" /> Cancellation
+              </dt>
+              <dd>Moderate</dd>
+            </div>
+            <div>
+              <dt>
+                <Wallet size={17} aria-hidden="true" /> Nightly price
+              </dt>
+              <dd>
+                <strong>₦85,000</strong> / night
+              </dd>
+            </div>
+          </dl>
+          <p className="listing-preview-foot">
+            <Landmark size={17} aria-hidden="true" />
+            Payout to your vault 24 hours after checkout
+          </p>
+        </figure>
+      </div>
+    </section>
+  );
+}
+const safety = [
+  {
+    icon: ShieldCheck,
+    title: "ID checks for everyone",
+    body: "Hosts and guests verify with their NIN and a selfie before booking or hosting. Oasis never stores your raw NIN.",
+  },
+  {
+    icon: MapPin,
+    title: "Pins checked against addresses",
+    body: "When hosts list a place, its map pin is checked against the address they give.",
+  },
+  {
+    icon: Wallet,
+    title: "Money held until after the stay",
+    body: "Guests pay Oasis, not the host. The host is paid 24 hours after checkout, unless the guest reports a problem first.",
+  },
+  {
+    icon: KeyRound,
+    title: "A refundable caution fee",
+    body: "If a host asks for one, it comes back after checkout unless the host reports damage in a short inspection window.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Cancellation terms up front",
+    body: "Flexible, Moderate, Strict or Non-refundable. You see the host’s policy before you request.",
+  },
+  {
+    icon: Star,
+    title: "Reviews from real stays",
+    body: "Reviews only come from real, completed stays.",
+  },
+];
+export function Safety() {
+  return (
+    <section className="safety-section section" id="safety" aria-labelledby="safety-title">
       <div className="container">
         <div className="compact-heading">
-          <span className="eyebrow">For tenants · The Oasis way</span>
-          <h2>
-            From first search
+          <span className="eyebrow">Safety</span>
+          <h2 id="safety-title">
+            Trust, built into
             <br />
-            to your own front door.
+            every booking.
           </h2>
         </div>
-        <div className="compact-promises">
-          {promises.map(({ icon: Icon, title, body }, i) => (
-            <article key={title}>
-              <span className="promise-index">
-                0{i + 1}
-                <Icon size={23} />
+        <ul className="safety-grid">
+          {safety.map(({ icon: Icon, title, body }) => (
+            <li key={title}>
+              <span className="safety-icon">
+                <Icon size={22} aria-hidden="true" />
               </span>
               <h3>{title}</h3>
               <p>{body}</p>
-            </article>
+            </li>
           ))}
-        </div>
-        <a
-          className="text-link"
-          href="#waitlist"
-          onClick={() => track("Tenant interest", { source: "product" })}
-        >
-          Find your place with Oasis <ArrowRight size={17} />
-        </a>
+        </ul>
       </div>
     </section>
   );
 }
-export function MoneyAndStays() {
+const occasions = [
+  "Staycation",
+  "Birthdays",
+  "Baecation",
+  "Parties",
+  "Weekend getaway",
+  "Work trip",
+  "Family time",
+  "Friends’ trip",
+  "Photoshoots",
+  "Weddings & owambe",
+  "Holidays",
+  "Long stays",
+  "Airport stopover",
+];
+export function Occasions() {
   return (
-    <section className="section container" id="money-and-stays">
-      <div className="compact-heading">
-        <span className="eyebrow">More than the yearly rent</span>
-        <h2>
-          A year. A night.
-          <br />
-          Every naira.
-        </h2>
-      </div>
-      <div className="services-grid">
-        <article className="service-card">
-          <img
-            src="/images/short-stay.webp"
-            alt="Furnished living room used to illustrate a short stay"
-            width={768}
-            height={480}
-            loading="lazy"
-            decoding="async"
-          />
-          <div className="service-copy">
-            <span className="service-label">
-              <CalendarDays size={18} /> Stays
-            </span>
-            <h3>Same units. Shorter stays.</h3>
-            <p>
-              Offer nightly listings alongside annual rentals, with check-in and
-              check-out in one place.
-            </p>
-            <details
-              onToggle={(e) => {
-                if (e.currentTarget.open)
-                  track("Product detail", { section: "stays" });
-              }}
-            >
-              <summary>
-                The booking flow <ChevronDown size={16} />
-              </summary>
-              <p>
-                Request → host approval → a 24-hour payment window → check-in.
-                Host payout is held until check-in; caution-fee claims and
-                disputes stay attached to the booking.
-              </p>
-            </details>
-          </div>
-        </article>
-        <article className="service-card">
-          <div
-            className="money-illustration"
-            aria-label="Illustrative vault ledger"
-          >
-            <div className="ledger-top">
-              <Wallet size={25} />
-              <span>YOUR VAULT</span>
-            </div>
-            <div className="ledger-row">
-              <span>Top-up</span>
-              <b>+ ₦300,000</b>
-            </div>
-            <div className="ledger-row">
-              <span>Rent payment</span>
-              <b>− ₦250,000</b>
-            </div>
-            <div className="ledger-balance">
-              <span>Running balance</span>
-              <strong>₦50,000</strong>
-            </div>
-          </div>
-          <div className="service-copy">
-            <span className="service-label">
-              <Wallet size={18} /> Vault
-            </span>
-            <h3>A record of every naira.</h3>
-            <p>
-              Top-ups, withdrawals and receipts, with a running balance and a
-              PIN to protect your wallet.
-            </p>
-          </div>
-        </article>
-        <article className="service-card">
-          <div className="money-illustration payout-illustration">
-            <Landmark size={34} />
-            <div className="payout-step">
-              <Check size={15} /> Save your Nigerian bank account
-            </div>
-            <div className="payout-step">
-              <LockKeyhole size={15} /> Follow the release status
-            </div>
-            <div className="payout-step">
-              <ArrowUpRight size={15} /> Receive your payout
-            </div>
-          </div>
-          <div className="service-copy">
-            <span className="service-label">
-              <Landmark size={18} /> Payouts
-            </span>
-            <h3>From rent to your bank.</h3>
-            <p>
-              Landlord payouts reach your saved bank account automatically. The
-              app shows the applicable release schedule.
-            </p>
-          </div>
-        </article>
-      </div>
-    </section>
-  );
-}
-export function CraftAndTrust() {
-  return (
-    <section className="craft-trust section">
-      <div className="container">
-        <div className="trust-line" id="trust">
-          <ShieldCheck size={29} />
-          <div>
-            <h2>Trust, built into the details.</h2>
-            <p>
-              NIN + selfie checks. We store only a tokenised fingerprint,
-              never your raw NIN. Reviews follow actual transactions.
-            </p>
-          </div>
-        </div>
-        <div id="how-we-build" className="build-principles">
-          <div>
-            <span className="eyebrow">How we build</span>
-            <h3>
-              Less friction.
-              <br />
-              More certainty.
-            </h3>
-          </div>
-          <div>
-            <h3>Places, picked correctly.</h3>
-            <p>One shared list of Nigerian states and towns.</p>
-          </div>
-          <div>
-            <h3>Your records stay put.</h3>
-            <p>
-              Property removal has a seven-day cooling-off period. Agreements
-              and receipts remain accessible.
-            </p>
-          </div>
-          <div>
-            <h3>Comfort after hours.</h3>
-            <p>Warm dark mode when you want it. Light mode by default.</p>
-          </div>
-        </div>
-        <p className="fix-caption">
-          Need a hand? <b>Oasis Fix</b> helps you find and call verified
-          artisans. Arrange repairs directly.
-        </p>
+    <section
+      className="occasions-section section container"
+      id="occasions"
+      aria-labelledby="occasions-title"
+    >
+      <img
+        src="/images/short-stay.webp"
+        alt="Furnished living room with a sofa and soft daylight"
+        width={768}
+        height={480}
+        loading="lazy"
+        decoding="async"
+      />
+      <div>
+        <span className="eyebrow">Best for</span>
+        <h2 id="occasions-title">A place for every occasion.</h2>
+        <p>Hosts say what their place is best for, so you can find the right one.</p>
+        <ul className="occasion-chips">
+          {occasions.map((name) => (
+            <li key={name}>{name}</li>
+          ))}
+        </ul>
       </div>
     </section>
   );
 }
 export const faqs = [
   {
-    question: "Who holds my money?",
+    question: "When does the host get paid?",
     answer:
-      "Rent is paid into escrow rather than directly to the landlord. The escrow provider and custody arrangements have not yet been confirmed for publication. Those details will need to be available before you pay.",
+      "Guests pay Oasis, not the host. The host’s payout lands in their Oasis vault 24 hours after checkout, unless the guest reports a problem first. Hosts then withdraw to their bank with their vault PIN.",
+  },
+  {
+    question: "What is the caution fee?",
+    answer:
+      "An optional, refundable fee some hosts add to their place. It comes back to the guest after checkout, unless the host reports damage during a short inspection window.",
+  },
+  {
+    question: "What if I cancel?",
+    answer:
+      "Each host chooses one of four cancellation policies: Flexible, Moderate, Strict or Non-refundable. You see the policy before you request, so you know the terms before you commit.",
+  },
+  {
+    question: "How are hosts and guests verified?",
+    answer:
+      "Everyone verifies their ID with their NIN and a selfie before they can book or host. Oasis never stores your raw NIN.",
+  },
+  {
+    question: "What if the place isn’t as listed?",
+    answer:
+      "Report the problem in the app. The host isn’t paid until 24 hours after checkout, and a problem reported before then stops the payout going through automatically. Every listing also needs real photos and a tour video, and its map pin is checked against its address.",
   },
   {
     question: "What does Oasis cost?",
     answer:
-      "Fees are still being finalized. We cannot quote listing, booking, payment or withdrawal charges yet. Do not assume a service is free; review the final charges before using it.",
-  },
-  {
-    question: "What if the landlord does not hand over the keys?",
-    answer:
-      "Escrow is intended to protect rent until handover. The failed-handover process, dispute rules and refund timelines are still being finalized. A refund outcome or timeline cannot be confirmed until that policy is published.",
-  },
-  {
-    question: "Can I offer both yearly rentals and short stays?",
-    answer:
-      "Yes. Oasis supports annual tenancies and nightly listings on the same property units. Short-stay requests need host approval, then payment within the booking window.",
+      "Fees aren’t final yet. Any fees will be shown before you pay.",
   },
 ];
 export function FAQ() {
   return (
-    <section className="faq-section section container" id="faq">
+    <section className="faq-section section container" id="faq" aria-labelledby="faq-title">
       <div className="compact-heading">
-        <span className="eyebrow">Before you commit</span>
-        <h2>
+        <span className="eyebrow">FAQ</span>
+        <h2 id="faq-title">
           Fair questions.
           <br />
           Clear answers.
         </h2>
-        <p>What is confirmed and what is still being finalized.</p>
       </div>
       <div className="faq-list">
         {faqs.map(({ question, answer }, i) => (
@@ -351,7 +386,7 @@ export function FAQ() {
           >
             <summary>
               {question}
-              <ChevronDown size={20} />
+              <ChevronDown size={20} aria-hidden="true" />
             </summary>
             <p>{answer}</p>
           </details>

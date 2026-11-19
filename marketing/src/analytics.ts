@@ -1,13 +1,12 @@
 // Only fixed event names and non-personal props are sent. Never pass form values.
 type EventName =
-  | "Landlord interest"
-  | "Tenant interest"
+  | "Host interest"
+  | "Guest interest"
   | "Waitlist interest"
   | "Waitlist submit"
   | "Waitlist success"
   | "Waitlist error"
-  | "FAQ opened"
-  | "Product detail";
+  | "FAQ opened";
 type Plausible = {
   (event: EventName, options?: { props?: Record<string, string> }): void;
   q?: unknown[][];

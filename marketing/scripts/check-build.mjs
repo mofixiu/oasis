@@ -7,15 +7,21 @@ assert.match(
   "Page content must be present without JavaScript.",
 );
 for (const id of [
-  "landlords",
-  "product",
-  "money-and-stays",
-  "how-we-build",
-  "trust",
+  "how-it-works",
+  "guests",
+  "hosts",
+  "safety",
+  "occasions",
   "faq",
   "waitlist",
 ])
   assert.ok(html.includes(`id="${id}"`), `Missing section ${id}`);
+// The rentals product is switched off, and "escrow" is a regulated term.
+for (const word of ["escrow", "landlord", "tenant", "tenancy", "yearly rent"])
+  assert.ok(
+    !html.toLowerCase().includes(word),
+    `Rentals-era or regulated wording found: ${word}`,
+  );
 for (const tag of ["og:image", "og:url", "twitter:card", "twitter:image"])
   assert.ok(html.includes(`"${tag}"`), `Missing sharing metadata ${tag}`);
 assert.match(html, /rel="canonical" href="https:\/\//);
@@ -25,6 +31,12 @@ assert.ok(
   phone && !/<h[1-6]\b/.test(phone),
   "Product preview must not pollute heading navigation.",
 );
+assert.match(
+  html,
+  /<figure class="app-figure" role="img" aria-label="[^"]+"/,
+  "Product preview needs a single image label.",
+);
+assert.match(phone, /^<div class="phone" aria-hidden="true">/);
 const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((x) => x[0]);
 for (const img of imgs) {
   assert.match(img, /\bwidth="\d+"/);
