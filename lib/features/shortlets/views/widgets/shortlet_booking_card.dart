@@ -31,7 +31,7 @@ class ShortLetBookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tone = _tone(booking.status);
+    final tone = _tone(context, booking.status);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -181,7 +181,7 @@ class ShortLetBookingCard extends StatelessWidget {
                         'for the stay)',
               tone: booking.isCautionFeeRefunded
                   ? AppTheme.successColor
-                  : AppTheme.vacantColor,
+                  : AppTheme.warningText(context),
             ),
           ],
 
@@ -228,7 +228,7 @@ class ShortLetBookingCard extends StatelessWidget {
             _Line(
               icon: Icons.timer_outlined,
               text: window,
-              tone: AppTheme.warningColor,
+              tone: AppTheme.warningText(context),
             ),
           ],
 
@@ -352,7 +352,7 @@ class ShortLetBookingCard extends StatelessWidget {
         'confirm this stay.';
   }
 
-  static Color _tone(ShortLetBookingStatus status) {
+  static Color _tone(BuildContext context, ShortLetBookingStatus status) {
     switch (status) {
       case ShortLetBookingStatus.paid:
       case ShortLetBookingStatus.checkedIn:
@@ -361,7 +361,7 @@ class ShortLetBookingCard extends StatelessWidget {
         return AppTheme.successColor;
       case ShortLetBookingStatus.approved:
       case ShortLetBookingStatus.pending:
-        return AppTheme.warningColor;
+        return AppTheme.warningText(context);
       case ShortLetBookingStatus.disputed:
       case ShortLetBookingStatus.rejected:
       case ShortLetBookingStatus.expired:
@@ -394,7 +394,7 @@ class _HostPayoutBanner extends StatelessWidget {
       HostPayoutStatus.refunded => AppTheme.mutedTextColor(context),
       HostPayoutStatus.held ||
       HostPayoutStatus.notFunded ||
-      HostPayoutStatus.unknown => AppTheme.vacantColor,
+      HostPayoutStatus.unknown => AppTheme.warningText(context),
     };
     final icon = switch (status) {
       HostPayoutStatus.released => Icons.check_circle_outline_rounded,

@@ -151,7 +151,7 @@ class _V2HostHomeScreenState extends State<V2HostHomeScreen> {
                     ),
                     const SizedBox(width: 10),
                     _MetricCard(
-                      label: 'GUEST STAYS',
+                      label: 'BOOKINGS',
                       value: '$liveBookings',
                       icon: Icons.luggage_outlined,
                       subtitle: '$paidBookings paid',
@@ -245,7 +245,7 @@ class _MetricCard extends StatelessWidget {
                 Text(
                   label,
                   maxLines: 2,
-                  style: AppTheme.labelText(context).copyWith(fontSize: 9),
+                  style: AppTheme.labelText(context).copyWith(fontSize: 11),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -377,7 +377,9 @@ class _ListingSummary extends StatelessWidget {
                   style:
                       AppTheme.bodyText(
                         context,
-                        color: reminder == null ? null : AppTheme.actionColor,
+                        color: reminder == null
+                            ? null
+                            : AppTheme.linkColor(context),
                       ).copyWith(
                         fontSize: 11,
                         fontWeight: reminder == null ? null : FontWeight.w600,
@@ -442,7 +444,7 @@ class _HostHero extends StatelessWidget {
     height: 218,
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
-      color: const Color(0xFF425F55),
+      color: AppTheme.oasisBlack,
       borderRadius: BorderRadius.circular(24),
       boxShadow: AppTheme.cardShadow(context),
     ),
@@ -487,7 +489,7 @@ class _HostHero extends StatelessWidget {
                   'YOUR HOSTING DASHBOARD',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 9,
+                    fontSize: 11,
                     letterSpacing: 1.1,
                     fontWeight: FontWeight.w700,
                   ),
@@ -522,7 +524,7 @@ class _HostHero extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: onManage,
                   icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-                  label: const Text('Manage your stays'),
+                  label: const Text('Manage your shortlets'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: AppTheme.primaryColor,
@@ -555,7 +557,7 @@ class _HostHeroArtwork extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF6F8F72), Color(0xFFB65F3C)],
+            colors: [AppTheme.oasisBlack, Color(0xFF4A2208)],
           ),
         ),
       ),
@@ -676,9 +678,7 @@ class _InspectionNudge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = AppTheme.isDarkMode(context)
-        ? AppTheme.sandColor
-        : const Color(0xFF85602F);
+    final ink = AppTheme.warningText(context);
     return OasisPressable(
       onTap: onTap,
       pressedScale: 0.99,

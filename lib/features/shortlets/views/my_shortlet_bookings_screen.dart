@@ -581,7 +581,7 @@ class _MyShortLetBookingsScreenState extends State<MyShortLetBookingsScreen>
       children: [
         Text(
           'My stays',
-          style: AppTheme.screenTitle(context, color: AppTheme.primaryColor),
+          style: AppTheme.screenTitle(context),
         ),
         const SizedBox(height: 16),
 
@@ -1048,9 +1048,7 @@ class _V2TripCard extends StatelessWidget {
               child: V2IconText(
                 icon: Icons.timer_outlined,
                 text: payWindow,
-                color: AppTheme.isDarkMode(context)
-                    ? AppTheme.sandColor
-                    : const Color(0xFF85602F),
+                color: AppTheme.warningText(context),
               ),
             ),
           ],
@@ -1111,9 +1109,7 @@ class _V2TripRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = destructive
-        ? (AppTheme.isDarkMode(context)
-              ? const Color(0xFFE59A8F)
-              : AppTheme.brickRedColor)
+        ? (AppTheme.negativeText(context))
         : AppTheme.primaryTextColor(context);
     return InkWell(
       onTap: onTap,

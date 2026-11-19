@@ -248,6 +248,13 @@ class V2ProfileButton extends StatelessWidget {
 /// Equal-width filled chips for switching between sections, the chosen one
 /// in terracotta.
 class V2SegmentChips extends StatelessWidget {
+  /// Black on the cream page; white in dark mode, where black would vanish.
+  static Color _selectedFill(BuildContext context) =>
+      AppTheme.isDarkMode(context) ? AppTheme.whiteColor : AppTheme.oasisBlack;
+
+  static Color _selectedText(BuildContext context) =>
+      AppTheme.isDarkMode(context) ? AppTheme.oasisBlack : AppTheme.whiteColor;
+
   final List<String> labels;
   final int selected;
   final ValueChanged<int> onSelected;
@@ -275,14 +282,16 @@ class V2SegmentChips extends StatelessWidget {
                 duration: const Duration(milliseconds: 180),
                 height: 44,
                 alignment: Alignment.center,
+                // Selected is black, as in the brand mockups: the orange is
+                // for doing something, and a tab is only choosing a view.
                 decoration: BoxDecoration(
                   color: index == selected
-                      ? AppTheme.terracottaColor
+                      ? _selectedFill(context)
                       : AppTheme.surfaceColor(context),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: index == selected
-                        ? AppTheme.terracottaColor
+                        ? _selectedFill(context)
                         : AppTheme.borderColor(context),
                   ),
                 ),
@@ -296,7 +305,7 @@ class V2SegmentChips extends StatelessWidget {
                         ? FontWeight.w700
                         : FontWeight.w600,
                     color: index == selected
-                        ? Colors.white
+                        ? _selectedText(context)
                         : AppTheme.primaryTextColor(context),
                   ),
                 ),
@@ -383,6 +392,42 @@ class V2UnderlineTabs extends StatelessWidget {
 
 enum V2Tone { positive, pending, negative, neutral }
 
+/// The lime brand label for something earned: "Verified host" on a stay's
+/// photo, "Confirmed" on a trip. Lime fill, black type, always.
+class V2LimeBadge extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+
+  const V2LimeBadge({super.key, required this.label, this.icon});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: AppTheme.limeSurfaceColor,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 13, color: AppTheme.onLimeColor),
+          const SizedBox(width: 4),
+        ],
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.onLimeColor,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.1,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 /// Small status label in the app's status colours. Opaque in every tone, so
 /// it can sit on a photo.
 class V2StatusPill extends StatelessWidget {
@@ -394,21 +439,16 @@ class V2StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (background, foreground) = switch (tone) {
-      V2Tone.positive => (
-        AppTheme.successSurface(context),
-        AppTheme.successColor,
-      ),
+      // Lime with black type: the brand's colour for good news (Confirmed,
+      // Live, Verified), and 14:1 in both themes.
+      V2Tone.positive => (AppTheme.limeSurfaceColor, AppTheme.onLimeColor),
       V2Tone.pending => (
         AppTheme.vacantSurface(context),
-        AppTheme.isDarkMode(context)
-            ? AppTheme.sandColor
-            : const Color(0xFF85602F),
+        AppTheme.warningText(context),
       ),
       V2Tone.negative => (
         AppTheme.disputeSurface(context),
-        AppTheme.isDarkMode(context)
-            ? const Color(0xFFE59A8F)
-            : AppTheme.brickRedColor,
+        AppTheme.negativeText(context),
       ),
       V2Tone.neutral => (
         AppTheme.borderColor(context),
@@ -471,14 +511,14 @@ class V2SectionHeader extends StatelessWidget {
                   actionLabel!,
                   style: AppTheme.cardTitle(
                     context,
-                    color: AppTheme.terracottaColor,
+                    color: AppTheme.linkColor(context),
                   ).copyWith(fontSize: 13),
                 ),
                 const SizedBox(width: 4),
-                const Icon(
+                Icon(
                   Icons.arrow_forward_rounded,
                   size: 16,
-                  color: AppTheme.terracottaColor,
+                  color: AppTheme.linkColor(context),
                 ),
               ],
             ),

@@ -94,7 +94,11 @@ class _V2MainScaffoldState extends State<V2MainScaffold> {
 
     if (_currentIndex >= screens.length) {
       _currentIndex = 0;
-      _activeTab.value = 0;
+      // Notifying listeners mid-build can assert; the index above is enough
+      // for this frame, and the notifier catches up straight after it.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _activeTab.value = 0;
+      });
     }
 
     final labels = isHost
@@ -214,7 +218,7 @@ class _V2BottomBar extends StatelessWidget {
                               color: currentIndex == index
                                   ? AppTheme.primaryTextColor(context)
                                   : AppTheme.mutedTextColor(context),
-                              fontSize: 8.5,
+                              fontSize: 10,
                               letterSpacing: 0.35,
                               fontWeight: currentIndex == index
                                   ? FontWeight.w800
@@ -265,8 +269,10 @@ class _V2UnreadInboxIcon extends StatelessWidget {
             child: Container(
               width: 9,
               height: 9,
+              // The alert red, not the brand orange: on the selected tab
+              // the icon itself is orange and an orange dot disappears.
               decoration: BoxDecoration(
-                color: AppTheme.actionColor,
+                color: AppTheme.alertDotColor,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: AppTheme.surfaceColor(context),

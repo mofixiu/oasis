@@ -615,7 +615,7 @@ class _ShortLetBrowseScreenState extends State<ShortLetBrowseScreen>
       children: [
         Text(
           'Short stays',
-          style: AppTheme.screenTitle(context, color: AppTheme.primaryColor),
+          style: AppTheme.screenTitle(context),
         ),
         const SizedBox(height: 4),
         Text(
@@ -1308,7 +1308,7 @@ class _MyBookingsRow extends StatelessWidget {
               urgent ? Icons.timer_outlined : Icons.luggage_outlined,
               size: 20,
               color: urgent
-                  ? AppTheme.warningColor
+                  ? AppTheme.warningText(context)
                   : AppTheme.secondaryTextColor(context),
             ),
             const SizedBox(width: 12),
@@ -1323,7 +1323,7 @@ class _MyBookingsRow extends StatelessWidget {
                     style: AppTheme.labelText(
                       context,
                       color: urgent
-                          ? AppTheme.warningColor
+                          ? AppTheme.warningText(context)
                           : AppTheme.secondaryTextColor(context),
                     ),
                   ),
@@ -2208,9 +2208,7 @@ class _V2ResultRow extends StatelessWidget {
                     Text(
                       listing.unavailableLabel,
                       style: meta.copyWith(
-                        color: AppTheme.isDarkMode(context)
-                            ? const Color(0xFFE59A8F)
-                            : AppTheme.brickRedColor,
+                        color: AppTheme.negativeText(context),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -2305,7 +2303,7 @@ class _ListingCard extends StatelessWidget {
                             'NOT FREE THEN',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
                             ),
@@ -2416,7 +2414,7 @@ class _ListingCard extends StatelessWidget {
                         Icon(
                           Icons.shield_outlined,
                           size: 13,
-                          color: AppTheme.vacantColor,
+                          color: AppTheme.warningText(context),
                         ),
                         const SizedBox(width: 5),
                         Text(

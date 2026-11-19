@@ -6,10 +6,10 @@ import '../../../core/widgets/oasis_toast.dart';
 import '../../fix/models/fix_models.dart';
 import '../controllers/auth_controller.dart';
 import '../models/user_model.dart';
+import 'widgets/auth_pill_button.dart';
 import 'widgets/auth_text_field.dart';
 import 'sign_in_screen.dart';
 import 'identity_verification_screen.dart';
-import '../../../core/widgets/oasis_busy.dart';
 import '../../../core/app_variant.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -181,29 +181,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 constraints: const BoxConstraints(maxWidth: 440),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Image.asset(
-                      AppTheme.isDarkMode(context)
-                          ? 'assets/images/oasis_wordmark_dark.png'
-                          : 'assets/images/oasis_wordmark.png',
-                      height: 44,
-                      fit: BoxFit.contain,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Create an account',
-                      style: AppTheme.screenTitle(
-                        context,
-                        color: AppTheme.primaryColor,
+                    Center(
+                      child: Image.asset(
+                        AppTheme.isDarkMode(context)
+                            ? 'assets/images/oasis_wordmark_dark.png'
+                            : 'assets/images/oasis_wordmark.png',
+                        height: 48,
+                        fit: BoxFit.contain,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 36),
+                    Text(
+                      'Create your account',
+                      style: AppTheme.screenTitle(
+                        context,
+                      ).copyWith(fontSize: 24),
+                    ),
+                    const SizedBox(height: 6),
                     Text(
                       isOasisV2
                           ? 'Book and host shortlets with Oasis.'
                           : 'Secure access to Oasis real estate platform.',
-                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
                         color: secondaryTextColor,
@@ -257,7 +257,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 10),
                     Text(
                       _roleBlurb,
-                      textAlign: TextAlign.center,
+                      textAlign: TextAlign.start,
                       style: TextStyle(
                         fontSize: 12,
                         color: secondaryTextColor,
@@ -266,45 +266,50 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Form Card
+                    // The fields sit straight on the page in v2, each its own
+                    // white box, as in the brand mockups. v1 keeps its card.
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(28),
-                      decoration: BoxDecoration(
-                        color: surfaceColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: borderColor),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
+                      padding: isOasisV2
+                          ? EdgeInsets.zero
+                          : const EdgeInsets.all(28),
+                      decoration: isOasisV2
+                          ? null
+                          : BoxDecoration(
+                              color: surfaceColor,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: borderColor),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           AuthTextField(
                             controller: _emailController,
-                            label: 'EMAIL ADDRESS',
-                            hintText: 'user@example.com',
+                            label: 'Email address',
+                            hintText: 'Email address',
                             prefixIcon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 12),
                           AuthTextField(
                             controller: _phoneController,
-                            label: 'PHONE NUMBER',
-                            hintText: '+2348012345678',
+                            label: 'Phone number',
+                            hintText: 'Phone number',
                             prefixIcon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 12),
                           AuthTextField(
                             controller: _passwordController,
-                            label: 'SECURE PASSWORD',
-                            hintText: '••••••••••••',
+                            label: 'Password',
+                            hintText: 'Password (8 characters or more)',
                             prefixIcon: Icons.lock_outline,
                             isPassword: true,
                           ),
@@ -315,7 +320,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             const SizedBox(height: 20),
                             AuthTextField(
                               controller: _brandController,
-                              label: 'BRAND NAME (OPTIONAL)',
+                              label: 'Brand name (optional)',
                               hintText: 'e.g. Lekki Luxe Stays',
                               prefixIcon: Icons.storefront_outlined,
                               keyboardType: TextInputType.name,
@@ -380,54 +385,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                           ],
 
-                          const SizedBox(height: 32),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 56,
-                            child: Consumer<AuthController>(
-                              builder: (context, auth, _) {
-                                final loading = _isSubmitting || auth.isLoading;
-                                return ElevatedButton(
-                                  onPressed: loading ? null : _handleRegister,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.actionColor,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: loading
-                                      ? const Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            OasisBusyDots(color: Colors.white),
-                                            SizedBox(width: 12),
-                                            Text(
-                                              'Creating account...',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : const Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              'Create Account',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            SizedBox(width: 8),
-                                            Icon(Icons.arrow_forward, size: 20),
-                                          ],
-                                        ),
-                                );
-                              },
+                          const SizedBox(height: 28),
+                          Consumer<AuthController>(
+                            builder: (context, auth, _) => AuthPillButton(
+                              label: 'Create account',
+                              isLoading: _isSubmitting || auth.isLoading,
+                              onPressed: _handleRegister,
                             ),
                           ),
                         ],
@@ -459,32 +422,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                         ),
                       ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Already have an account? ',
-                          style: TextStyle(color: secondaryTextColor),
-                        ),
-                        GestureDetector(
-                          onTap: _isSubmitting
-                              ? null
-                              : () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    FadePageRoute(page: const SignInScreen()),
-                                  );
-                                },
-                          child: const Text(
-                            'Sign in here',
-                            style: TextStyle(
-                              color: AppTheme.actionColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+                    AuthSwitchLink(
+                      prompt: 'Already have an account?',
+                      action: 'Sign in',
+                      onTap: () {
+                        if (_isSubmitting) return;
+                        Navigator.pushReplacement(
+                          context,
+                          FadePageRoute(page: const SignInScreen()),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -566,7 +513,12 @@ class _RoleOption extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: selected ? AppTheme.actionColor : Colors.transparent,
+        // Black when chosen, like every other selected tab in v2.
+        color: selected
+            ? (AppTheme.isDarkMode(context)
+                  ? AppTheme.whiteColor
+                  : AppTheme.oasisBlack)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -577,7 +529,11 @@ class _RoleOption extends StatelessWidget {
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: selected ? Colors.white : AppTheme.secondaryTextColor(context),
+          color: selected
+              ? (AppTheme.isDarkMode(context)
+                    ? AppTheme.oasisBlack
+                    : AppTheme.whiteColor)
+              : AppTheme.secondaryTextColor(context),
         ),
       ),
     ),

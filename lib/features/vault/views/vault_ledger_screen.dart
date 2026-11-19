@@ -1,3 +1,4 @@
+import '../../../core/app_variant.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -108,7 +109,10 @@ class _VaultLedgerScreenState extends State<VaultLedgerScreen>
                 isTenant ? openTopUpSheet(context) : openWithdrawSheet(context),
             child: Text(
               isTenant ? 'Add money' : 'Withdraw',
-              style: AppTheme.cardTitle(context, color: AppTheme.actionColor),
+              style: AppTheme.cardTitle(
+                context,
+                color: AppTheme.linkColor(context),
+              ),
             ),
           ),
         ],
@@ -145,7 +149,13 @@ class _VaultLedgerScreenState extends State<VaultLedgerScreen>
       return OasisEmptyState(
         icon: Icons.receipt_long_outlined,
         title: 'Nothing in your vault yet',
-        message: isTenant
+        message: isOasisV2
+            ? (isTenant
+                  ? 'Money you add shows up here, along with every booking you '
+                        'pay from your vault and every withdrawal to your bank.'
+                  : 'Payouts from your bookings show up here, along with every '
+                        'withdrawal you make.')
+            : isTenant
             ? 'Money you add shows up here, along with every rent payment you '
                   'make from your vault and every withdrawal back to your bank.'
             : 'Rent shows up here the moment it is released from escrow, along '
@@ -220,7 +230,11 @@ class _LifetimeTotals extends StatelessWidget {
             label: isTenant ? 'ADDED' : 'RECEIVED',
             amount: vault.totalCredited,
           ),
-          if (isTenant) _Total(label: 'RENT PAID', amount: vault.totalSpent),
+          if (isTenant)
+            _Total(
+              label: isOasisV2 ? 'SPENT' : 'RENT PAID',
+              amount: vault.totalSpent,
+            ),
           _Total(label: 'WITHDRAWN', amount: vault.totalWithdrawn),
         ],
       ),

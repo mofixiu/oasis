@@ -19,6 +19,7 @@ import '../../../../core/utils/fade_page_route.dart';
 import '../../../../core/widgets/oasis_animated_value.dart';
 import '../../controllers/shortlet_controller.dart';
 import '../../models/shortlet_models.dart';
+import '../my_shortlet_bookings_screen.dart';
 import 'v2_payout_setup_intro.dart';
 import 'v2_stay_widgets.dart';
 
@@ -82,6 +83,17 @@ class _V2PaymentsScreenState extends State<V2PaymentsScreen> {
       vault.loadPinStatus(),
       context.read<PayoutController>().loadPayoutAccount(),
     ]);
+  }
+
+  /// The Trips tab when this is a tab; the trips screen itself when this
+  /// page was pushed from Profile, where there is no tab to switch to and
+  /// "Pay from your vault" would otherwise be a dead button.
+  void _openTrips() {
+    if (widget.onOpenTrips case final switchTab?) return switchTab();
+    Navigator.push(
+      context,
+      FadePageRoute(page: const MyShortLetBookingsScreen(isV2: true)),
+    );
   }
 
   void _openLedger() =>
@@ -174,14 +186,14 @@ class _V2PaymentsScreenState extends State<V2PaymentsScreen> {
                   onHistory: _openLedger,
                   // Hosts reach their shortlets from the tab bar; a second
                   // way in from Payments only crowded the money actions.
-                  onShortcut: isHost ? null : widget.onOpenTrips,
+                  onShortcut: isHost ? null : _openTrips,
                 ),
                 if (due.isNotEmpty) ...[
                   const SizedBox(height: 22),
                   _SaveForTripCard(
                     booking: due.first,
                     hidden: _hideBalance,
-                    onPay: widget.onOpenTrips,
+                    onPay: _openTrips,
                   ),
                 ],
                 const SizedBox(height: 26),
@@ -250,7 +262,7 @@ class _VaultHeroCard extends StatelessWidget {
     final controller = context.watch<VaultController>();
     final vault = controller.vault;
     final payoutVerified = context.watch<PayoutController>().isVerified;
-    final soft = Colors.white.withValues(alpha: 0.78);
+    final soft = Colors.white.withValues(alpha: 0.82);
 
     String? blocked;
     if (vault != null) {
@@ -278,10 +290,9 @@ class _VaultHeroCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppTheme.terracottaColor,
-            Color.lerp(AppTheme.terracottaColor, Colors.black, 0.28)!,
-          ],
+          // Oasis Black, the brand's colour for strong contrast: white
+          // captions on the old orange gradient were 2.5:1.
+          colors: [AppTheme.oasisBlack, Color(0xFF2B2B2B)],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
@@ -609,7 +620,7 @@ class _SaveForTripCard extends StatelessWidget {
                 '${(progress * 100).round()}%',
                 style: AppTheme.cardTitle(
                   context,
-                  color: AppTheme.terracottaColor,
+                  color: AppTheme.linkColor(context),
                 ).copyWith(fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ],

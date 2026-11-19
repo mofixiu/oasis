@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/fade_page_route.dart';
@@ -8,6 +9,7 @@ import '../../../core/utils/oasis_currency.dart';
 import '../../../core/utils/oasis_haptics.dart';
 import '../../../core/widgets/oasis_network_image.dart';
 import '../../../core/widgets/oasis_pressable.dart';
+import '../../../core/widgets/oasis_toast.dart';
 import '../../../core/widgets/v2_ui.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../auth/models/user_model.dart';
@@ -27,6 +29,7 @@ import '../../vault/controllers/vault_controller.dart';
 import '../../support/views/v2_help_screen.dart';
 import '../../support/views/v2_terms_screen.dart';
 import '../../vault/views/vault_pin_sheet.dart';
+import '../services/profile_service.dart';
 import 'v2_edit_profile_screen.dart';
 
 /// The v2 account screen: who you are, shortcuts to your trips, money and
@@ -104,6 +107,80 @@ class _V2ProfileScreenState extends State<V2ProfileScreen> {
       FadePageRoute(page: const SignInScreen()),
       (route) => false,
     );
+  }
+
+  /// Required by both app stores: a way to delete the account from inside
+  /// the app. It files a request with Oasis, which says so, rather than
+  /// pretending everything vanishes at once: booking and payment records
+  /// have to be kept.
+  Future<void> _requestDeletion() async {
+    final reason = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(dialogContext),
+        shape: RoundedRectangleBorder(borderRadius: AppTheme.cornerLg),
+        title: Text(
+          'Delete your account?',
+          style: AppTheme.sectionTitle(dialogContext),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Oasis will review your request and email you when your '
+              'account is closed. Records of past bookings and payments are '
+              'kept as the law requires.',
+              style: AppTheme.bodyText(dialogContext),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: reason,
+              maxLines: 2,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                hintText: 'Why are you leaving? (optional)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep my account'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              'Request deletion',
+              style: TextStyle(color: AppTheme.negativeText(dialogContext)),
+            ),
+          ),
+        ],
+      ),
+    );
+    final text = reason.text.trim();
+    reason.dispose();
+    if (confirmed != true || !mounted) return;
+    try {
+      await ProfileService().requestAccountDeletion(
+        reason: text.isEmpty ? 'Requested from the app.' : text,
+      );
+      if (!mounted) return;
+      OasisToast.success(
+        context,
+        'Request sent. Oasis will email you once your account is closed.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      OasisToast.error(
+        context,
+        e is ApiException
+            ? e.message
+            : 'Could not send that request. Try again in a moment.',
+      );
+    }
   }
 
   @override
@@ -217,7 +294,7 @@ class _V2ProfileScreenState extends State<V2ProfileScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: AppTheme.labelText(
                                   context,
-                                  color: AppTheme.actionColor,
+                                  color: AppTheme.linkColor(context),
                                 ),
                               ),
                             const SizedBox(height: 2),
@@ -388,6 +465,20 @@ class _V2ProfileScreenState extends State<V2ProfileScreen> {
               ),
               const SizedBox(height: 22),
               V2DestructiveButton(label: 'Log out', onTap: _logOut),
+              const SizedBox(height: 6),
+              Center(
+                child: TextButton(
+                  onPressed: _requestDeletion,
+                  child: Text(
+                    'Delete account',
+                    style: TextStyle(
+                      color: AppTheme.negativeText(context),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

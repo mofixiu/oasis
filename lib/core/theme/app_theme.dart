@@ -6,17 +6,39 @@ import '../utils/fade_page_route.dart';
 /// AppTheme defines the global styling for Oasis.
 /// It implements the strict color palette defined for the prop-tech platform.
 class AppTheme {
+  // The Oasis brand palette (v2, November 2026): cream pages, white cards,
+  // black type and navigation, the logo's orange for actions, and lime only
+  // for small accents, selected states and special labels.
+  static const Color oasisCream = Color(0xFFF8F1E5);
+  static const Color oasisBlack = Color(0xFF171717);
+  static const Color oasisOrange = Color(0xFFEE6309);
+  static const Color oasisLime = Color(0xFFC9F52A);
+
+  /// The logo orange darkened just enough for small text. #EE6309 is 3.3:1
+  /// on white, fine for a bold button label but not for a link or a caption;
+  /// this is 4.6:1.
+  static const Color orangeTextColor = Color(0xFFC4520A);
+
   // Oasis palette
-  static const Color blackColor = Color(0xFF101010);
+  static const Color blackColor = oasisBlack;
   static const Color whiteColor = Color(0xFFFFFFFF);
-  static const Color terracottaColor = Color(0xFFB65F3C);
+
+  /// The accent. Named for the rentals app's terracotta, which the v2 brand
+  /// replaced with the logo orange; the name stays so every accent follows.
+  static const Color terracottaColor = isOasisV2
+      ? oasisOrange
+      : Color(0xFFB65F3C);
   static const Color sageGreenColor = Color(0xFF6F8F72);
   static const Color sandColor = Color(0xFFD6B98C);
   static const Color slateGreyColor = Color(0xFF64748B);
   static const Color brickRedColor = Color(0xFFA44A3F);
 
   static const Color successSurfaceColor = Color(0xFFE8F3EA);
-  static const Color vacantSurfaceColor = Color(0xFFF4E8D9);
+  /// A pale peach in v2: the logo orange is set on it as text, and anything
+  /// darker drops that below 3:1 (the old sand was 2.7:1).
+  static const Color vacantSurfaceColor = isOasisV2
+      ? Color(0xFFFFF4EC)
+      : Color(0xFFF4E8D9);
   static const Color slateSurfaceColor = Color(0xFFF1F4F8);
   static const Color logoutSurfaceColor = Color(0xFFF7E9E6);
 
@@ -31,7 +53,9 @@ class AppTheme {
   /// terracotta and sand read as belonging to the surface they are printed
   /// on. The steps are deliberately small; the intent is depth you feel
   /// rather than tints you notice.
-  static const Color darkSurfaceColor = Color(0xFF1C1A19);
+  static const Color darkSurfaceColor = isOasisV2
+      ? Color(0xFF1C1C1C)
+      : Color(0xFF1C1A19);
 
   // Semantic aliases used around the app
   static const Color primaryColor = terracottaColor;
@@ -54,25 +78,31 @@ class AppTheme {
       ? creamColor
       : slateSurfaceColor;
 
-  // The short-stay app (APP_VARIANT=v2) uses cream where the original app
-  // uses white and slate. Only the page and surface fills change; text,
-  // accents and borders are the same palette as above.
-  static const Color creamColor = Color(0xFFF8F4EE);
-  static const Color creamCardColor = Color(0xFFFFFDFA);
-  static const Color creamRecessedColor = Color(0xFFF1EBE3);
+  // The short-stay app (APP_VARIANT=v2) puts white cards on a cream page:
+  // the card is the box a place, a form or a booking sits in, and the cream
+  // around it is what makes it read as one.
+  static const Color creamColor = oasisCream;
+  static const Color creamCardColor = whiteColor;
+  static const Color creamRecessedColor = Color(0xFFF1E7D6);
 
   /// The page behind everything. Not `#000`: a true black gives a card no
   /// edge to be seen against, which is why every surface used to read as one
   /// undifferentiated sheet.
-  static const Color darkBackgroundColor = Color(0xFF121110);
+  static const Color darkBackgroundColor = isOasisV2
+      ? Color(0xFF111111)
+      : Color(0xFF121110);
 
   static const Color darkCardColor = darkSurfaceColor;
 
   /// One step above a card, for a sheet or a header that sits on top of one.
-  static const Color darkRaisedColor = Color(0xFF262322);
+  static const Color darkRaisedColor = isOasisV2
+      ? Color(0xFF262626)
+      : Color(0xFF262322);
 
   /// One step below a card, for insets, input fills and quoted blocks.
-  static const Color darkRecessedColor = Color(0xFF171514);
+  static const Color darkRecessedColor = isOasisV2
+      ? oasisBlack
+      : Color(0xFF171514);
 
   // ---------------------------------------------------------------- shape
   // Three radii only. Anything that needs a corner picks the nearest of these
@@ -250,14 +280,40 @@ class AppTheme {
   }
 
   static Color borderColor(BuildContext context) {
-    return isDarkMode(context)
-        ? profileColor.withValues(alpha: 0.35)
-        : const Color(0xFFE5E7EB);
+    if (isDarkMode(context)) return profileColor.withValues(alpha: 0.35);
+    return isOasisV2 ? const Color(0xFFEBE1D1) : const Color(0xFFE5E7EB);
   }
 
+  /// Black in v2: headings and titles in the accent colour were what made
+  /// the app read low-contrast. The orange is kept for actions.
   static Color primaryTextColor(BuildContext context) {
-    return isDarkMode(context) ? whiteColor : primaryColor;
+    if (isDarkMode(context)) return whiteColor;
+    return isOasisV2 ? oasisBlack : primaryColor;
   }
+
+  /// Small orange text: links, "See all", inline actions.
+  static Color linkColor(BuildContext context) {
+    if (isDarkMode(context)) return oasisOrange;
+    return isOasisV2 ? orangeTextColor : actionColor;
+  }
+
+  // Status colours as *text*. The accents themselves (sand, brick, sage)
+  // are fill and icon colours: sand as text on cream is 1.7:1. Each of these
+  // clears 4.5:1 on cream and white in light mode and stays the brighter
+  // accent in dark mode, where the dark brown would vanish.
+  static Color warningText(BuildContext context) =>
+      isDarkMode(context) ? sandColor : const Color(0xFF85602F);
+
+  static Color negativeText(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFFE59A8F) : brickRedColor;
+
+  static Color successText(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFF9BC29F) : const Color(0xFF4E6B52);
+
+  /// Lime is a fill, never a text colour: lime text on white is 1.3:1.
+  /// Whatever sits on it is [oasisBlack], at 14:1.
+  static const Color limeSurfaceColor = oasisLime;
+  static const Color onLimeColor = oasisBlack;
 
   static Color profileTextColor(BuildContext context) {
     return isDarkMode(context) ? whiteColor : profileColor;
@@ -274,16 +330,16 @@ class AppTheme {
     return isDarkMode(context) ? whiteColor : blackColor;
   }
 
+  // Warm greys in v2, and darker than before: the cool #9CA3AF muted grey
+  // was 2.3:1 on cream. These are 6.5:1 and 5.2:1 on cream, more on white.
   static Color secondaryTextColor(BuildContext context) {
-    return isDarkMode(context)
-        ? whiteColor.withValues(alpha: 0.72)
-        : const Color(0xFF6B7280);
+    if (isDarkMode(context)) return whiteColor.withValues(alpha: 0.72);
+    return isOasisV2 ? const Color(0xFF5C564F) : const Color(0xFF6B7280);
   }
 
   static Color mutedTextColor(BuildContext context) {
-    return isDarkMode(context)
-        ? whiteColor.withValues(alpha: 0.55)
-        : const Color(0xFF9CA3AF);
+    if (isDarkMode(context)) return whiteColor.withValues(alpha: 0.6);
+    return isOasisV2 ? const Color(0xFF6B645C) : const Color(0xFF9CA3AF);
   }
 
   /// Applies the app's tracking to a Montserrat text theme.
@@ -322,15 +378,20 @@ class AppTheme {
         },
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: primaryColor,
+        // v2 bars sit on the page, black on cream, like the rest of the app.
+        backgroundColor: isOasisV2 ? backgroundColor : primaryColor,
+        foregroundColor: isOasisV2 ? oasisBlack : Colors.white,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(
+          color: isOasisV2 ? oasisBlack : Colors.white,
+        ),
         // Montserrat explicitly: an AppBar title ignores the global textTheme
         // and inherits from this style, so a bare TextStyle here silently
         // drops every app bar back to the platform default font.
         titleTextStyle: GoogleFonts.montserrat(
-          color: Colors.white,
+          color: isOasisV2 ? oasisBlack : Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.bold,
           letterSpacing: -0.2,
@@ -339,7 +400,9 @@ class AppTheme {
       colorScheme: const ColorScheme.light(
         primary: primaryColor,
         secondary: secondaryColor,
-        error: warningColor,
+        // Brick red, as in dark mode: sand error text was 1.7:1 and read as
+        // a warning rather than a problem.
+        error: brickRedColor,
         surface: isOasisV2 ? creamCardColor : whiteColor,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -377,7 +440,9 @@ class AppTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: actionColor),
+        style: TextButton.styleFrom(
+          foregroundColor: isOasisV2 ? orangeTextColor : actionColor,
+        ),
       ),
     );
   }

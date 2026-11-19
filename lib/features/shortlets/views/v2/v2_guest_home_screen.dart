@@ -151,12 +151,12 @@ class _V2GuestHomeScreenState extends State<V2GuestHomeScreen> {
               itemCount: _tripIdeas.length,
               separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (context, index) => _TripIdeaCard(
-                title: _tripIdeas[index],
+                title: _tripIdeas[index].$1,
                 // Skips the photo the hero is already showing.
                 photoUrl: photos.length > 1
                     ? photos[(index + 1) % photos.length]
                     : null,
-                onTap: _openSearch,
+                onTap: () => _openSearch(occasion: _tripIdeas[index].$2),
               ),
             ),
           ),
@@ -233,11 +233,12 @@ class _V2GuestHomeScreenState extends State<V2GuestHomeScreen> {
   }
 }
 
+/// Each idea opens search narrowed to the occasion it names.
 const _tripIdeas = [
-  'Weekend escape',
-  'Work trip',
-  'Birthday getaway',
-  'Girls’ trip',
+  ('Weekend escape', ShortLetOccasion.weekend),
+  ('Work trip', ShortLetOccasion.workTrip),
+  ('Birthday getaway', ShortLetOccasion.birthday),
+  ('Girls’ trip', ShortLetOccasion.friends),
 ];
 
 /// Full-bleed photo with the brand, the promise, and the search bar.

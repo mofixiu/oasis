@@ -79,7 +79,7 @@ class _MissingPhotosPromptState extends State<MissingPhotosPrompt> {
         Icon(
           Icons.visibility_off_outlined,
           size: 17,
-          color: AppTheme.warningColor,
+          color: AppTheme.warningText(context),
         ),
         const SizedBox(width: 10),
         Expanded(

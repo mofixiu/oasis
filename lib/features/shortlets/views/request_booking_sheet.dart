@@ -245,7 +245,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
                   _QuoteRow(
                     label: 'Refundable caution fee',
                     amount: OasisCurrency.format(widget.listing.cautionFee),
-                    tone: AppTheme.vacantColor,
+                    tone: AppTheme.warningText(context),
                   ),
                   const SizedBox(height: 8),
                   Divider(color: AppTheme.borderColor(context), height: 1),
@@ -297,10 +297,10 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
+              Icon(
                 Icons.info_outline_rounded,
                 size: 15,
-                color: AppTheme.warningColor,
+                color: AppTheme.warningText(context),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -308,7 +308,7 @@ class _RequestBookingSheetState extends State<_RequestBookingSheet> {
                   problem,
                   style: AppTheme.labelText(
                     context,
-                    color: AppTheme.warningColor,
+                    color: AppTheme.warningText(context),
                   ),
                 ),
               ),

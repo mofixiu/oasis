@@ -20,12 +20,9 @@ String cautionWindowLabel(Duration left) {
 /// The caution-fee claim window is 24 hours from checkout.
 const Duration cautionClaimWindow = Duration(hours: 24);
 
-Color _pendingInk(BuildContext context) =>
-    AppTheme.isDarkMode(context) ? AppTheme.sandColor : const Color(0xFF85602F);
+Color _pendingInk(BuildContext context) => AppTheme.warningText(context);
 
-Color _alertInk(BuildContext context) => AppTheme.isDarkMode(context)
-    ? const Color(0xFFE59A8F)
-    : AppTheme.brickRedColor;
+Color _alertInk(BuildContext context) => AppTheme.negativeText(context);
 
 /// The host's checkout inspection: the place has been left, the caution fee
 /// is still held, and the host has a fixed window to say all is well or
@@ -178,7 +175,8 @@ class _CheckoutInspectionPanelState extends State<CheckoutInspectionPanel> {
                   label: 'All good, refund',
                   icon: Icons.check_rounded,
                   filled: true,
-                  color: AppTheme.successColor,
+                  // The primary action, in the brand orange like every other.
+                  color: AppTheme.actionColor,
                   onTap: widget.busy ? null : widget.onAllGood,
                 ),
               ),

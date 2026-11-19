@@ -11,6 +11,8 @@ import '../../../core/widgets/oasis_toast.dart';
 import '../../../core/widgets/main_scaffold.dart';
 import '../controllers/auth_controller.dart';
 import '../models/user_model.dart';
+import '../../support/views/v2_help_screen.dart';
+import 'sign_in_screen.dart';
 import '../../../core/widgets/oasis_busy.dart';
 import '../../../core/app_variant.dart';
 
@@ -66,7 +68,9 @@ class _IdentityVerificationScreenState
         maxHeight: 800,
         imageQuality: 85,
       );
-      if (pickedFile != null) {
+      // The camera can send the app to the background long enough for this
+      // screen to go.
+      if (pickedFile != null && mounted) {
         setState(() {
           _selfieFile = File(pickedFile.path);
         });
@@ -210,6 +214,37 @@ class _IdentityVerificationScreenState
     );
   }
 
+  Future<void> _logOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text(
+          'You can sign in again with a different account, or come back to '
+          'finish verifying later.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await context.read<AuthController>().logout();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      FadePageRoute(page: const SignInScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authController = context.watch<AuthController>();
@@ -230,10 +265,25 @@ class _IdentityVerificationScreenState
         scrolledUnderElevation: 0,
         centerTitle: true,
         iconTheme: IconThemeData(color: AppTheme.primaryTextColor(context)),
-        title: Text(
-          'Identity Verification',
-          style: AppTheme.cardTitle(context),
-        ),
+        title: Text('Verify your identity', style: AppTheme.cardTitle(context)),
+        // The way out. Sign-up and sign-in land an unverified account here
+        // with nothing behind it, so someone on the wrong account, or whose
+        // NIN keeps failing, needs help or a log-out from this screen itself.
+        actions: [
+          IconButton(
+            tooltip: 'Help',
+            icon: const Icon(Icons.help_outline_rounded),
+            onPressed: () => Navigator.push(
+              context,
+              FadePageRoute(page: const V2HelpScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Log out',
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: _logOut,
+          ),
+        ],
       ),
       body: SafeArea(
         child: Center(
@@ -451,7 +501,9 @@ class _IdentityVerificationScreenState
                     OasisEntrance(
                       index: 5,
                       child: OasisButton(
-                        label: 'Continue to dashboard',
+                        label: isOasisV2
+                            ? 'Continue to Oasis'
+                            : 'Continue to dashboard',
                         outlined: true,
                         color: AppTheme.profileColor,
                         onPressed: () => Navigator.pushAndRemoveUntil(

@@ -1,3 +1,4 @@
+import '../../../core/app_variant.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -50,11 +51,14 @@ class _V2InboxScreenState extends State<V2InboxScreen> {
             children: [
               V2PageHeader(
                 title: 'Inbox',
-                subtitle: 'Messages, updates and support.',
+                subtitle: 'Messages and updates.',
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (isShowingNotifications &&
+                    // Announcements go to tenants with a live tenancy, which
+                    // no shortlet guest has, so in v2 they would reach nobody.
+                    if (!isOasisV2 &&
+                        isShowingNotifications &&
                         auth.currentRole == UserRole.owner) ...[
                       V2CircleButton(
                         icon: Icons.campaign_outlined,

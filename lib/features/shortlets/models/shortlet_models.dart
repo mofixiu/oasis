@@ -208,7 +208,7 @@ enum HostPayoutStatus {
       case HostPayoutStatus.blocked:
         return 'Payout paused';
       case HostPayoutStatus.refunded:
-        return 'Refunded to tenant';
+        return 'Refunded to guest';
       case HostPayoutStatus.unknown:
         return 'Payout status unclear';
     }

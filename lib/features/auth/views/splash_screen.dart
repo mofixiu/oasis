@@ -102,17 +102,12 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = AppTheme.isDarkMode(context);
-    final backgroundColor = AppTheme.pageBackground(context);
-    // The tagline is the only line of copy on the screen, so it is set in
-    // full-strength brand colour. At 0.35 alpha it read as a rendering
-    // artefact rather than a deliberate mark.
-    final accentTextColor = isDarkMode
-        ? AppTheme.sandColor
-        : AppTheme.terracottaColor;
-    final footerTextColor = isDarkMode
-        ? AppTheme.whiteColor.withValues(alpha: 0.42)
-        : AppTheme.profileColor.withValues(alpha: 0.55);
+    // Oasis Black in both themes, as in the brand mockups: the orange
+    // wordmark and lime palm were drawn for black, and the OS launch screen
+    // is set to the same colour so the hand-off does not flash.
+    const backgroundColor = AppTheme.oasisBlack;
+    const accentTextColor = AppTheme.whiteColor;
+    final footerTextColor = AppTheme.whiteColor.withValues(alpha: 0.5);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -133,21 +128,19 @@ class _SplashScreenState extends State<SplashScreen>
                     // iOS LaunchImage so the hand-off from the OS splash does
                     // not jump.
                     Image.asset(
-                      isDarkMode
-                          ? 'assets/images/oasis_wordmark_dark.png'
-                          : 'assets/images/oasis_wordmark.png',
+                      'assets/images/oasis_wordmark.png',
                       width: 250,
                       height: 77,
                       fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 18),
-                    Text(
-                      'THOUGHTFUL SHORT STAYS, FOUND ON YOUR TERMS',
+                    const Text(
+                      'Short stays. Good stays.',
                       style: TextStyle(
                         color: accentTextColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.1,
                       ),
                     ),
                   ],

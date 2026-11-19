@@ -97,12 +97,15 @@ class _MessageActionButtonState extends State<MessageActionButton> {
           Icon(
             Icons.chat_bubble_outline_rounded,
             size: 16,
-            color: AppTheme.actionColor,
+            color: AppTheme.linkColor(context),
           ),
         const SizedBox(width: 8),
         Text(
           widget.label,
-          style: AppTheme.cardTitle(context, color: AppTheme.actionColor),
+          style: AppTheme.cardTitle(
+            context,
+            color: AppTheme.linkColor(context),
+          ),
         ),
       ],
     );

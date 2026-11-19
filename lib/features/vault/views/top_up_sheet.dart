@@ -1,3 +1,4 @@
+import '../../../core/app_variant.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -250,7 +251,9 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
       icon: Icons.savings_outlined,
       title: 'Add money to your vault',
       subtitle: widget.targetLabel == null
-          ? 'Save towards rent a bit at a time, then pay it in one tap.'
+          ? (isOasisV2
+                ? 'Save towards your next trip a bit at a time, then pay in one tap.'
+                : 'Save towards rent a bit at a time, then pay it in one tap.')
           : 'Top up now and pay ${widget.targetLabel} straight from your '
                 'vault.',
       accent: AppTheme.successColor,
@@ -316,8 +319,9 @@ class _TopUpSheetState extends State<TopUpSheet> with WidgetsBindingObserver {
         const _Notice(
           icon: Icons.lock_outline_rounded,
           message:
-              'Money in your vault is yours. Spend it on rent, or withdraw it '
-              'back to your bank whenever you like.',
+              'Money in your vault is yours. Spend it on '
+              '${isOasisV2 ? 'bookings' : 'rent'}, or withdraw it back to your '
+              'bank whenever you like.',
         ),
 
         if (awaitingCheckout) ...[

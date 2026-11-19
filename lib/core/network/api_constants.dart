@@ -303,6 +303,9 @@ class ApiConstants {
   /// Multipart upload of the profile photo, field `avatar`.
   static const String profileAvatarEndpoint = '/profile/avatar/';
 
+  /// Account deletion requests, reviewed by Oasis (API guide §5.32).
+  static const String deletionRequestsEndpoint = '/deletion-requests/';
+
   /// Public app settings: support contacts and legal document links.
   static const String appConfigEndpoint = '/app-config/';
 

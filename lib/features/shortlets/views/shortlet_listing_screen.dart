@@ -433,7 +433,7 @@ class ShortLetListingScreen extends StatelessWidget {
                     OasisCurrency.format(listing.nightlyPrice),
                     style: AppTheme.sectionTitle(
                       context,
-                      color: AppTheme.actionColor,
+                      color: AppTheme.linkColor(context),
                     ),
                   ),
                   Text('per night', style: AppTheme.labelText(context)),
@@ -1199,10 +1199,10 @@ class _CautionFeeNotice extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(
+        Icon(
           Icons.shield_outlined,
           size: 20,
-          color: AppTheme.vacantColor,
+          color: AppTheme.warningText(context),
         ),
         const SizedBox(width: 12),
         Expanded(

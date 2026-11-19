@@ -95,7 +95,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           // Announcing is a landlord action, and the notification list is
           // where the result of it lands, so the way to send one lives here
           // rather than buried in a settings screen.
-          if (context.watch<AuthController>().currentRole == UserRole.owner)
+          if (!isOasisV2 &&
+              context.watch<AuthController>().currentRole == UserRole.owner)
             IconButton(
               tooltip: 'Announce to tenants',
               onPressed: () => showModalBottomSheet(
@@ -114,10 +115,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               onPressed: controller.isLoading
                   ? null
                   : () => controller.markAllRead(),
-              child: const Text(
+              child: Text(
                 'Mark all read',
                 style: TextStyle(
-                  color: AppTheme.actionColor,
+                  color: AppTheme.linkColor(context),
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),

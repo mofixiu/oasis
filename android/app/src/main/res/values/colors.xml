@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Cold-start window background. Matches AppTheme.slateSurfaceColor /
-         AppTheme.blackColor so the OS-drawn splash is the same colour as the
-         Flutter splash that replaces it. -->
-    <color name="launch_background">#F1F4F8</color>
-    <color name="launch_background_dark">#101010</color>
+    <!-- Cold-start window background: Oasis Black in both themes, the same
+         colour as the Flutter splash that replaces it. -->
+    <color name="launch_background">#171717</color>
+    <color name="launch_background_dark">#171717</color>
     <!-- The new palm-only launcher mark uses a black icon field. -->
     <color name="ic_launcher_background">#000000</color>
 </resources>

@@ -13,6 +13,7 @@ import '../../../core/widgets/oasis_segmented_tabs.dart';
 import '../../../core/widgets/oasis_shimmer.dart';
 import '../../../core/widgets/oasis_state_views.dart';
 import '../../../core/widgets/oasis_toast.dart';
+import '../../../core/widgets/v2_ui.dart';
 import '../../messaging/views/widgets/message_action_button.dart';
 import '../../properties/controllers/landlord_controller.dart';
 import '../../properties/models/property_model.dart';
@@ -283,10 +284,7 @@ class _LandlordShortLetsScreenState extends State<LandlordShortLetsScreen>
               children: [
                 Text(
                   widget.isV2 ? 'Shortlets' : 'Short lets',
-                  style: AppTheme.screenTitle(
-                    context,
-                    color: AppTheme.primaryColor,
-                  ),
+                  style: AppTheme.screenTitle(context),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1012,30 +1010,30 @@ class _ListingRow extends StatelessWidget {
                 ),
               ),
               // Paused is worth stating plainly: a host wondering why nobody
-              // is booking should be able to see the reason here.
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      (listing.isActive
-                              ? AppTheme.successColor
-                              : AppTheme.mutedTextColor(context))
-                          .withValues(alpha: 0.12),
-                  borderRadius: AppTheme.cornerSm,
-                ),
-                child: Text(
-                  listing.isActive ? 'Live' : 'Paused',
-                  style: AppTheme.labelText(
-                    context,
-                    color: listing.isActive
-                        ? AppTheme.successColor
-                        : AppTheme.mutedTextColor(context),
+              // is booking should be able to see the reason here. Live gets
+              // the brand lime, the colour for good news.
+              if (listing.isActive)
+                const V2LimeBadge(label: 'Live')
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.mutedTextColor(
+                      context,
+                    ).withValues(alpha: 0.12),
+                    borderRadius: AppTheme.cornerSm,
+                  ),
+                  child: Text(
+                    'Paused',
+                    style: AppTheme.labelText(
+                      context,
+                      color: AppTheme.secondaryTextColor(context),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1072,7 +1070,10 @@ class _ListingRow extends StatelessWidget {
             Text(
               '${OasisCurrency.format(listing.cautionFee)} refundable caution '
               'fee',
-              style: AppTheme.labelText(context, color: AppTheme.vacantColor),
+              style: AppTheme.labelText(
+                context,
+                color: AppTheme.warningText(context),
+              ),
             ),
           ],
           const SizedBox(height: 4),

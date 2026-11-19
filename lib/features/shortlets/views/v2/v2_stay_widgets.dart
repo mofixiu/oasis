@@ -180,29 +180,34 @@ class V2SaveButton extends StatelessWidget {
       excludeSemantics: true,
       child: OasisPressable(
         onTap: () => _toggle(context),
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.94),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+        // A 44pt target around a smaller heart: it sits on a tappable card,
+        // so a near miss used to open the listing instead of saving it.
+        child: Padding(
+          padding: EdgeInsets.all(size < 44 ? (44 - size) / 2 : 0),
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.94),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              transitionBuilder: (child, animation) =>
+                  ScaleTransition(scale: animation, child: child),
+              child: Icon(
+                saved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                key: ValueKey(saved),
+                size: size * 0.52,
+                color: saved ? AppTheme.terracottaColor : AppTheme.blackColor,
               ),
-            ],
-          ),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            transitionBuilder: (child, animation) =>
-                ScaleTransition(scale: animation, child: child),
-            child: Icon(
-              saved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-              key: ValueKey(saved),
-              size: size * 0.52,
-              color: saved ? AppTheme.terracottaColor : AppTheme.blackColor,
             ),
           ),
         ),
@@ -299,6 +304,16 @@ class V2StayCard extends StatelessWidget {
               child: Stack(
                 children: [
                   V2StayPhoto(url: listing.coverPhotoUrl, height: 206),
+                  // True of every place on Oasis: only an ID-verified host
+                  // can list one.
+                  const Positioned(
+                    top: 12,
+                    left: 12,
+                    child: V2LimeBadge(
+                      label: 'Verified host',
+                      icon: Icons.verified_rounded,
+                    ),
+                  ),
                   Positioned(
                     top: 10,
                     right: 10,
@@ -483,9 +498,7 @@ class V2DestructiveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = AppTheme.isDarkMode(context)
-        ? const Color(0xFFE59A8F)
-        : AppTheme.brickRedColor;
+    final foreground = AppTheme.negativeText(context);
     return OasisPressable(
       onTap: isBusy ? null : onTap,
       pressedScale: 0.98,

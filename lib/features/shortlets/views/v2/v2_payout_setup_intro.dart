@@ -81,7 +81,10 @@ class V2PayoutSetupIntro extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 18),
-      Text('Get paid for your stays', style: V2PageHeader.titleStyle(context)),
+      Text(
+        'Get paid for every booking',
+        style: V2PageHeader.titleStyle(context),
+      ),
       const SizedBox(height: 8),
       Text(
         'Add the bank account your payouts should go to. Here is how money '

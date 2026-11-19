@@ -210,7 +210,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Get paid for your stays'), findsOneWidget);
+    expect(find.text('Get paid for every booking'), findsOneWidget);
     for (final step in [
       '1. A guest books and pays',
       '2. Oasis holds the money',

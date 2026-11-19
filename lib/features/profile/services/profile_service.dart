@@ -30,6 +30,12 @@ class ProfileService {
     },
   );
 
+  /// Asks Oasis to delete the account. A request, not a deletion: the
+  /// backend keeps payment and booking records it is required to, and the
+  /// team reviews each one (API guide §5.32).
+  Future<void> requestAccountDeletion({required String reason}) => _apiClient
+      .post(ApiConstants.deletionRequestsEndpoint, body: {'reason': reason});
+
   /// Uploads a new profile photo and returns its URL when the server sends
   /// one back.
   Future<String?> uploadAvatar(File photo) async {

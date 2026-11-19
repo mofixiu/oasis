@@ -158,7 +158,7 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
       subtitle:
           '${listing.title} is listed at '
           '${OasisCurrency.format(listing.nightlyPrice)} a night. Guests '
-          'browsing stays see the new price straight away.',
+          'browsing shortlets see the new price straight away.',
       footer: OasisSheetButton(
         label: 'Save new price',
         icon: Icons.check_rounded,
@@ -195,7 +195,7 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
             style: AppTheme.labelText(
               context,
               color: _hasCaution
-                  ? AppTheme.vacantColor
+                  ? AppTheme.warningText(context)
                   : AppTheme.mutedTextColor(context),
             ),
           ),
@@ -226,7 +226,7 @@ class _EditNightlyPriceSheetState extends State<_EditNightlyPriceSheet> {
 
         const SizedBox(height: 12),
         Text(
-          'Stays already booked or paid for keep the price they were agreed '
+          'Bookings already approved or paid for keep the price they were agreed '
           'at. This only changes what new guests are quoted.',
           style: AppTheme.labelText(
             context,

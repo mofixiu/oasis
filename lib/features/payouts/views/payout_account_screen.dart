@@ -1,3 +1,4 @@
+import '../../../core/app_variant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -221,6 +222,8 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
                           Text(
                             isUpdate
                                 ? 'Update payout account'
+                                : isOasisV2
+                                ? 'Where should payouts go?'
                                 : 'Where should rent be paid?',
                             textAlign: TextAlign.center,
                             style: AppTheme.screenTitle(context),
@@ -229,6 +232,8 @@ class _PayoutAccountScreenState extends State<PayoutAccountScreen>
                           Text(
                             isUpdate
                                 ? 'We re-verify with your bank before replacing your saved details.'
+                                : isOasisV2
+                                ? 'Money you withdraw from your vault is sent here. We verify the account with your bank before saving.'
                                 : 'Rent released from escrow is transferred here. We verify the account with your bank before saving.',
                             textAlign: TextAlign.center,
                             style: AppTheme.bodyText(

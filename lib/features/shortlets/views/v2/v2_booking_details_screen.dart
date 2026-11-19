@@ -379,9 +379,7 @@ class _V2BookingDetailsScreenState extends State<V2BookingDetailsScreen> {
                       V2IconText(
                         icon: Icons.timer_outlined,
                         text: payWindow,
-                        color: AppTheme.isDarkMode(context)
-                            ? AppTheme.sandColor
-                            : const Color(0xFF85602F),
+                        color: AppTheme.warningText(context),
                       ),
                     ],
                     const SizedBox(height: 14),

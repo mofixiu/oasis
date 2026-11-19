@@ -1,3 +1,4 @@
+import '../../../core/app_variant.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -238,9 +239,9 @@ enum NotificationType {
       case NotificationType.escrowDisputed:
         return 'Dispute raised';
       case NotificationType.escrowReleased:
-        return 'Escrow released';
+        return isOasisV2 ? 'Payment released' : 'Escrow released';
       case NotificationType.landlordBroadcast:
-        return 'From your landlord';
+        return isOasisV2 ? 'From your host' : 'From your landlord';
       case NotificationType.messageReceived:
         return 'New message';
       case NotificationType.vaultCredited:

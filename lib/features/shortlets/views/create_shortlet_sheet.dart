@@ -889,8 +889,8 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
     if (existing == null) {
       OasisToast.error(
         navigator.context,
-        'That unit is already listed for short stays. Open it from Short '
-        'lets to change it.',
+        'That unit is already listed. Open it from Shortlets › My places '
+        'to change it.',
       );
       return;
     }
@@ -1122,7 +1122,7 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
       const SizedBox(height: 8),
       _Notice(
         icon: Icons.wrong_location_outlined,
-        color: AppTheme.warningColor,
+        color: AppTheme.warningText(context),
         text:
             'Your pin is in $pinState, but the address is in $_state. Move '
             'the pin to the property, or change the state.',
@@ -1214,10 +1214,10 @@ class _ListPlaceFlowState extends State<_ListPlaceFlow> {
         const SizedBox(height: 8),
         _Notice(
           icon: Icons.info_outline_rounded,
-          color: AppTheme.warningColor,
+          color: AppTheme.warningText(context),
           text:
               '${duplicate.title} is already let by the night. Edit that '
-              'listing from Short lets instead of adding a second one.',
+              'listing from Shortlets › My places instead of adding a second one.',
         ),
       ],
     ];
@@ -2026,14 +2026,14 @@ class _MediaStatusRow extends StatelessWidget {
           value,
           style: AppTheme.labelText(
             context,
-            color: done ? AppTheme.successColor : AppTheme.warningColor,
+            color: done ? AppTheme.successColor : AppTheme.warningText(context),
           ),
         ),
         const SizedBox(width: 6),
         Icon(
           done ? Icons.check_circle_rounded : Icons.error_outline_rounded,
           size: 18,
-          color: done ? AppTheme.successColor : AppTheme.warningColor,
+          color: done ? AppTheme.successColor : AppTheme.warningText(context),
         ),
       ],
     ),
